@@ -60,7 +60,9 @@ impl App {
             if is_session_header {
                 self.merge_startup_warnings(tui, &history_cell::StartupWarningsCell::default());
             }
-            tui.frame_requester().schedule_frame();
+            if !self.owned_screen_replay_in_progress() {
+                tui.frame_requester().schedule_frame();
+            }
             return;
         }
         if self.initial_history_replay_buffer.as_ref().is_some() {
@@ -350,6 +352,7 @@ impl App {
         self.overlay = None;
         self.transcript_cells.clear();
         self.sync_owned_screen_cells();
+        self.finish_owned_screen_replay();
         self.last_rendered_history_tail = None;
         self.last_thread_usage_status_cell = None;
         self.pending_thread_usage_history_refresh = false;
