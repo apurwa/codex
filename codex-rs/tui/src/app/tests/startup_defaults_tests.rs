@@ -14,6 +14,7 @@ async fn run_startup_for_test(
 ) -> Result<AppExitInfo> {
     App::run(
         tui,
+        crate::AltScreenBehavior::Disabled,
         server,
         config.clone(),
         config.cwd.to_path_buf(),

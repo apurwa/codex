@@ -36,6 +36,7 @@ impl App {
             tui.frame_requester().schedule_frame();
         }
         self.transcript_cells.push(cell.clone());
+        self.owned_screen_push_cell(cell.clone());
         let width = self
             .chat_widget
             .history_wrap_width(tui.terminal.last_known_screen_size.width);
@@ -52,6 +53,15 @@ impl App {
                 cell: Arc::downgrade(&cell),
                 lines: lines.clone(),
             });
+        }
+        if self.has_owned_screen() {
+            self.last_rendered_history_tail = None;
+            self.chat_widget.request_pending_usage_output_insertion();
+            if is_session_header {
+                self.merge_startup_warnings(tui, &history_cell::StartupWarningsCell::default());
+            }
+            tui.frame_requester().schedule_frame();
+            return;
         }
         if self.initial_history_replay_buffer.as_ref().is_some() {
             self.insert_history_cell_lines_with_initial_replay_buffer(tui, cell.as_ref(), width);
@@ -127,6 +137,14 @@ impl App {
             .display_hyperlink_lines_for_mode(width, self.chat_widget.history_render_mode());
         if updated_lines == status_history.lines {
             self.pending_thread_usage_history_refresh = false;
+            return Ok(());
+        }
+        if self.has_owned_screen() {
+            if let Some(status_history) = self.last_thread_usage_status_cell.as_mut() {
+                status_history.lines = updated_lines;
+            }
+            self.pending_thread_usage_history_refresh = false;
+            tui.frame_requester().schedule_frame();
             return Ok(());
         }
         let Some(rendered_tail) = self.last_rendered_history_tail.as_ref() else {
@@ -249,6 +267,13 @@ impl App {
         width: u16,
         version: &'static str,
     ) -> Vec<Line<'static>> {
+        self.clear_ui_header_cell(version).display_lines(width)
+    }
+
+    fn clear_ui_header_cell(
+        &self,
+        version: &'static str,
+    ) -> history_cell::SessionHeaderHistoryCell {
         history_cell::SessionHeaderHistoryCell::new(
             self.chat_widget.current_model().to_string(),
             self.chat_widget.current_reasoning_effort(),
@@ -260,7 +285,6 @@ impl App {
             version,
         )
         .with_yolo_mode(history_cell::is_yolo_mode(&self.config))
-        .display_lines(width)
     }
 
     pub(super) fn clear_ui_header_lines(&self, width: u16) -> Vec<Line<'static>> {
@@ -268,6 +292,13 @@ impl App {
     }
 
     pub(super) fn queue_clear_ui_header(&mut self, tui: &mut tui::Tui) {
+        if self.has_owned_screen() {
+            let cell: Arc<dyn HistoryCell> = Arc::new(self.clear_ui_header_cell(CODEX_CLI_VERSION));
+            self.transcript_cells.push(cell.clone());
+            self.owned_screen_push_cell(cell);
+            tui.frame_requester().schedule_frame();
+            return;
+        }
         let width = self
             .chat_widget
             .history_wrap_width(tui.terminal.last_known_screen_size.width);
@@ -311,13 +342,14 @@ impl App {
         Ok(())
     }
 
-    pub(super) fn reset_app_ui_state_after_clear(&mut self) {
+    pub(super) fn reset_app_ui_state_after_clear(&mut self, _tui: &mut tui::Tui) {
         self.reset_transcript_state_after_clear();
     }
 
     pub(super) fn reset_transcript_state_after_clear(&mut self) {
         self.overlay = None;
         self.transcript_cells.clear();
+        self.sync_owned_screen_cells();
         self.last_rendered_history_tail = None;
         self.last_thread_usage_status_cell = None;
         self.pending_thread_usage_history_refresh = false;

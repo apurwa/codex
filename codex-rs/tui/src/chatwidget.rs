@@ -1719,6 +1719,17 @@ impl ChatWidget {
         }
     }
 
+    /// Record the width used by an application-owned full-frame render.
+    ///
+    /// The regular `Renderable` implementation records this as a render side effect. Owned mode
+    /// renders only the bottom pane from `ChatWidget`, so it must explicitly keep stream wrapping
+    /// in sync with the width of the retained conversation viewport.
+    pub(crate) fn update_owned_screen_width(&mut self, width: u16) {
+        if self.last_rendered_width.get() != Some(width) {
+            self.on_terminal_resize(width);
+        }
+    }
+
     /// Whether an agent message stream is active (not a plan stream).
     pub(crate) fn has_active_agent_stream(&self) -> bool {
         self.stream_controller.is_some()
@@ -2042,7 +2053,6 @@ impl ChatWidget {
     }
 
     /// Returns the active cells' main-viewport lines for a given terminal width.
-    #[cfg_attr(not(test), allow(dead_code))]
     pub(crate) fn active_cell_display_hyperlink_lines(
         &self,
         width: u16,
@@ -2057,13 +2067,6 @@ impl ChatWidget {
             lines.extend(cell_lines);
         };
         if let Some(cell) = self.transcript.active_cell.as_deref() {
-            append(cell);
-        }
-        if let Some(cell) = self
-            .active_hook_cell
-            .as_ref()
-            .filter(|cell| cell.should_render())
-        {
             append(cell);
         }
         if let Some(cell) = self.pending_token_activity_output() {

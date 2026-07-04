@@ -5882,6 +5882,7 @@ async fn make_test_app() -> App {
         runtime_permission_profile_override: None,
         file_search,
         transcript_cells: Vec::new(),
+        owned_screen: None,
         last_rendered_history_tail: None,
         last_thread_usage_status_cell: None,
         pending_thread_usage_history_refresh: false,
@@ -5981,6 +5982,7 @@ pub(super) async fn make_test_app_with_channels() -> (
             runtime_permission_profile_override: None,
             file_search,
             transcript_cells: Vec::new(),
+            owned_screen: None,
             last_rendered_history_tail: None,
             last_thread_usage_status_cell: None,
             pending_thread_usage_history_refresh: false,
@@ -9348,7 +9350,7 @@ async fn clear_only_ui_reset_preserves_chat_session_state() {
     app.backtrack.nth_user_message = 0;
     app.backtrack_render_pending = true;
 
-    app.reset_app_ui_state_after_clear();
+    app.reset_transcript_state_after_clear();
 
     assert!(app.overlay.is_none());
     assert!(app.transcript_cells.is_empty());
@@ -9380,7 +9382,7 @@ async fn clear_only_ui_reset_allows_active_skill_warning_to_render_again() {
         Vec::<SkillErrorInfo>::new()
     );
 
-    app.reset_app_ui_state_after_clear();
+    app.reset_transcript_state_after_clear();
 
     assert_eq!(
         app.skill_load_warnings

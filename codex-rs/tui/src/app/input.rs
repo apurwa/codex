@@ -238,6 +238,11 @@ impl App {
         } else {
             self.chat_widget.set_raw_output_mode(enabled);
         }
+        self.sync_owned_screen_render_mode();
+        if self.has_owned_screen() {
+            tui.frame_requester().schedule_frame();
+            return;
+        }
         if self.overlay.is_some() {
             self.schedule_immediate_resize_reflow(tui);
             return;
@@ -575,7 +580,7 @@ impl App {
                 self.chat_widget
                     .add_error_message(format!("Failed to clear terminal UI: {err}"));
             } else {
-                self.reset_app_ui_state_after_clear();
+                self.reset_app_ui_state_after_clear(tui);
                 self.queue_clear_ui_header(tui);
                 tui.frame_requester().schedule_frame();
             }

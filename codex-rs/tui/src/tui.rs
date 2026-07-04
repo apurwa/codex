@@ -953,6 +953,11 @@ impl Tui {
         self.pending_history_lines.clear();
     }
 
+    #[cfg(test)]
+    pub(crate) fn has_pending_history_lines(&self) -> bool {
+        !self.pending_history_lines.is_empty()
+    }
+
     /// Resize the inline viewport for the resize-reflow path.
     ///
     /// Unlike the legacy draw path, this path does not scroll rows above the viewport when the
