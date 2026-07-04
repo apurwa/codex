@@ -7,13 +7,18 @@ use crossterm::cursor::SetCursorStyle;
 use crossterm::event::KeyCode;
 use crossterm::event::KeyEvent;
 use crossterm::event::KeyEventKind;
+use crossterm::event::MouseEvent;
+use crossterm::event::MouseEventKind;
 use ratatui::buffer::Buffer;
+use ratatui::layout::Position;
 use ratatui::layout::Rect;
 use ratatui::widgets::Clear;
 use ratatui::widgets::Widget;
 
 use super::*;
 use crate::AltScreenBehavior;
+use crate::tui::MouseScrollDirection;
+use crate::tui::MouseScrollEvent;
 
 pub(super) struct OwnedScreen {
     viewport: ConversationViewport,
@@ -92,6 +97,17 @@ impl OwnedScreen {
         self.viewport
             .handle_navigation_key(self.last_conversation_area, key_event)
     }
+
+    fn handle_mouse_scroll(&mut self, event: MouseScrollEvent) -> bool {
+        if !self
+            .last_conversation_area
+            .contains(Position::new(event.column, event.row))
+        {
+            return false;
+        }
+        self.viewport.handle_mouse_scroll(event.direction);
+        true
+    }
 }
 
 impl App {
@@ -146,6 +162,35 @@ impl App {
             .owned_screen
             .as_mut()
             .is_some_and(|screen| screen.handle_navigation_key(key_event));
+        if handled {
+            tui.frame_requester()
+                .schedule_frame_in(crate::tui::TARGET_FRAME_INTERVAL);
+        }
+        handled
+    }
+
+    pub(super) fn handle_owned_screen_mouse_event(
+        &mut self,
+        tui: &mut tui::Tui,
+        event: MouseEvent,
+    ) -> bool {
+        let direction = match event.kind {
+            MouseEventKind::ScrollUp => MouseScrollDirection::Up,
+            MouseEventKind::ScrollDown => MouseScrollDirection::Down,
+            _ => return false,
+        };
+        let event = MouseScrollEvent {
+            direction,
+            column: event.column,
+            row: event.row,
+        };
+        if !self.chat_widget.no_modal_or_popup_active() {
+            return false;
+        }
+        let handled = self
+            .owned_screen
+            .as_mut()
+            .is_some_and(|screen| screen.handle_mouse_scroll(event));
         if handled {
             tui.frame_requester()
                 .schedule_frame_in(crate::tui::TARGET_FRAME_INTERVAL);

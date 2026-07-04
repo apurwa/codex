@@ -594,6 +594,19 @@ pub enum TuiEvent {
     FocusLost,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum MouseScrollDirection {
+    Up,
+    Down,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct MouseScrollEvent {
+    pub direction: MouseScrollDirection,
+    pub column: u16,
+    pub row: u16,
+}
+
 pub struct Tui {
     frame_requester: FrameRequester,
     draw_tx: broadcast::Sender<()>,

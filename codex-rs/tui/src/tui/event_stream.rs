@@ -301,7 +301,12 @@ impl<S: EventSource + Default + Unpin> TuiEventStream<S> {
             }
             Event::Paste(pasted) => Some(TuiEvent::Paste(pasted)),
             Event::Mouse(mouse_event)
-                if matches!(mouse_event.kind, MouseEventKind::Down(MouseButton::Left)) =>
+                if matches!(
+                    mouse_event.kind,
+                    MouseEventKind::Down(MouseButton::Left)
+                        | MouseEventKind::ScrollUp
+                        | MouseEventKind::ScrollDown
+                ) =>
             {
                 Some(TuiEvent::Mouse(mouse_event))
             }

@@ -925,7 +925,9 @@ impl App {
                     self.handle_key_event(tui, app_server, key_event).await;
                 }
                 TuiEvent::Mouse(mouse_event) => {
-                    self.chat_widget.handle_mouse_event(mouse_event);
+                    if !self.handle_owned_screen_mouse_event(tui, mouse_event) {
+                        self.chat_widget.handle_mouse_event(mouse_event);
+                    }
                 }
                 TuiEvent::Paste(pasted) => {
                     // Pasted text may contain CRLF pairs or bare CRs (e.g., from iTerm2),
@@ -1021,7 +1023,7 @@ impl App {
             .chat_widget
             .selected_index_for_active_view(AGENTS_OVERVIEW_VIEW_ID)
             .is_some();
-        tui.set_mouse_capture_enabled(dashboard_active)?;
+        tui.set_mouse_capture_enabled(dashboard_active || self.has_owned_screen())?;
         let dashboard_visible = self
             .chat_widget
             .selected_index_for_present_view(AGENTS_OVERVIEW_VIEW_ID)
