@@ -2787,10 +2787,7 @@ requires_openai_auth = {requires_openai_auth}
             (true, AltScreenMode::Never, AltScreenBehavior::Disabled),
         ];
         for (no_alt_screen, mode, expected) in cases {
-            assert_eq!(
-                determine_alt_screen_behavior(no_alt_screen, mode),
-                expected
-            );
+            assert_eq!(determine_alt_screen_behavior(no_alt_screen, mode), expected);
         }
     }
 

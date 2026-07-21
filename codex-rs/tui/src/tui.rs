@@ -607,6 +607,12 @@ pub struct MouseScrollEvent {
     pub row: u16,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct MouseClickEvent {
+    pub column: u16,
+    pub row: u16,
+}
+
 pub struct Tui {
     frame_requester: FrameRequester,
     draw_tx: broadcast::Sender<()>,

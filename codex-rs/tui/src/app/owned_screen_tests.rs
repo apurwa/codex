@@ -10,6 +10,7 @@ use tokio::sync::broadcast::error::TryRecvError;
 
 use super::*;
 use crate::chatwidget::tests::make_chatwidget_manual_with_sender;
+use crate::tui::MouseClickEvent;
 use crate::tui::MouseScrollDirection;
 use crate::tui::MouseScrollEvent;
 
@@ -29,7 +30,7 @@ impl HistoryCell for TestCell {
 #[tokio::test]
 async fn renders_committed_conversation_above_fixed_composer() {
     let (mut chat_widget, _app_event_tx, _rx, _op_rx) = make_chatwidget_manual_with_sender().await;
-    chat_widget.set_composer_text("draft sentinel".to_string(), Vec::new(), Vec::new());
+    chat_widget.apply_external_edit("draft sentinel".to_string());
     let mut screen = OwnedScreen::new(&chat_widget, crate::keymap::RuntimeKeymap::defaults().pager);
     screen
         .viewport
@@ -53,7 +54,7 @@ async fn renders_committed_conversation_above_fixed_composer() {
 "                                                  "
 "› draft sentinel                                  "
 "                                                  "
-"  gpt-5.5 default · /tmp/project                  "
+"  gpt-5.6-sol default · /tmp/project              "
 "###);
 }
 
@@ -142,8 +143,7 @@ async fn navigation_does_not_steal_printable_or_draft_input() {
         );
     }
 
-    app.chat_widget
-        .set_composer_text("draft".to_string(), Vec::new(), Vec::new());
+    app.chat_widget.apply_external_edit("draft".to_string());
     assert!(!app.handle_owned_screen_navigation_key(
         &mut tui,
         KeyEvent::new(KeyCode::PageUp, KeyModifiers::NONE),
@@ -153,7 +153,7 @@ async fn navigation_does_not_steal_printable_or_draft_input() {
 #[tokio::test]
 async fn mouse_wheel_scrolls_transcript_without_changing_draft() {
     let (mut chat_widget, _app_event_tx, _rx, _op_rx) = make_chatwidget_manual_with_sender().await;
-    chat_widget.set_composer_text("draft sentinel".to_string(), Vec::new(), Vec::new());
+    chat_widget.apply_external_edit("draft sentinel".to_string());
     let mut screen = OwnedScreen::new(&chat_widget, crate::keymap::RuntimeKeymap::defaults().pager);
     for text in ["oldest", "older", "middle", "newer", "LATEST"] {
         screen.viewport.push_cell(Arc::new(TestCell(text)));
@@ -180,12 +180,12 @@ async fn mouse_wheel_scrolls_transcript_without_changing_draft() {
     assert_snapshot!(terminal.backend(), @r###"
 "                                        "
 "middle                                  "
-"                                        "
+"        Jump to bottom (click) ↓        "
 "                                        "
 "                                        "
 "› draft sentinel                        "
 "                                        "
-"  gpt-5.5 default · /tmp/project        "
+"  gpt-5.6-sol default · /tmp/project    "
 "###);
     assert!(!screen.viewport.is_following_bottom());
     assert!(!screen.handle_mouse_scroll(MouseScrollEvent {
@@ -205,4 +205,51 @@ async fn mouse_wheel_scrolls_transcript_without_changing_draft() {
         })
         .expect("render restored bottom");
     assert!(screen.viewport.is_following_bottom());
+}
+
+#[tokio::test]
+async fn jump_to_bottom_button_restores_follow_mode() {
+    let (mut chat_widget, _app_event_tx, _rx, _op_rx) = make_chatwidget_manual_with_sender().await;
+    chat_widget.apply_external_edit("draft sentinel".to_string());
+    let mut screen = OwnedScreen::new(&chat_widget, crate::keymap::RuntimeKeymap::defaults().pager);
+    for text in ["oldest", "older", "middle", "newer", "LATEST"] {
+        screen.viewport.push_cell(Arc::new(TestCell(text)));
+    }
+    let mut terminal =
+        Terminal::new(TestBackend::new(/*width*/ 40, /*height*/ 8)).expect("create terminal");
+    terminal
+        .draw(|frame| {
+            screen.render(&chat_widget, frame.area(), frame.buffer_mut());
+        })
+        .expect("render bottom");
+    assert!(screen.handle_mouse_scroll(MouseScrollEvent {
+        direction: MouseScrollDirection::Up,
+        column: 2,
+        row: 2,
+    }));
+
+    terminal
+        .draw(|frame| {
+            screen.render(&chat_widget, frame.area(), frame.buffer_mut());
+        })
+        .expect("render jump button");
+    let button = screen
+        .jump_to_bottom_area
+        .expect("jump button should be visible while scrolled");
+    let label = (button.x..button.right())
+        .map(|x| terminal.backend().buffer()[(x, button.y)].symbol())
+        .collect::<String>();
+    assert_eq!(label, JUMP_TO_BOTTOM_LABEL);
+
+    assert!(screen.handle_mouse_click(MouseClickEvent {
+        column: button.x,
+        row: button.y,
+    }));
+    terminal
+        .draw(|frame| {
+            screen.render(&chat_widget, frame.area(), frame.buffer_mut());
+        })
+        .expect("render restored bottom");
+    assert!(screen.viewport.is_following_bottom());
+    assert!(screen.jump_to_bottom_area.is_none());
 }

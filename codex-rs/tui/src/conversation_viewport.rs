@@ -161,9 +161,12 @@ impl ConversationViewport {
         }
     }
 
-    #[cfg(test)]
     pub(crate) fn is_following_bottom(&self) -> bool {
         self.content.is_following_bottom()
+    }
+
+    pub(crate) fn scroll_to_bottom(&mut self) {
+        self.content.scroll_to_bottom();
     }
 
     #[cfg(test)]

@@ -322,17 +322,11 @@ impl PagerView {
                 self.scroll_down_rows(page_height);
             }
             e if self.keymap.half_page_down.is_pressed(e) => {
-                let half_page = self
-                    .page_height(viewport_area)
-                    .saturating_add(1)
-                    / 2;
+                let half_page = self.page_height(viewport_area).saturating_add(1) / 2;
                 self.scroll_down_rows(half_page);
             }
             e if self.keymap.half_page_up.is_pressed(e) => {
-                let half_page = self
-                    .page_height(viewport_area)
-                    .saturating_add(1)
-                    / 2;
+                let half_page = self.page_height(viewport_area).saturating_add(1) / 2;
                 self.scroll_up_rows(half_page);
             }
             e if self.keymap.jump_top.is_pressed(e) => {
@@ -1434,7 +1428,7 @@ mod tests {
         })]);
         overlay.sync_live_tail(
             /*width*/ 40,
-            Some(ActiveCellTranscriptKey {
+            Some(ActiveCellRenderKey {
                 revision: 1,
                 is_stream_continuation: false,
                 animation_tick: None,
@@ -1717,7 +1711,7 @@ mod tests {
                         })
                         .to_vec(),
                 );
-                let key = tail.as_ref().map(|_| ActiveCellTranscriptKey {
+                let key = tail.as_ref().map(|_| ActiveCellRenderKey {
                     revision: 1,
                     is_stream_continuation: false,
                     animation_tick: None,
