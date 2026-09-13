@@ -1425,6 +1425,86 @@ async fn filtered_dashboard_actions_use_configured_shortcuts() {
 }
 
 #[tokio::test]
+async fn clicking_task_row_selects_and_opens_it() {
+    let app = make_test_app().await;
+    let first = ThreadId::new();
+    let second = ThreadId::new();
+    let (event_tx, mut event_rx) = tokio::sync::mpsc::unbounded_channel();
+    let mut view = AgentsOverviewView::new(
+        app.agents_overview_view(
+            vec![
+                overview_thread(
+                    first,
+                    /*parent_thread_id*/ None,
+                    "First task",
+                    ThreadStatus::Idle,
+                ),
+                overview_thread(
+                    second,
+                    /*parent_thread_id*/ None,
+                    "Second task",
+                    ThreadStatus::Idle,
+                ),
+            ],
+            Some(first),
+        )
+        .rows,
+        Some(first),
+        /*worktrees_enabled*/ false,
+        /*use_theme_colors*/ false,
+        crate::app_event_sender::AppEventSender::new(event_tx),
+        app.keymap.clone(),
+        Arc::clone(&app.agents_overview.view_state),
+    );
+    let area = ratatui::layout::Rect::new(
+        /*x*/ 0, /*y*/ 0, /*width*/ 96, /*height*/ 30,
+    );
+    let mut before = ratatui::buffer::Buffer::empty(area);
+    view.render(area, &mut before);
+    let clicked_row = before
+        .content()
+        .chunks(usize::from(area.width))
+        .position(|cells| {
+            cells
+                .iter()
+                .map(ratatui::buffer::Cell::symbol)
+                .collect::<String>()
+                .contains("Second task")
+        })
+        .expect("second task should be visible") as u16;
+
+    assert!(view.handle_mouse_event(crossterm::event::MouseEvent {
+        kind: crossterm::event::MouseEventKind::Down(crossterm::event::MouseButton::Left),
+        column: 4,
+        row: clicked_row,
+        modifiers: KeyModifiers::NONE,
+    }));
+    assert!(matches!(
+        event_rx.try_recv(),
+        Ok(AppEvent::SelectAgentsOverviewThread { thread_id }) if thread_id == second
+    ));
+
+    let mut after = ratatui::buffer::Buffer::empty(area);
+    view.render(area, &mut after);
+    let selected_rows = after
+        .content()
+        .chunks(usize::from(area.width))
+        .map(|cells| {
+            cells
+                .iter()
+                .take(48)
+                .map(ratatui::buffer::Cell::symbol)
+                .collect::<String>()
+                .trim_end()
+                .to_string()
+        })
+        .filter(|line| line.contains("First task") || line.contains("Second task"))
+        .collect::<Vec<_>>()
+        .join("\n");
+    insta::assert_snapshot!("agents_overview_mouse_selection", selected_rows);
+}
+
+#[tokio::test]
 async fn failed_root_switch_keeps_background_requests_on_the_active_session() -> Result<()> {
     let mut app = make_test_app().await;
     let mut app_server =

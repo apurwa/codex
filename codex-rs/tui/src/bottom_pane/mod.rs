@@ -839,6 +839,16 @@ impl BottomPane {
         }
     }
 
+    /// Forward a mouse event to the active modal view.
+    pub(crate) fn handle_mouse_event(&mut self, mouse_event: crossterm::event::MouseEvent) {
+        let Some(view) = self.view_stack.last_mut() else {
+            return;
+        };
+        if view.handle_mouse_event(mouse_event) {
+            self.request_redraw();
+        }
+    }
+
     /// Return the contexts whose ordinary handlers can consume the next key.
     pub(crate) fn keymap_contexts(&self) -> KeymapContextSet {
         if let Some(view) = self.view_stack.last() {

@@ -261,6 +261,10 @@ impl ChatWidget {
         self.bottom_pane.selected_index_for_active_view(view_id)
     }
 
+    pub(crate) fn handle_mouse_event(&mut self, mouse_event: crossterm::event::MouseEvent) {
+        self.bottom_pane.handle_mouse_event(mouse_event);
+    }
+
     pub(crate) fn replace_selection_view_if_present(
         &mut self,
         view_id: &'static str,

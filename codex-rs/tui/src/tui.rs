@@ -19,10 +19,13 @@ use crossterm::SynchronizedUpdate;
 use crossterm::cursor::SetCursorStyle;
 use crossterm::event::DisableBracketedPaste;
 use crossterm::event::DisableFocusChange;
+use crossterm::event::DisableMouseCapture;
 use crossterm::event::EnableBracketedPaste;
 #[cfg(not(windows))]
 use crossterm::event::EnableFocusChange;
+use crossterm::event::EnableMouseCapture;
 use crossterm::event::KeyEvent;
+use crossterm::event::MouseEvent;
 use crossterm::terminal::EnterAlternateScreen;
 use crossterm::terminal::LeaveAlternateScreen;
 #[cfg(not(unix))]
@@ -319,6 +322,9 @@ fn restore_common(
     if let Err(err) = execute!(stdout(), DisableBracketedPaste) {
         first_error.get_or_insert(err);
     }
+    if let Err(err) = execute!(stdout(), DisableMouseCapture) {
+        first_error.get_or_insert(err);
+    }
     let _ = execute!(stdout(), DisableFocusChange);
     if matches!(raw_mode_restore, RawModeRestore::Disable)
         && let Err(err) = disable_raw_mode()
@@ -566,6 +572,8 @@ fn set_panic_hook() {
 pub enum TuiEvent {
     /// A terminal key event after focus, paste, and protocol bookkeeping has been handled.
     Key(KeyEvent),
+    /// A terminal mouse event from a surface that has temporarily enabled mouse capture.
+    Mouse(MouseEvent),
     /// A bracketed paste payload normalized by the app layer before it reaches the composer.
     Paste(String),
     /// A terminal size notification and its reported dimensions.
@@ -602,6 +610,8 @@ pub struct Tui {
     alt_screen_active: Arc<AtomicBool>,
     // True when terminal/tab is focused; updated internally from crossterm events
     terminal_focused: Arc<AtomicBool>,
+    // True while the active surface has opted into terminal mouse reporting.
+    mouse_capture_active: Arc<AtomicBool>,
     enhanced_keys_supported: bool,
     notification_backend: Option<DesktopNotificationBackend>,
     notification_condition: NotificationCondition,
@@ -664,6 +674,7 @@ impl Tui {
             suspend_context: SuspendContext::new(),
             alt_screen_active: Arc::new(AtomicBool::new(false)),
             terminal_focused: Arc::new(AtomicBool::new(true)),
+            mouse_capture_active: Arc::new(AtomicBool::new(false)),
             enhanced_keys_supported,
             notification_backend: Some(detect_backend(NotificationMethod::default())),
             notification_condition: NotificationCondition::default(),
@@ -701,6 +712,20 @@ impl Tui {
 
     pub fn is_alt_screen_active(&self) -> bool {
         self.alt_screen_active.load(Ordering::Relaxed)
+    }
+
+    /// Enable terminal mouse reporting only while a surface that handles it is active.
+    pub(crate) fn set_mouse_capture_enabled(&mut self, enabled: bool) -> Result<()> {
+        if self.mouse_capture_active.load(Ordering::Relaxed) == enabled {
+            return Ok(());
+        }
+        if enabled {
+            execute!(self.terminal.backend_mut(), EnableMouseCapture)?;
+        } else {
+            execute!(self.terminal.backend_mut(), DisableMouseCapture)?;
+        }
+        self.mouse_capture_active.store(enabled, Ordering::Relaxed);
+        Ok(())
     }
 
     // Drop crossterm EventStream to avoid stdin conflicts with other processes.
@@ -761,6 +786,10 @@ impl Tui {
 
         // Leave alt screen if active to avoid conflicts with external program `f`.
         let was_alt_screen = self.is_alt_screen_active();
+        let was_mouse_capture = self.mouse_capture_active.load(Ordering::Relaxed);
+        if was_mouse_capture && let Err(err) = self.set_mouse_capture_enabled(false) {
+            tracing::warn!("failed to disable terminal mouse capture: {err}");
+        }
         if was_alt_screen {
             let _ = self.leave_alt_screen();
         }
@@ -786,6 +815,9 @@ impl Tui {
 
         if was_alt_screen {
             let _ = self.enter_alt_screen();
+        }
+        if was_mouse_capture && let Err(err) = self.set_mouse_capture_enabled(true) {
+            tracing::warn!("failed to restore terminal mouse capture: {err}");
         }
 
         self.resume_events();
@@ -829,6 +861,7 @@ impl Tui {
             self.terminal_focused.clone(),
             self.suspend_context.clone(),
             self.alt_screen_active.clone(),
+            self.mouse_capture_active.clone(),
         );
         #[cfg(not(unix))]
         let stream = TuiEventStream::new(

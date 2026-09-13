@@ -35,6 +35,9 @@ use codex_app_server_protocol::ThreadStatus;
 use codex_protocol::ThreadId;
 use crossterm::event::KeyCode;
 use crossterm::event::KeyEvent;
+use crossterm::event::MouseButton;
+use crossterm::event::MouseEvent;
+use crossterm::event::MouseEventKind;
 use ratatui::buffer::Buffer;
 use ratatui::layout::Constraint;
 use ratatui::layout::Layout;
@@ -143,6 +146,7 @@ pub(super) struct AgentsOverviewViewState {
     pub(super) renaming: bool,
     // The picker can finish this retained view when it selects the already active session.
     pub(super) completion: Option<ViewCompletion>,
+    row_hitboxes: Vec<(Rect, usize)>,
 }
 
 impl AgentsOverviewViewState {
@@ -329,6 +333,7 @@ impl AgentsOverviewView {
     }
 
     fn render_rows(&self, area: Rect, buf: &mut Buffer) {
+        let mut row_hitboxes = Vec::new();
         let mut offset = 0;
         let mut previous_group_index: Option<usize> = None;
         let grouping = self.state().grouping;
@@ -402,9 +407,12 @@ impl AgentsOverviewView {
             if grouping != AgentsOverviewGrouping::Status {
                 spans.extend(["  ".into(), status.dim()]);
             }
-            Line::from(spans).render(Rect::new(area.x, area.y + offset, area.width, 1), buf);
+            let row_area = Rect::new(area.x, area.y + offset, area.width, 1);
+            Line::from(spans).render(row_area, buf);
+            row_hitboxes.push((row_area, index));
             offset += 1;
         }
+        self.state().row_hitboxes = row_hitboxes;
     }
 
     fn render_details(&self, area: Rect, buf: &mut Buffer) {
@@ -693,5 +701,31 @@ impl BottomPaneView for AgentsOverviewView {
                 input.pop();
             });
         }
+    }
+
+    fn handle_mouse_event(&mut self, mouse_event: MouseEvent) -> bool {
+        if !matches!(mouse_event.kind, MouseEventKind::Down(MouseButton::Left))
+            || !mouse_event.modifiers.is_empty()
+        {
+            return false;
+        }
+        let selected = self.state().row_hitboxes.iter().find_map(|(area, index)| {
+            area.contains(ratatui::layout::Position::new(
+                mouse_event.column,
+                mouse_event.row,
+            ))
+            .then_some(*index)
+        });
+        let Some(selected) = selected else {
+            return false;
+        };
+        self.selected = selected;
+        let state = self.state();
+        let can_open = !state.editing_metadata() && state.connection_notice.is_none();
+        drop(state);
+        if can_open {
+            self.activate();
+        }
+        true
     }
 }
