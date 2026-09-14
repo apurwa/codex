@@ -31,7 +31,7 @@ use crate::render::line_utils::push_owned_lines;
 use crate::render::renderable::Renderable;
 use crate::session_state::ThreadSessionState;
 use crate::style::proposed_plan_style;
-use crate::style::user_message_style;
+use crate::style::transcript_user_message_style;
 use crate::terminal_hyperlinks::HyperlinkLine;
 use crate::terminal_hyperlinks::HyperlinkParagraph;
 use crate::terminal_hyperlinks::plain_hyperlink_lines;

@@ -438,7 +438,8 @@ impl AgentsOverviewView {
             if offset >= area.height {
                 break;
             }
-            let marker = if self.selected == index {
+            let selected = self.selected == index;
+            let marker = if selected {
                 "›".cyan().bold()
             } else {
                 " ".into()
@@ -458,6 +459,11 @@ impl AgentsOverviewView {
             }
             let row_area = Rect::new(area.x, area.y + offset, area.width, 1);
             Line::from(spans).render(row_area, buf);
+            if selected {
+                // Apply after rendering so the full-width band also covers styled title/status
+                // spans and the unused remainder of the row.
+                buf.set_style(row_area, crate::style::accent_style().reversed());
+            }
             row_hitboxes.push((row_area, index));
             offset += 1;
         }

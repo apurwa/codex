@@ -47,6 +47,14 @@ pub fn user_message_style() -> Style {
     user_message_style_for(default_bg())
 }
 
+/// Returns the stronger background used specifically for user-authored transcript cells.
+pub(crate) fn transcript_user_message_style() -> Style {
+    match default_bg() {
+        Some(bg) => Style::default().bg(best_color(transcript_user_message_bg_rgb(bg))),
+        None => Style::default(),
+    }
+}
+
 pub fn proposed_plan_style() -> Style {
     proposed_plan_style_for(default_bg())
 }
@@ -127,6 +135,15 @@ pub(crate) fn user_message_bg_rgb(terminal_bg: (u8, u8, u8)) -> (u8, u8, u8) {
         ((0, 0, 0), 0.04)
     } else {
         ((255, 255, 255), 0.12)
+    };
+    blend(top, terminal_bg, alpha)
+}
+
+fn transcript_user_message_bg_rgb(terminal_bg: (u8, u8, u8)) -> (u8, u8, u8) {
+    let (top, alpha) = if is_light(terminal_bg) {
+        ((0, 0, 0), 0.08)
+    } else {
+        ((255, 255, 255), 0.18)
     };
     blend(top, terminal_bg, alpha)
 }

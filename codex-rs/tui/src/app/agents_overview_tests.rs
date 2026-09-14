@@ -1490,6 +1490,18 @@ async fn clicking_task_row_selects_and_opens_it() {
 
     let mut after = ratatui::buffer::Buffer::empty(area);
     view.render(area, &mut after);
+    let highlighted_width = after
+        .content()
+        .chunks(usize::from(area.width))
+        .nth(usize::from(clicked_row))
+        .expect("selected row")
+        .iter()
+        .filter(|cell| cell.modifier.contains(ratatui::style::Modifier::REVERSED))
+        .count();
+    assert!(
+        highlighted_width >= 46,
+        "the selected task should retain a full-width list highlight, got {highlighted_width} cells"
+    );
     let selected_rows = after
         .content()
         .chunks(usize::from(area.width))

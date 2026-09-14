@@ -177,7 +177,8 @@ impl HistoryCell for UserHistoryCell {
             )
             .max(1);
 
-        let style = user_message_style();
+        let style = transcript_user_message_style();
+        let accent_style = style.patch(crate::style::accent_style());
         let element_style = style.fg(Color::Cyan);
 
         let wrapped_remote_images = if self.remote_image_urls.is_empty() {
@@ -254,7 +255,10 @@ impl HistoryCell for UserHistoryCell {
             return Vec::new();
         }
 
-        let mut lines = vec![HyperlinkLine::new(Line::from("").style(style))];
+        let mut lines = vec![
+            HyperlinkLine::new(Line::from("").style(style)),
+            HyperlinkLine::new(Line::from(Span::styled("YOU", accent_style)).style(style)),
+        ];
 
         if let Some(wrapped_remote_images) = wrapped_remote_images {
             lines.extend(prefix_hyperlink_lines(
@@ -271,15 +275,24 @@ impl HistoryCell for UserHistoryCell {
             lines.extend(prefix_hyperlink_lines(
                 wrapped_message,
                 if self.spoken {
-                    "› ".red().bold()
+                    Span::styled("│ ", style.fg(Color::Red).bold())
                 } else {
-                    "› ".bold().dim()
+                    Span::styled("│ ", accent_style)
                 },
-                "  ".into(),
+                Span::styled("│ ", accent_style),
             ));
         }
 
         lines.push(HyperlinkLine::new(Line::from("").style(style)));
+        let background_width = usize::from(width.saturating_sub(1));
+        for line in &mut lines {
+            let padding = background_width.saturating_sub(line.line.width());
+            if padding > 0 {
+                line.line
+                    .spans
+                    .push(Span::styled(" ".repeat(padding), style));
+            }
+        }
         lines
     }
 

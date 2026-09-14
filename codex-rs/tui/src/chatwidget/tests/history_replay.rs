@@ -71,6 +71,10 @@ async fn resumed_initial_messages_render_history() {
         "expected replayed user message",
     );
     assert!(
+        text_blob.contains("YOU") && text_blob.contains("│ hello from user"),
+        "expected replayed user message to retain the user label and rail",
+    );
+    assert!(
         text_blob.contains("assistant reply"),
         "expected replayed agent message",
     );
