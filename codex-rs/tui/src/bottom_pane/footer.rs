@@ -734,7 +734,20 @@ fn footer_from_props_lines(
     let key_hints = props.key_hints;
     // Passive footer context can come from the configurable status line, the
     // active agent label, or both combined.
-    let status_lines = passive_footer_status_lines(props);
+    let mut status_lines = passive_footer_status_lines(props);
+    if props.mode == FooterMode::ComposerHasDraft
+        && props.is_task_running
+        && let Some(queue_line) = status_lines.first_mut()
+    {
+        *queue_line = left_side_line(
+            collaboration_mode_indicator,
+            LeftSideState {
+                hint: SummaryHintKind::QueueMessage,
+                show_cycle_hint,
+            },
+            key_hints,
+        );
+    }
     if !status_lines.is_empty() {
         return status_lines;
     }
@@ -793,9 +806,9 @@ fn footer_from_props_lines(
 
 /// Returns the contextual footer row when the footer is not busy showing an instructional hint.
 ///
-/// The returned line may contain the configured status line, the currently viewed agent label, or
-/// both combined. Active instructional states such as quit reminders, shortcut overlays, and queue
-/// prompts deliberately return `None` so those call-to-action hints stay visible.
+/// The returned rows retain configured status lines and the currently viewed agent label.
+/// A running draft adds its queue hint above those rows. Quit reminders and shortcut overlays
+/// return an empty stack so their instructional hints remain visible.
 pub(crate) fn passive_footer_status_lines(props: &FooterProps) -> Vec<Line<'static>> {
     if !shows_passive_footer_line(props) {
         return Vec::new();

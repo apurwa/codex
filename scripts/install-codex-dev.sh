@@ -3,19 +3,30 @@
 set -eu
 
 repo=$(git rev-parse --show-toplevel)
+common_dir=$(git rev-parse --path-format=absolute --git-common-dir)
+canonical_repo=$(dirname "$common_dir")
+if [ "$repo" != "$canonical_repo/.worktrees/integration" ]; then
+  echo 'Install only from the canonical project .worktrees/integration directory.' >&2
+  exit 1
+fi
 branch=$(git -C "$repo" branch --show-current)
 if [ "$branch" != integration/codex-dev ]; then
   echo 'Install only from the integration/codex-dev worktree.' >&2
   exit 1
 fi
-if ! git -C "$repo" diff --quiet || ! git -C "$repo" diff --cached --quiet; then
+if ! git -C "$repo" diff --quiet || ! git -C "$repo" diff --cached --quiet \
+  || [ -n "$(git -C "$repo" ls-files --others --exclude-standard)" ]; then
   echo 'Commit the integration changes before installing.' >&2
   exit 1
 fi
 binary=${1:?Usage: scripts/install-codex-dev.sh /absolute/path/to/tested/codex}
 case "$binary" in /*) ;; *) echo 'Use an absolute binary path.' >&2; exit 1 ;; esac
 test -f "$binary" && test -x "$binary"
-"$binary" --version
+version=$("$binary" --version)
+case "$version" in
+  'codex-cli '*) echo "$version" ;;
+  *) echo 'The supplied executable is not a Codex CLI build.' >&2; exit 1 ;;
+esac
 
 install_root=${CODEX_DEV_INSTALL_ROOT:-"$HOME/.local"}
 libexec="$install_root/libexec"

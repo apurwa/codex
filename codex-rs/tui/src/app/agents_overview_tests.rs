@@ -88,20 +88,27 @@ async fn selected_overview_row_uses_full_width_theme_aware_background() {
                 })
                 .expect("selected task should be visible") as u16;
             let other_y = selected_y + 1;
-            let selected_bg = buffer[(2, selected_y)].style().bg;
-            let other_bg = buffer[(2, other_y)].style().bg;
-            assert!((2..area.width - 2).all(|x| buffer[(x, selected_y)].style().bg == selected_bg));
-            assert!((2..area.width - 2).all(|x| buffer[(x, other_y)].style().bg == other_bg));
-            assert_ne!(selected_bg, other_bg);
+            assert!((2..area.width - 2).all(|x| {
+                let cell = &buffer[(x, selected_y)];
+                cell.bg == ratatui::style::Color::Blue
+                    && cell.fg == ratatui::style::Color::White
+                    && !cell.modifier.intersects(
+                        ratatui::style::Modifier::DIM | ratatui::style::Modifier::REVERSED,
+                    )
+            }));
+            assert!(
+                (2..area.width - 2)
+                    .all(|x| { buffer[(x, other_y)].bg != ratatui::style::Color::Blue })
+            );
             snapshot.push(format!(
-                "{theme}: selected {selected_bg:?}, other {other_bg:?}"
+                "{theme}: selected full-width blue background and white text, other normal"
             ));
         });
     }
 
     insta::assert_snapshot!(snapshot.join("\n"), @r"
-    dark: selected Some(Rgb(51, 51, 51)), other Some(Reset)
-    light: selected Some(Rgb(204, 204, 204)), other Some(Reset)
+    dark: selected full-width blue background and white text, other normal
+    light: selected full-width blue background and white text, other normal
     ");
 }
 
@@ -1563,7 +1570,9 @@ async fn clicking_task_row_selects_and_opens_it() {
         .nth(usize::from(clicked_row))
         .expect("selected row")
         .iter()
-        .filter(|cell| cell.modifier.contains(ratatui::style::Modifier::REVERSED))
+        .filter(|cell| {
+            cell.bg == ratatui::style::Color::Blue && cell.fg == ratatui::style::Color::White
+        })
         .count();
     assert!(
         highlighted_width >= 46,

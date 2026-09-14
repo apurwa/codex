@@ -2974,6 +2974,31 @@ async fn multiple_status_line_rows_override_legacy_status_line_and_render_as_a_s
 }
 
 #[tokio::test]
+async fn multiple_status_line_rows_preserve_composer_session_title() {
+    let (mut chat, _rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
+    chat.show_welcome_banner = false;
+    let thread_id = ThreadId::new();
+    chat.thread_id = Some(thread_id);
+    chat.on_thread_name_updated(thread_id, Some("Integrated transcript UX".to_string()));
+    chat.local_settings.tui.status_lines = Some(vec![
+        vec!["run-state".to_string()],
+        vec!["context-used".to_string(), "context-remaining".to_string()],
+    ]);
+    chat.refresh_status_line();
+    let width = 58;
+    let mut terminal = Terminal::new(TestBackend::new(width, chat.desired_height(width)))
+        .expect("create terminal");
+    terminal
+        .draw(|frame| chat.render(frame.area(), frame.buffer_mut()))
+        .expect("draw integrated composer");
+    let rendered = normalized_backend_snapshot(terminal.backend());
+    assert!(rendered.contains("Integrated transcript UX"));
+    assert!(rendered.contains("Ready"));
+    assert!(rendered.contains("Context 100% left"));
+    assert_chatwidget_snapshot!("multiple_status_lines_with_session_title", rendered);
+}
+
+#[tokio::test]
 async fn status_line_hostname_renders_current_machine_hostname() {
     let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
     chat.thread_id = Some(ThreadId::new());

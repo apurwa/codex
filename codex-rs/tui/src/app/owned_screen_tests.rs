@@ -78,7 +78,7 @@ async fn committed_cell_updates_viewport_without_queuing_terminal_history() {
 }
 
 #[tokio::test]
-async fn conversation_mouse_capture_is_selection_first_and_can_be_enabled() {
+async fn conversation_mouse_capture_defaults_on_and_can_be_toggled_for_selection() {
     let mut app = super::super::test_support::make_test_app().await;
     app.owned_screen = App::owned_screen_for_behavior(
         AltScreenBehavior::Owned,
@@ -89,7 +89,7 @@ async fn conversation_mouse_capture_is_selection_first_and_can_be_enabled() {
     let screen_size = tui.terminal.last_known_screen_size;
 
     app.render_chat_widget_frame(&mut tui, screen_size)
-        .expect("render selection-first conversation");
+        .expect("render mouse-enabled conversation");
     assert!(tui.is_mouse_capture_enabled());
 
     app.chat_widget

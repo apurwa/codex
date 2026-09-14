@@ -40,7 +40,7 @@ fn effort_composer_baseline_repeat_and_lowering_do_not_replay() {
 }
 
 #[test]
-fn effort_transition_does_not_queue_a_missing_outgoing_status_line() {
+fn effort_transition_keeps_the_visible_status_line_while_queuing() {
     let (mut composer, _rx) = new_test_composer();
     composer.set_status_line_enabled(/*enabled*/ true);
     composer.set_status_line(Some(Line::from("gpt-5.4 high · main")));
@@ -55,6 +55,24 @@ fn effort_transition_does_not_queue_a_missing_outgoing_status_line() {
         Some(&ReasoningEffort::Ultra),
         /*animations_enabled*/ true,
     ));
+    assert!(composer.effort_ignition.is_some());
+    assert!(composer.effort_status_line_transition.is_some());
+}
+
+#[test]
+fn effort_transition_does_not_animate_a_queue_hint_without_status_rows() {
+    let (mut composer, _rx) = new_test_composer();
+    composer.set_status_line_enabled(/*enabled*/ true);
+    composer.set_task_running(/*running*/ true);
+    composer.set_text_content("queued draft".to_string(), Vec::new(), Vec::new());
+    composer.set_active_reasoning_effort(
+        Some(&ReasoningEffort::High),
+        /*animations_enabled*/ true,
+    );
+    composer.set_active_reasoning_effort(
+        Some(&ReasoningEffort::Ultra),
+        /*animations_enabled*/ true,
+    );
     assert!(composer.effort_ignition.is_some());
     assert!(composer.effort_status_line_transition.is_none());
 }

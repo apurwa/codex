@@ -3911,6 +3911,21 @@ async fn changing_directory_preserves_project_trust_permissions_history_and_hook
         child, /*agent_nickname*/ None, /*agent_role*/ None, /*is_closed*/ false,
     );
     app.set_approvals_reviewer_in_app_and_widget(ApprovalsReviewer::AutoReview);
+    let active_profile =
+        ActivePermissionProfile::new(codex_protocol::models::BUILT_IN_PERMISSION_PROFILE_WORKSPACE);
+    app.config
+        .permissions
+        .set_permission_profile_from_session_snapshot(
+            PermissionProfileSnapshot::active_with_profile_workspace_roots(
+                app.config.permissions.permission_profile().clone(),
+                active_profile.clone(),
+                vec![current.clone().abs()],
+            ),
+        )?;
+    app.chat_widget.set_permission_profile_with_active_profile(
+        app.config.permissions.permission_profile().clone(),
+        Some(active_profile.clone()),
+    )?;
     app.runtime_permission_profile_override =
         Some(RuntimePermissionProfileOverride::from_config(&app.config));
     for (path, expected) in [(&failed, 0), (&trusted, 2)] {
@@ -3974,6 +3989,21 @@ async fn changing_directory_preserves_project_trust_permissions_history_and_hook
     assert_eq!(effort, Some(ReasoningEffortConfig::High));
     let approval = app.config.permissions.approval_policy.value();
     assert_eq!(approval, AskForApproval::OnRequest.to_core());
+    assert_eq!(
+        app.config.permissions.active_permission_profile(),
+        Some(active_profile)
+    );
+    let policy = app.config.permissions.file_system_sandbox_policy();
+    assert!(
+        policy.can_write_local_path_with_cwd(trusted.as_path(), trusted.as_path()),
+        "recompiled :workspace policy should allow the destination"
+    );
+    assert!(app.config.permissions.profile_workspace_roots().is_empty());
+    assert!(
+        app.runtime_permission_profile_override
+            .as_ref()
+            .is_some_and(|profile| profile.matches_config(&app.config))
+    );
     let forks = recorded_params(&requests, "thread/fork");
     assert_eq!(forks.len(), 1);
     let params = &forks[0];

@@ -522,9 +522,16 @@ mod tests {
         let (broker, _handle, _draw_tx, draw_rx, terminal_focused) = setup();
         let mut stream = make_stream(broker, draw_rx, terminal_focused);
         for kind in [MouseEventKind::ScrollUp, MouseEventKind::ScrollDown] {
-            assert!(stream.map_crossterm_event(Event::Mouse(MouseEvent {
-                kind, column: 0, row: 0, modifiers: KeyModifiers::NONE,
-            })).is_none());
+            assert!(
+                stream
+                    .map_crossterm_event(Event::Mouse(MouseEvent {
+                        kind,
+                        column: 0,
+                        row: 0,
+                        modifiers: KeyModifiers::NONE,
+                    }))
+                    .is_none()
+            );
         }
     }
 

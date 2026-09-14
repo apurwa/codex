@@ -707,6 +707,7 @@ impl RuntimeApprovalPolicyOverride {
 enum RuntimePolicyOverrideScope {
     All,
     ExplicitOnly,
+    WorkingDirectory,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

@@ -202,14 +202,35 @@ impl App {
             .iter()
             .filter_map(|(id, agent)| (!agent.is_closed).then_some(*id))
             .collect();
+        let recompiled_builtin_profile = match &destination_config {
+            DestinationConfig::Load => self
+                .runtime_permission_profile_override
+                .as_ref()
+                .and_then(|profile| profile.active_permission_profile.as_ref())
+                .filter(|active| active.id.starts_with(':'))
+                .map(|active| active.id.clone()),
+            DestinationConfig::Prepared(_) => None,
+        };
         let mut config = match destination_config {
             DestinationConfig::Prepared(config) => *config,
-            DestinationConfig::Load => match self.rebuild_config_for_cwd(cwd.to_path_buf()).await {
-                Ok(config) => config,
-                Err(err) => {
-                    return self.working_directory_error(format!("Cannot load {cwd:?}: {err}"));
+            DestinationConfig::Load => {
+                let rebuilt = match recompiled_builtin_profile.as_deref() {
+                    Some(profile_id) => {
+                        self.rebuild_config_for_cwd_with_permission_profile(
+                            cwd.to_path_buf(),
+                            profile_id,
+                        )
+                        .await
+                    }
+                    None => self.rebuild_config_for_cwd(cwd.to_path_buf()).await,
+                };
+                match rebuilt {
+                    Ok(config) => config,
+                    Err(err) => {
+                        return self.working_directory_error(format!("Cannot load {cwd:?}: {err}"));
+                    }
                 }
-            },
+            }
         };
         if config.active_project.trust_level.is_none() {
             return self.working_directory_error("This directory is not trusted; run Codex there.");
@@ -231,6 +252,7 @@ impl App {
         }
         if let Some(profile) = self.runtime_permission_profile_override.as_ref()
             && profile.active_permission_profile.is_some()
+            && recompiled_builtin_profile.is_none()
             && (!profile.matches_config(&config)
                 || config.permissions.profile_workspace_roots()
                     != self.config.permissions.profile_workspace_roots())
@@ -247,7 +269,10 @@ impl App {
         {
             return self.working_directory_error("Permission profile cannot be preserved by /cd.");
         }
-        self.apply_runtime_policy_overrides(&mut config, RuntimePolicyOverrideScope::All);
+        self.apply_runtime_policy_overrides(
+            &mut config,
+            RuntimePolicyOverrideScope::WorkingDirectory,
+        );
         if self.runtime_permission_profile_override.is_some() {
             let reviewer = self.config.approvals_reviewer;
             let reviewers = &config.config_layer_stack.requirements().approvals_reviewer;
@@ -261,9 +286,15 @@ impl App {
             .runtime_approval_policy_override
             .map(RuntimeApprovalPolicyOverride::policy);
         let profile = self.runtime_permission_profile_override.as_ref();
-        if approval.is_some_and(|p| actual != p.to_core())
-            || profile.is_some_and(|profile| !profile.matches_config(&config))
-        {
+        let profile_matches = profile.is_none_or(|profile| {
+            if recompiled_builtin_profile.is_some() {
+                profile.active_permission_profile == config.permissions.active_permission_profile()
+                    && profile.approvals_reviewer == config.approvals_reviewer
+            } else {
+                profile.matches_config(&config)
+            }
+        });
+        if approval.is_some_and(|p| actual != p.to_core()) || !profile_matches {
             return;
         }
         let local_settings = crate::local_settings::LocalSettings::from(&config);
@@ -474,6 +505,16 @@ impl App {
         self.merge_startup_warnings(tui, &history_cell::StartupWarningsCell::default());
         self.restore_runtime_theme_from_config();
         self.runtime_working_directory_override = Some(cwd.to_path_buf());
+        if let Some(profile) = self.runtime_permission_profile_override.as_mut()
+            && profile
+                .active_permission_profile
+                .as_ref()
+                .is_some_and(|active| active.id.starts_with(':'))
+        {
+            let turn_override = profile.turn_override;
+            *profile = RuntimePermissionProfileOverride::from_config(&self.config);
+            profile.turn_override = turn_override;
+        }
         if let Some(message) = project_config_warning(&self.config) {
             self.chat_widget.add_warning_message(message);
         }

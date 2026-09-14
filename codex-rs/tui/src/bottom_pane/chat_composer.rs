@@ -780,6 +780,7 @@ impl ChatComposer {
             self.effort_ignition = Some(EffortIgnition::new(tier, style));
             self.effort_animation_style = Some(style);
             if self.footer.status_line_enabled
+                && !self.footer.status_line_values.is_empty()
                 && let Some(previous) = passive_footer_status_line(&self.footer_props())
             {
                 self.effort_status_line_transition =

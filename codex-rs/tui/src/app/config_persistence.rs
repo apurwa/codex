@@ -101,8 +101,20 @@ impl App {
         &self,
         profile_id: &str,
     ) -> Result<Config> {
+        self.rebuild_config_for_cwd_with_permission_profile(
+            self.chat_widget.config_ref().cwd.to_path_buf(),
+            profile_id,
+        )
+        .await
+    }
+
+    pub(super) async fn rebuild_config_for_cwd_with_permission_profile(
+        &self,
+        cwd: PathBuf,
+        profile_id: &str,
+    ) -> Result<Config> {
         let mut overrides = self.harness_overrides.clone();
-        overrides.cwd = Some(self.chat_widget.config_ref().cwd.to_path_buf());
+        overrides.cwd = Some(cwd.clone());
         overrides.sandbox_mode = None;
         overrides.permission_profile = None;
         overrides.default_permissions = Some(profile_id.to_string());
@@ -114,7 +126,10 @@ impl App {
             .cloud_config_bundle(self.cloud_config_bundle.clone());
         build_config_on_runtime_worker(
             builder,
-            format!("Failed to rebuild config for permission profile {profile_id}"),
+            format!(
+                "Failed to rebuild config for permission profile {profile_id} in {}",
+                cwd.display()
+            ),
         )
         .await
     }
@@ -476,6 +491,7 @@ impl App {
         }
         if let Some(profile_override) = self.runtime_permission_profile_override.as_ref()
             && (scope == RuntimePolicyOverrideScope::All
+                || scope == RuntimePolicyOverrideScope::WorkingDirectory
                 || profile_override.turn_override
                     == RuntimePermissionProfileTurnOverride::LegacySandbox)
         {
@@ -490,22 +506,29 @@ impl App {
                     "Failed to carry forward approvals reviewer: {error}"
                 )),
             }
-            match config
-                .permissions
-                .set_permission_profile_from_session_snapshot(
-                    PermissionProfileSnapshot::from_session_snapshot(
-                        profile_override.permission_profile.clone(),
-                        profile_override.active_permission_profile.clone(),
-                    ),
-                ) {
-                Ok(()) => {
-                    config.permissions.network = profile_override.network.clone();
-                }
-                Err(err) => {
-                    tracing::warn!(%err, "failed to carry forward permission profile override");
-                    self.chat_widget.add_error_message(format!(
-                        "Failed to carry forward permission profile override: {err}"
-                    ));
+            let recompiled_builtin_profile = scope == RuntimePolicyOverrideScope::WorkingDirectory
+                && profile_override
+                    .active_permission_profile
+                    .as_ref()
+                    .is_some_and(|active| active.id.starts_with(':'));
+            if !recompiled_builtin_profile {
+                match config
+                    .permissions
+                    .set_permission_profile_from_session_snapshot(
+                        PermissionProfileSnapshot::from_session_snapshot(
+                            profile_override.permission_profile.clone(),
+                            profile_override.active_permission_profile.clone(),
+                        ),
+                    ) {
+                    Ok(()) => {
+                        config.permissions.network = profile_override.network.clone();
+                    }
+                    Err(err) => {
+                        tracing::warn!(%err, "failed to carry forward permission profile override");
+                        self.chat_widget.add_error_message(format!(
+                            "Failed to carry forward permission profile override: {err}"
+                        ));
+                    }
                 }
             }
         }
