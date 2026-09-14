@@ -1,0 +1,5 @@
+---
+source: tui/src/app/owned_screen_tests.rs
+expression: "format!(\"{:?}\", terminal.backend().buffer()[(button.x, button.y)].style())"
+---
+Style::new().fg(Color::Rgb(255, 255, 255)).bg(Color::Rgb(81, 129, 191)).underline_color(Color::Reset)

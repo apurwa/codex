@@ -90,15 +90,16 @@ async fn selected_overview_row_uses_full_width_theme_aware_background() {
             let other_y = selected_y + 1;
             assert!((2..area.width - 2).all(|x| {
                 let cell = &buffer[(x, selected_y)];
-                cell.bg == ratatui::style::Color::Blue
-                    && cell.fg == ratatui::style::Color::White
+                cell.bg == ratatui::style::Color::Rgb(81, 129, 191)
+                    && cell.fg == ratatui::style::Color::Rgb(255, 255, 255)
                     && !cell.modifier.intersects(
                         ratatui::style::Modifier::DIM | ratatui::style::Modifier::REVERSED,
                     )
             }));
             assert!(
-                (2..area.width - 2)
-                    .all(|x| { buffer[(x, other_y)].bg != ratatui::style::Color::Blue })
+                (2..area.width - 2).all(|x| {
+                    buffer[(x, other_y)].bg != ratatui::style::Color::Rgb(81, 129, 191)
+                })
             );
             snapshot.push(format!(
                 "{theme}: selected full-width blue background and white text, other normal"
@@ -1571,7 +1572,8 @@ async fn clicking_task_row_selects_and_opens_it() {
         .expect("selected row")
         .iter()
         .filter(|cell| {
-            cell.bg == ratatui::style::Color::Blue && cell.fg == ratatui::style::Color::White
+            cell.bg == ratatui::style::Color::Rgb(81, 129, 191)
+                && cell.fg == ratatui::style::Color::Rgb(255, 255, 255)
         })
         .count();
     assert!(
@@ -1649,6 +1651,51 @@ async fn new_task_composer_is_visible_and_clickable() {
             prompt: Some(UserMessage { text, .. }),
         }) if text == "Create from the composer"
     ));
+}
+
+#[tokio::test]
+async fn dashboard_composer_stays_at_terminal_bottom_after_resize() {
+    let mut app = make_test_app().await;
+    let view = app.agents_overview_view(Vec::new(), /*selected_thread_id*/ None);
+    app.chat_widget.show_bottom_pane_view(Box::new(view));
+    let mut tui = crate::tui::test_support::make_test_tui().expect("test terminal");
+    let mut snapshot = Vec::new();
+    for (width, height) in [(80, 24), (120, 48), (80, 36)] {
+        let size = ratatui::layout::Size::new(width, height);
+        let area = app
+            .render_chat_widget_frame(&mut tui, size)
+            .expect("render dashboard");
+        assert_eq!(area.height, height);
+        let mut buffer = ratatui::buffer::Buffer::empty(area);
+        app.chat_widget.as_renderable().render(area, &mut buffer);
+        let lines = buffer
+            .content()
+            .chunks(usize::from(width))
+            .map(|cells| {
+                cells
+                    .iter()
+                    .map(ratatui::buffer::Cell::symbol)
+                    .collect::<String>()
+            })
+            .collect::<Vec<_>>();
+        let composer_y = lines
+            .iter()
+            .position(|line| line.contains("Describe a new task"))
+            .expect("composer remains visible");
+        assert!(composer_y >= usize::from(height.saturating_sub(6)));
+        snapshot.push(format!(
+            "{width}x{height}: composer {} rows from bottom",
+            usize::from(height) - composer_y
+        ));
+        assert_eq!(
+            app.agents_overview.view_state.lock().unwrap().focus,
+            AgentsOverviewFocus::List
+        );
+    }
+    insta::assert_snapshot!(
+        "dashboard_composer_bottom_after_resize",
+        snapshot.join("\n")
+    );
 }
 
 #[tokio::test]

@@ -12,6 +12,14 @@ use ratatui::style::Style;
 
 const LIGHT_BG_ACCENT_RGB: (u8, u8, u8) = (0, 95, 135);
 
+/// Shared selection/action colors, independent of remapped ANSI terminal palettes.
+pub(crate) fn selected_control_style() -> Style {
+    Style::default()
+        .fg(Color::Rgb(255, 255, 255))
+        .bg(Color::Rgb(81, 129, 191))
+        .remove_modifier(ratatui::style::Modifier::DIM | ratatui::style::Modifier::REVERSED)
+}
+
 #[derive(Clone, Copy)]
 pub(crate) enum StatusTone {
     Success,

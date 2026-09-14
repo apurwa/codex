@@ -268,6 +268,23 @@ async fn jump_to_bottom_button_restores_follow_mode() {
         .map(|x| terminal.backend().buffer()[(x, button.y)].symbol())
         .collect::<String>();
     assert_eq!(label, JUMP_TO_BOTTOM_LABEL);
+    for x in button.x..button.right() {
+        let cell = &terminal.backend().buffer()[(x, button.y)];
+        assert_eq!(
+            (cell.fg, cell.bg),
+            (
+                ratatui::style::Color::Rgb(255, 255, 255),
+                ratatui::style::Color::Rgb(81, 129, 191),
+            )
+        );
+    }
+    assert_snapshot!(
+        "jump_to_bottom_button_style",
+        format!(
+            "{:?}",
+            terminal.backend().buffer()[(button.x, button.y)].style()
+        )
+    );
 
     assert!(screen.handle_mouse_click(MouseClickEvent {
         column: button.x,

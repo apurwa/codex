@@ -45,8 +45,6 @@ use ratatui::layout::Constraint;
 use ratatui::layout::Layout;
 use ratatui::layout::Margin;
 use ratatui::layout::Rect;
-use ratatui::style::Color;
-use ratatui::style::Modifier;
 use ratatui::style::Style;
 use ratatui::style::Stylize;
 use ratatui::text::Line;
@@ -464,13 +462,7 @@ impl AgentsOverviewView {
             if selected {
                 // Apply after rendering so the full-width band also covers styled title/status
                 // spans and the unused remainder of the row.
-                buf.set_style(
-                    row_area,
-                    Style::default()
-                        .fg(Color::White)
-                        .bg(Color::Blue)
-                        .remove_modifier(Modifier::DIM | Modifier::REVERSED),
-                );
+                buf.set_style(row_area, crate::style::selected_control_style());
             }
             row_hitboxes.push((row_area, index));
             offset += 1;

@@ -12,8 +12,6 @@ use crossterm::event::MouseEventKind;
 use ratatui::buffer::Buffer;
 use ratatui::layout::Position;
 use ratatui::layout::Rect;
-use ratatui::style::Color;
-use ratatui::style::Style;
 use ratatui::widgets::Clear;
 use ratatui::widgets::Paragraph;
 use ratatui::widgets::Widget;
@@ -155,7 +153,7 @@ impl OwnedScreen {
             1,
         );
         Paragraph::new(label)
-            .style(Style::default().fg(Color::White).bg(Color::DarkGray))
+            .style(crate::style::selected_control_style())
             .render(button_area, buffer);
         self.jump_to_bottom_area = Some(button_area);
     }

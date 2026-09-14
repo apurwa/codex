@@ -1053,6 +1053,13 @@ impl App {
             return Ok(rendered_area);
         }
         self.with_chat_widget_frame(screen_size.width, |desired_height, chat_widget| {
+            // The dashboard lays its composer out against the full terminal height.
+            // Its 24-row preferred height is only a fallback for content-sized rendering.
+            let desired_height = if dashboard_visible {
+                screen_size.height
+            } else {
+                desired_height
+            };
             let mut rendered_area = Rect::default();
             tui.draw_with_resize_reflow(desired_height, screen_size, |frame| {
                 let area = frame.area();
