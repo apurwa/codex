@@ -316,7 +316,7 @@ impl StartupDraftPump {
                     self.pending_paste_newline = Some((started_at, newlines));
                     return Ok(());
                 }
-                TuiEvent::Key(_) => false,
+                TuiEvent::Key(_) | TuiEvent::Mouse(_) => false,
             };
             if continues_paste && started_at.elapsed() <= STARTUP_PASTE_NEWLINE_TIMEOUT {
                 self.bottom_pane.handle_paste(newlines);
@@ -363,7 +363,11 @@ impl StartupDraftPump {
                     self.bottom_pane.handle_paste(text);
                 }
             }
-            TuiEvent::Draw | TuiEvent::Resize(_) | TuiEvent::Resume | TuiEvent::FocusGained => {}
+            TuiEvent::Mouse(_)
+            | TuiEvent::Draw
+            | TuiEvent::Resize(_)
+            | TuiEvent::Resume
+            | TuiEvent::FocusGained => {}
             TuiEvent::FocusLost => return Ok(()),
         }
         if self.initial_screen == StartupDraftInitialScreen::Composer {

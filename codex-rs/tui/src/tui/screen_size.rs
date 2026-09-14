@@ -47,7 +47,9 @@ impl Tui {
             TuiEvent::Draw | TuiEvent::FocusGained => {
                 self.screen_size.deferred_size.take().unwrap_or(cached)
             }
-            TuiEvent::Key(_) | TuiEvent::Paste(_) | TuiEvent::FocusLost => cached,
+            TuiEvent::Key(_) | TuiEvent::Mouse(_) | TuiEvent::Paste(_) | TuiEvent::FocusLost => {
+                cached
+            }
         };
         if matches!(event, TuiEvent::Resize(_) | TuiEvent::Resume)
             && let Some(monitor) = &self.event_broker.size_monitor

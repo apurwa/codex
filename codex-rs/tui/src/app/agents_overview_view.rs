@@ -19,6 +19,8 @@ use crate::app_event_sender::AppEventSender;
 use crate::bottom_pane::BottomPaneView;
 use crate::bottom_pane::CancellationEvent;
 use crate::bottom_pane::ViewCompletion;
+use crate::color::blend;
+use crate::color::is_light;
 use crate::key_hint::KeyBindingListExt;
 use crate::key_hint::ShortcutHint;
 use crate::key_hint::is_plain_text_key_event;
@@ -29,17 +31,23 @@ use crate::keymap::ListAction;
 use crate::keymap::ListKeymap;
 use crate::keymap::RuntimeKeymap;
 use crate::render::renderable::Renderable;
+use crate::terminal_palette::best_color;
+use crate::terminal_palette::default_bg;
 use codex_app_server_protocol::Thread;
 use codex_app_server_protocol::ThreadActiveFlag;
 use codex_app_server_protocol::ThreadStatus;
 use codex_protocol::ThreadId;
 use crossterm::event::KeyCode;
 use crossterm::event::KeyEvent;
+use crossterm::event::MouseButton;
+use crossterm::event::MouseEvent;
+use crossterm::event::MouseEventKind;
 use ratatui::buffer::Buffer;
 use ratatui::layout::Constraint;
 use ratatui::layout::Layout;
 use ratatui::layout::Margin;
 use ratatui::layout::Rect;
+use ratatui::style::Color;
 use ratatui::style::Style;
 use ratatui::style::Stylize;
 use ratatui::text::Line;
@@ -143,6 +151,7 @@ pub(super) struct AgentsOverviewViewState {
     pub(super) renaming: bool,
     // The picker can finish this retained view when it selects the already active session.
     pub(super) completion: Option<ViewCompletion>,
+    row_hitboxes: Vec<(Rect, usize)>,
 }
 
 impl AgentsOverviewViewState {
@@ -329,6 +338,7 @@ impl AgentsOverviewView {
     }
 
     fn render_rows(&self, area: Rect, buf: &mut Buffer) {
+        let mut row_hitboxes = Vec::new();
         let mut offset = 0;
         let mut previous_group_index: Option<usize> = None;
         let grouping = self.state().grouping;
@@ -402,9 +412,23 @@ impl AgentsOverviewView {
             if grouping != AgentsOverviewGrouping::Status {
                 spans.extend(["  ".into(), status.dim()]);
             }
-            Line::from(spans).render(Rect::new(area.x, area.y + offset, area.width, 1), buf);
+            let row_area = Rect::new(area.x, area.y + offset, area.width, 1);
+            if self.selected == index {
+                let background = default_bg().map_or(Color::DarkGray, |background| {
+                    let overlay = if is_light(background) {
+                        (0, 0, 0)
+                    } else {
+                        (255, 255, 255)
+                    };
+                    best_color(blend(overlay, background, 0.2))
+                });
+                buf.set_style(row_area, Style::default().bg(background));
+            }
+            Line::from(spans).render(row_area, buf);
+            row_hitboxes.push((row_area, index));
             offset += 1;
         }
+        self.state().row_hitboxes = row_hitboxes;
     }
 
     fn render_details(&self, area: Rect, buf: &mut Buffer) {
@@ -693,5 +717,48 @@ impl BottomPaneView for AgentsOverviewView {
                 input.pop();
             });
         }
+    }
+
+    fn handle_mouse_event(&mut self, mouse_event: MouseEvent) -> bool {
+        match mouse_event.kind {
+            MouseEventKind::ScrollUp => {
+                self.move_selection(/*forward*/ false);
+                return true;
+            }
+            MouseEventKind::ScrollDown => {
+                self.move_selection(/*forward*/ true);
+                return true;
+            }
+            MouseEventKind::Down(MouseButton::Left) => {}
+            MouseEventKind::Down(_)
+            | MouseEventKind::Up(_)
+            | MouseEventKind::Drag(_)
+            | MouseEventKind::ScrollLeft
+            | MouseEventKind::ScrollRight
+            | MouseEventKind::Moved => return false,
+        }
+        if !matches!(mouse_event.kind, MouseEventKind::Down(MouseButton::Left))
+            || !mouse_event.modifiers.is_empty()
+        {
+            return false;
+        }
+        let selected = self.state().row_hitboxes.iter().find_map(|(area, index)| {
+            area.contains(ratatui::layout::Position::new(
+                mouse_event.column,
+                mouse_event.row,
+            ))
+            .then_some(*index)
+        });
+        let Some(selected) = selected else {
+            return false;
+        };
+        self.selected = selected;
+        let state = self.state();
+        let can_open = !state.editing_metadata() && state.connection_notice.is_none();
+        drop(state);
+        if can_open {
+            self.activate();
+        }
+        true
     }
 }

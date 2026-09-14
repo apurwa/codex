@@ -1260,6 +1260,7 @@ fn config_toml_deserializes_model_availability_nux() {
             raw_output_mode: false,
             alternate_screen: AltScreenMode::default(),
             status_line: None,
+            status_lines: None,
             status_line_use_colors: true,
             terminal_title: None,
             theme: None,
@@ -1292,6 +1293,36 @@ status_line_use_colors = false
         !cfg.tui
             .expect("tui config should deserialize")
             .status_line_use_colors
+    );
+}
+
+#[test]
+fn config_toml_deserializes_multiple_status_line_rows() {
+    let toml = r#"
+[tui]
+status_line = ["hostname"]
+status_lines = [
+    ["current-dir"],
+    ["git-branch", "branch-changes"],
+    ["five-hour-limit", "weekly-limit", "context-used"],
+]
+"#;
+    let cfg: ConfigToml =
+        toml::from_str(toml).expect("TOML deserialization should succeed for TUI config");
+    let tui = cfg.tui.expect("tui config should deserialize");
+
+    assert_eq!(tui.status_line, Some(vec!["hostname".to_string()]));
+    assert_eq!(
+        tui.status_lines,
+        Some(vec![
+            vec!["current-dir".to_string()],
+            vec!["git-branch".to_string(), "branch-changes".to_string()],
+            vec![
+                "five-hour-limit".to_string(),
+                "weekly-limit".to_string(),
+                "context-used".to_string(),
+            ],
+        ])
     );
 }
 
@@ -4276,6 +4307,7 @@ fn tui_config_missing_notifications_field_defaults_to_enabled() {
             raw_output_mode: false,
             alternate_screen: AltScreenMode::Auto,
             status_line: None,
+            status_lines: None,
             status_line_use_colors: true,
             terminal_title: None,
             theme: None,

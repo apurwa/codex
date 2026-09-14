@@ -598,7 +598,7 @@ async fn run_onboarding_screen(
                                 frame.render_widget_ref(&onboarding_screen, frame.area());
                             });
                         }
-                        TuiEvent::FocusLost => {}
+                        TuiEvent::Mouse(_) | TuiEvent::FocusLost => {}
                     }
                 }
             }

@@ -50,35 +50,39 @@ const TERMINAL_TITLE_ACTION_REQUIRED_PREFIX_HIDDEN: &str = "[ . ] Action Require
 /// refresh pass compute those shared concerns once, then render both surfaces
 /// from the same selection set.
 struct StatusSurfaceSelections {
-    status_line_items: Vec<StatusLineItem>,
+    status_line_rows: Vec<Vec<StatusLineItem>>,
     invalid_status_line_items: Vec<String>,
     terminal_title_items: Vec<TerminalTitleItem>,
     invalid_terminal_title_items: Vec<String>,
 }
 
 impl StatusSurfaceSelections {
+    fn status_line_items(&self) -> impl Iterator<Item = &StatusLineItem> {
+        self.status_line_rows.iter().flatten()
+    }
+
+    fn status_line_contains(&self, item: StatusLineItem) -> bool {
+        self.status_line_items().any(|candidate| *candidate == item)
+    }
+
     fn uses_git_branch(&self) -> bool {
-        self.status_line_items.contains(&StatusLineItem::GitBranch)
+        self.status_line_contains(StatusLineItem::GitBranch)
             || self
                 .terminal_title_items
                 .contains(&TerminalTitleItem::GitBranch)
     }
 
     fn uses_git_summary(&self) -> bool {
-        self.status_line_items
-            .contains(&StatusLineItem::PullRequestNumber)
-            || self
-                .status_line_items
-                .contains(&StatusLineItem::BranchChanges)
+        self.status_line_contains(StatusLineItem::PullRequestNumber)
+            || self.status_line_contains(StatusLineItem::BranchChanges)
     }
 
     fn uses_workspace_headline(&self) -> bool {
-        self.status_line_items
-            .contains(&StatusLineItem::WorkspaceHeadline)
+        self.status_line_contains(StatusLineItem::WorkspaceHeadline)
     }
 
     fn uses_thread_usage(&self) -> bool {
-        self.status_line_items.iter().any(|item| {
+        self.status_line_items().any(|item| {
             matches!(
                 item,
                 StatusLineItem::ThreadCredits | StatusLineItem::EstimatedThreadCost
@@ -105,11 +109,11 @@ pub(super) struct CachedProjectRootName {
 
 impl ChatWidget {
     fn status_surface_selections(&self) -> StatusSurfaceSelections {
-        let (status_line_items, invalid_status_line_items) = self.status_line_items_with_invalids();
+        let (status_line_rows, invalid_status_line_items) = self.status_line_rows_with_invalids();
         let (terminal_title_items, invalid_terminal_title_items) =
             self.terminal_title_items_with_invalids();
         StatusSurfaceSelections {
-            status_line_items,
+            status_line_rows,
             invalid_status_line_items,
             terminal_title_items,
             invalid_terminal_title_items,
@@ -200,29 +204,35 @@ impl ChatWidget {
     }
 
     fn refresh_status_line_from_selections(&mut self, selections: &StatusSurfaceSelections) {
-        let enabled = !selections.status_line_items.is_empty();
+        let enabled = selections
+            .status_line_rows
+            .iter()
+            .any(|row| !row.is_empty());
         self.bottom_pane.set_status_line_enabled(enabled);
         if !enabled {
-            self.set_status_line(/*status_line*/ None);
+            self.set_status_lines(Vec::new());
             self.set_status_line_hyperlink(/*url*/ None);
             return;
         }
 
-        let mut segments = Vec::new();
-        for item in &selections.status_line_items {
-            if let Some(value) = self.status_line_value_for_item(*item) {
-                segments.push((*item, value));
+        let use_theme_colors = self.local_settings.tui.status_line_use_colors;
+        let thread_id = self.thread_id;
+        let mut rows = Vec::new();
+        for items in &selections.status_line_rows {
+            let segments = items
+                .iter()
+                .filter_map(|item| {
+                    self.status_line_value_for_item(*item)
+                        .map(|value| (*item, value))
+                })
+                .collect::<Vec<_>>();
+            if let Some(row) = status_line_from_segments(segments, use_theme_colors, thread_id) {
+                rows.push(row);
             }
         }
-
-        self.set_status_line(status_line_from_segments(
-            segments,
-            self.local_settings.tui.status_line_use_colors,
-            self.thread_id,
-        ));
+        self.set_status_lines(rows);
         let hyperlink_url = selections
-            .status_line_items
-            .contains(&StatusLineItem::PullRequestNumber)
+            .status_line_contains(StatusLineItem::PullRequestNumber)
             .then(|| self.status_line_pull_request_url())
             .flatten();
         self.set_status_line_hyperlink(hyperlink_url);
@@ -397,7 +407,7 @@ impl ChatWidget {
     ) -> Option<Duration> {
         if self.local_settings.tui.animations
             && self.status_state.thread_title_generation_pending
-            && (selections.status_line_items.iter().any(|item| {
+            && (selections.status_line_items().any(|item| {
                 matches!(
                     item,
                     StatusLineItem::ThreadName
@@ -448,21 +458,53 @@ impl ChatWidget {
     /// Parses configured status-line ids into known items and collects unknown ids.
     ///
     /// Unknown ids are deduplicated in insertion order for warning messages.
+    fn status_line_rows_with_invalids(&self) -> (Vec<Vec<StatusLineItem>>, Vec<String>) {
+        let mut invalid = Vec::new();
+        let mut invalid_seen = HashSet::new();
+        let rows = self
+            .configured_status_line_rows()
+            .into_iter()
+            .map(|row| {
+                let (items, row_invalid) = parse_items_with_invalids(row);
+                for item in row_invalid {
+                    if invalid_seen.insert(item.clone()) {
+                        invalid.push(item);
+                    }
+                }
+                items
+            })
+            .collect();
+        (rows, invalid)
+    }
+
     fn status_line_items_with_invalids(&self) -> (Vec<StatusLineItem>, Vec<String>) {
-        parse_items_with_invalids(self.configured_status_line_items())
+        let (rows, invalid) = self.status_line_rows_with_invalids();
+        (rows.into_iter().flatten().collect(), invalid)
+    }
+
+    pub(super) fn configured_status_line_rows(&self) -> Vec<Vec<String>> {
+        if let Some(rows) = &self.local_settings.tui.status_lines {
+            return rows.clone();
+        }
+        vec![
+            self.local_settings
+                .tui
+                .status_line
+                .clone()
+                .unwrap_or_else(|| {
+                    DEFAULT_STATUS_LINE_ITEMS
+                        .iter()
+                        .map(ToString::to_string)
+                        .collect()
+                }),
+        ]
     }
 
     pub(super) fn configured_status_line_items(&self) -> Vec<String> {
-        self.local_settings
-            .tui
-            .status_line
-            .clone()
-            .unwrap_or_else(|| {
-                DEFAULT_STATUS_LINE_ITEMS
-                    .iter()
-                    .map(ToString::to_string)
-                    .collect()
-            })
+        self.configured_status_line_rows()
+            .into_iter()
+            .flatten()
+            .collect()
     }
 
     /// Parses configured terminal-title ids into known items and collects unknown ids.

@@ -9,6 +9,8 @@ use std::sync::atomic::Ordering;
 
 use crossterm::cursor::MoveTo;
 use crossterm::cursor::Show;
+use crossterm::event::DisableMouseCapture;
+use crossterm::event::EnableMouseCapture;
 use crossterm::event::KeyCode;
 use crossterm::terminal::EnterAlternateScreen;
 use crossterm::terminal::LeaveAlternateScreen;
@@ -61,7 +63,15 @@ impl SuspendContext {
     ///   otherwise record `RealignInline`.
     /// - Update the cached inline cursor row so suspend can place the cursor meaningfully.
     /// - Trigger SIGTSTP so the process can be resumed and continue drawing with the saved state.
-    pub(crate) fn suspend(&self, alt_screen_active: &Arc<AtomicBool>) -> Result<()> {
+    pub(crate) fn suspend(
+        &self,
+        alt_screen_active: &Arc<AtomicBool>,
+        mouse_capture_active: &Arc<AtomicBool>,
+    ) -> Result<()> {
+        let restore_mouse_capture = mouse_capture_active.load(Ordering::Relaxed);
+        if restore_mouse_capture {
+            let _ = execute!(stdout(), DisableMouseCapture);
+        }
         if alt_screen_active.load(Ordering::Relaxed) {
             // Leave alt-screen so the terminal returns to the normal buffer while suspended; also turn off alt-scroll.
             let _ = execute!(stdout(), DisableAlternateScroll);
@@ -74,6 +84,9 @@ impl SuspendContext {
         let _ = execute!(stdout(), MoveTo(0, y), Show);
         suspend_process()?;
         super::reapply_raw_mode_after_resume()?;
+        if restore_mouse_capture {
+            let _ = execute!(stdout(), EnableMouseCapture);
+        }
 
         // The shell writes its job-control status and the resumed command after `fg`, so the
         // cursor may no longer be on the row cached before suspending. The event stream remains

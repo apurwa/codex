@@ -4362,6 +4362,17 @@
           "description": "Color status line items with colors derived from the active syntax theme. Defaults to `true`.",
           "type": "boolean"
         },
+        "status_lines": {
+          "default": null,
+          "description": "Ordered rows of status line item identifiers.\n\nWhen set, this takes precedence over `status_line` and renders each inner list as a separate row below the composer. Empty rows and rows whose values are unavailable are omitted.",
+          "items": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "type": "array"
+        },
         "terminal_resize_reflow_max_rows": {
           "default": null,
           "description": "Trim terminal resize-reflow replay to the most recent rendered terminal rows when the transcript exceeds this cap. Omit to use Codex's terminal-specific default. Set to `0` to keep all rendered rows.",

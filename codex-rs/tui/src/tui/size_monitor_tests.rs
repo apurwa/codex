@@ -94,6 +94,8 @@ impl Harness {
             crate::tui::job_control::SuspendContext::new(),
             #[cfg(unix)]
             Arc::new(AtomicBool::new(/*v*/ false)),
+            #[cfg(unix)]
+            Arc::new(AtomicBool::new(/*v*/ false)),
         )
     }
 }

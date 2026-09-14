@@ -800,6 +800,14 @@ pub struct Tui {
     #[serde(default)]
     pub status_line: Option<Vec<String>>,
 
+    /// Ordered rows of status line item identifiers.
+    ///
+    /// When set, this takes precedence over `status_line` and renders each inner list as a
+    /// separate row below the composer. Empty rows and rows whose values are unavailable are
+    /// omitted.
+    #[serde(default)]
+    pub status_lines: Option<Vec<Vec<String>>>,
+
     /// Color status line items with colors derived from the active syntax theme.
     /// Defaults to `true`.
     #[serde(default = "default_true")]

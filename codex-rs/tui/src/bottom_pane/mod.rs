@@ -839,6 +839,16 @@ impl BottomPane {
         }
     }
 
+    /// Forward a mouse event to the active modal view.
+    pub(crate) fn handle_mouse_event(&mut self, mouse_event: crossterm::event::MouseEvent) {
+        let Some(view) = self.view_stack.last_mut() else {
+            return;
+        };
+        if view.handle_mouse_event(mouse_event) {
+            self.request_redraw();
+        }
+    }
+
     /// Return the contexts whose ordinary handlers can consume the next key.
     pub(crate) fn keymap_contexts(&self) -> KeymapContextSet {
         if let Some(view) = self.view_stack.last() {
@@ -2090,8 +2100,8 @@ impl BottomPane {
         }
     }
 
-    pub(crate) fn set_status_line(&mut self, status_line: Option<Line<'static>>) {
-        if self.composer.set_status_line(status_line) {
+    pub(crate) fn set_status_lines(&mut self, status_lines: Vec<Line<'static>>) {
+        if self.composer.set_status_lines(status_lines) {
             self.request_redraw();
         }
     }
