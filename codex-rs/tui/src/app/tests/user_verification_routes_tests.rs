@@ -267,6 +267,7 @@ async fn inactive_thread_user_verification_preserves_foreground_stream() -> Resu
             AppEvent::InsertHistoryCell(cell) => app.insert_history_cell(&mut tui, cell),
             AppEvent::ConsolidateAgentMessage {
                 source,
+                phase,
                 cwd,
                 inline_visualization_context,
                 scrollback_reflow,
@@ -276,6 +277,7 @@ async fn inactive_thread_user_verification_preserves_foreground_stream() -> Resu
                 app.handle_consolidate_agent_message(
                     &mut tui,
                     source,
+                    phase,
                     cwd,
                     inline_visualization_context,
                     scrollback_reflow,

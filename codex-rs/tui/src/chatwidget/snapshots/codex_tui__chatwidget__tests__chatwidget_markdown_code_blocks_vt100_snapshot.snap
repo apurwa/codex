@@ -1,6 +1,6 @@
 ---
 source: tui/src/chatwidget/tests/status_and_layout.rs
-expression: "normalize_completion_timestamps(&\n(normalize_snapshot_paths(term.backend().vt100().screen().contents())))"
+expression: normalize_completion_timestamps(normalize_snapshot_paths(term.backend().vt100().screen().contents()))
 ---
 
 
@@ -35,8 +35,8 @@ expression: "normalize_completion_timestamps(&\n(normalize_snapshot_paths(term.b
 
 
 
-
-•     -- Indented code block (4 spaces)
+CODEX
+      -- Indented code block (4 spaces)
       SELECT *
       FROM "users"
       WHERE "email" LIKE '%@example.com';

@@ -2601,7 +2601,8 @@ async fn underfilled_scrollback_fetches_older_pages_without_opening_the_transcri
         .await?;
     app.transcript_cells = initial_cells;
     app.scrollback_has_older_history = app_server.has_older_history(thread_id);
-    app.local_settings.tui.terminal_resize_reflow_max_rows = Some(32);
+    // Leave space for another page even with assistant labels and turn spacing.
+    app.local_settings.tui.terminal_resize_reflow_max_rows = Some(96);
     let initial_cell_count = app.transcript_cells.len();
     let initial_page_requests = recorded_params(&requests, "thread/items/list").len();
     let mut tui = crate::tui::test_support::make_test_tui()?;
@@ -2680,7 +2681,7 @@ async fn underfilled_scrollback_fetches_older_pages_without_opening_the_transcri
         app.render_transcript_lines_for_reflow(/*width*/ 80)
             .lines
             .len(),
-        32
+        96
     );
 
     app_server.shutdown().await?;

@@ -4,6 +4,32 @@ use assert_matches::assert_matches;
 use pretty_assertions::assert_eq;
 
 #[test]
+fn commentary_is_secondary_but_final_answers_keep_their_label_and_raw_source() {
+    use codex_protocol::models::MessagePhase;
+    let source = "Checking the **rendering** path.";
+    let commentary = AgentMarkdownCell::new(source.into(), Path::new("/tmp"))
+        .with_phase(Some(MessagePhase::Commentary));
+    let answer = AgentMarkdownCell::new(source.into(), Path::new("/tmp"))
+        .with_phase(Some(MessagePhase::FinalAnswer));
+    let commentary_lines = commentary.display_lines(40);
+    assert!(commentary_lines[0].to_string().starts_with("┊ "));
+    assert!(
+        commentary_lines
+            .iter()
+            .flat_map(|line| &line.spans)
+            .all(|span| span.style.add_modifier.contains(Modifier::DIM))
+    );
+    assert_eq!(commentary.raw_lines(), answer.raw_lines());
+    let rendered = commentary_lines
+        .into_iter()
+        .chain(answer.display_lines(40))
+        .map(|line| line.to_string())
+        .collect::<Vec<_>>()
+        .join("\n");
+    insta::assert_snapshot!("commentary_and_final_answer", rendered);
+}
+
+#[test]
 fn sanitizer_borrows_clean_text_and_removes_control_sequences() {
     for (text, expected) in [
         ("clean\ttext\n", "clean\ttext\n"),
@@ -93,13 +119,7 @@ fn user_messages_have_a_visible_label_and_rail_without_changing_raw_text() {
             .iter()
             .any(|line| { line.to_string().trim_end() == "│   hello from voice" })
     );
-    assert!(
-        typed
-            .display_lines(/*width*/ 40)
-            .iter()
-            .all(|line| line.width() == 39),
-        "user-message backgrounds should extend across the transcript width"
-    );
+    assert!(typed.background_style().is_some());
     assert_eq!(marker.style.fg, Some(Color::Red));
     assert!(marker.style.add_modifier.contains(Modifier::BOLD));
     assert_eq!(spoken.raw_lines(), vec![Line::from(message)]);
@@ -142,7 +162,7 @@ fn finalized_markdown_reuses_lines_primed_by_transcript_height() {
     let cell = AgentMarkdownCell::new("finalized **markdown**".to_string(), Path::new("/tmp"));
     let width = 48;
 
-    assert_eq!(cell.desired_transcript_height(width), 1);
+    assert_eq!(cell.desired_transcript_height(width), 4);
     replace_cached_lines(&cell, |_| {});
 
     assert_eq!(
@@ -164,7 +184,11 @@ fn finalized_assistant_file_citation_renders_as_local_path_snapshot() {
 
     let rendered = ratatui::text::Text::from(cell.display_lines(/*width*/ 80));
 
-    insta::assert_snapshot!(rendered, @"• Generated Quarterly Report.xlsx.");
+    insta::assert_snapshot!(rendered, @"
+
+    CODEX
+      Generated Quarterly Report.xlsx.
+    ");
 }
 
 #[test]
@@ -262,7 +286,7 @@ fn spoken_artifacts_link_only_real_workspace_files_and_preserve_existing_urls() 
 
     let ordinary = AgentMarkdownCell::new(markdown.to_string(), workspace.path());
     assert_eq!(
-        ordinary.display_hyperlink_lines(/*width*/ 90)[0].hyperlinks[0].destination,
+        ordinary.display_hyperlink_lines(/*width*/ 90)[2].hyperlinks[0].destination,
         "https://example.com"
     );
     let bare = AgentMarkdownCell::new_spoken("src/lib.rs".to_string(), workspace.path());

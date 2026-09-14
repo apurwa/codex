@@ -197,7 +197,7 @@ impl SplitFlapTranscriptCell {
                         }
                         text
                     } else {
-                        if grapheme == "›" {
+                        if matches!(grapheme, "›" | "│") {
                             style = style.fg(span.style.fg.unwrap_or(Color::Cyan));
                         } else if grapheme == "•" {
                             style = style.fg(Color::Magenta);

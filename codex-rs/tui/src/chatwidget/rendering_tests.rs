@@ -210,8 +210,8 @@ fn active_transcript_preserves_clipped_markdown_hyperlinks() {
     insta::assert_debug_snapshot!(visible_rows, @r#"
     [
         "",
-        "",
         "  OSC8 label (https://example.com/)",
+        "",
     ]
     "#);
 

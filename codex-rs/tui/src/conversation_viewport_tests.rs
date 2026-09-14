@@ -193,7 +193,7 @@ fn preserves_semantic_links_for_committed_and_live_content() {
         |width| Some(live.display_hyperlink_lines(width)),
     );
     let area = Rect::new(
-        /*x*/ 0, /*y*/ 0, /*width*/ 28, /*height*/ 6,
+        /*x*/ 0, /*y*/ 0, /*width*/ 28, /*height*/ 12,
     );
     let mut buffer = Buffer::empty(area);
 

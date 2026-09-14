@@ -74,7 +74,7 @@ async fn replayed_command_completion_preserves_tracking_without_duplicate_starts
         .collect::<Vec<_>>();
     assert_eq!(
         history,
-        vec!["• Ran cat replay\n  └ (no output)\n".to_string()]
+        vec!["┊ • Ran cat replay\n┊   └ (no output)\n".to_string()]
     );
 }
 
@@ -144,11 +144,11 @@ async fn failed_exploration_keeps_overlapping_commands_active_until_all_finish()
     let cells = drain_insert_history(&mut rx);
     assert_eq!(cells.len(), 1);
     let history = lines_to_single_string(&cells[0]);
-    insta::assert_snapshot!(history, @r"
-• Explored
-  └ List missing
-    Read foo.txt, bar.txt
-");
+    insta::assert_snapshot!(history, @"
+    ┊ • Explored
+    ┊   └ List missing
+    ┊     Read foo.txt, bar.txt
+    ");
 
     let later = begin_exec(&mut chat, "call-after-failure", "cat later.txt");
     end_exec(&mut chat, later, "later\n", "", /*exit_code*/ 0);
@@ -801,7 +801,7 @@ async fn exec_history_shows_unified_exec_tool_calls() {
     end_exec(&mut chat, begin, "", "", /*exit_code*/ 0);
 
     let blob = active_blob(&chat);
-    assert_eq!(blob, "• Explored\n  └ List ls\n");
+    assert_eq!(blob, "┊ • Explored\n┊   └ List ls\n");
 }
 
 #[tokio::test]

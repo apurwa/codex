@@ -23,6 +23,44 @@ use ratatui::widgets::Paragraph;
 use ratatui::widgets::Wrap;
 use std::sync::Arc;
 
+#[test]
+fn user_background_fills_the_viewport_after_scrolling_and_resizing() {
+    let cell: Arc<dyn HistoryCell> = Arc::new(UserHistoryCell {
+        spoken: false,
+        message: "short message\nsecond line".into(),
+        text_elements: Vec::new(),
+        local_image_paths: Vec::new(),
+        remote_image_urls: Vec::new(),
+    });
+    for bg in [(250, 245, 210), (25, 25, 25)] {
+        crate::terminal_palette::with_test_default_colors(
+            crate::terminal_probe::DefaultColors {
+                fg: (120, 120, 120),
+                bg,
+            },
+            || {
+                for width in [12, 40, 100] {
+                    for offset in [0, 1, 2] {
+                        let renderable = CellRenderable {
+                            cell: cell.clone(),
+                            highlighted: false,
+                        };
+                        let area = Rect::new(0, 0, width, 3);
+                        let mut buffer = Buffer::empty(area);
+                        renderable.render_scrolled(area, &mut buffer, offset);
+                        let expected_bg = crate::style::transcript_user_message_style()
+                            .bg
+                            .expect("test palette has a background");
+                        for y in 0..area.height {
+                            assert_eq!(buffer[(width - 1, y)].bg, expected_bg);
+                        }
+                    }
+                }
+            },
+        );
+    }
+}
+
 #[derive(Debug)]
 struct HyperlinkTestCell {
     lines: Vec<HyperlinkLine>,

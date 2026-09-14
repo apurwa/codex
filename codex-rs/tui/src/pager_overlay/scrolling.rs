@@ -5,7 +5,6 @@ use std::sync::Arc;
 use crate::history_cell::HistoryCell;
 use crate::history_cell::UserHistoryCell;
 use crate::render::renderable::Renderable;
-use crate::style::user_message_style;
 use crate::terminal_hyperlinks::HyperlinkLine;
 use crate::terminal_hyperlinks::HyperlinkParagraph;
 use ratatui::buffer::Buffer;
@@ -27,14 +26,11 @@ impl Renderable for CellRenderable {
     /// Scroll visible text and hyperlink metadata together without rendering hidden rows.
     fn render_scrolled(&self, area: Rect, buf: &mut Buffer, scroll_offset: u16) -> bool {
         let hyperlink_lines = self.cell.transcript_hyperlink_lines(area.width);
-        let style = if self.cell.as_any().is::<UserHistoryCell>() {
-            if self.highlighted {
-                user_message_style().reversed()
-            } else {
-                user_message_style()
-            }
+        let style = self.cell.background_style().unwrap_or_default();
+        let style = if self.highlighted && self.cell.as_any().is::<UserHistoryCell>() {
+            style.reversed()
         } else {
-            Style::default()
+            style
         };
         HyperlinkParagraph::new(&hyperlink_lines, style)
             .scroll(scroll_offset)

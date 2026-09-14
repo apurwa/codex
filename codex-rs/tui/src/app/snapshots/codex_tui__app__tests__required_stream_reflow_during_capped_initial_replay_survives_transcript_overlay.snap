@@ -2,9 +2,8 @@
 source: tui/src/app/tests.rs
 expression: "rendered.lines.iter().map(rendered_line_text).collect::<Vec<_>>().join(\"\\n\")"
 ---
-latest user question
-
-• Final answer:
+Earlier messages are available — press ctrl + t to view the full transcript
+  Final answer:
 
    Pattern       Outcome
   ━━━━━━━━━━━━  ━━━━━━━━━━━

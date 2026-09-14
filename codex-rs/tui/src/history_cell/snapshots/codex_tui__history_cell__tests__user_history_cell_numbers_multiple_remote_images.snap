@@ -1,9 +1,10 @@
 ---
-source: tui/src/history_cell.rs
+source: tui/src/history_cell/tests.rs
 expression: rendered
 ---
-
+───────────────────────────────────────────────────────────────────────────────
+YOU
   [Image #1]
   [Image #2]
 
-› describe both
+│ describe both

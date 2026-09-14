@@ -255,8 +255,12 @@ impl HistoryCell for UserHistoryCell {
             return Vec::new();
         }
 
+        let background_width = usize::from(width.saturating_sub(1));
         let mut lines = vec![
-            HyperlinkLine::new(Line::from("").style(style)),
+            HyperlinkLine::new(Line::from(Span::styled(
+                "─".repeat(background_width),
+                Style::default().dim(),
+            ))),
             HyperlinkLine::new(Line::from(Span::styled("YOU", accent_style)).style(style)),
         ];
 
@@ -284,16 +288,18 @@ impl HistoryCell for UserHistoryCell {
         }
 
         lines.push(HyperlinkLine::new(Line::from("").style(style)));
-        let background_width = usize::from(width.saturating_sub(1));
         for line in &mut lines {
-            let padding = background_width.saturating_sub(line.line.width());
-            if padding > 0 {
-                line.line
-                    .spans
-                    .push(Span::styled(" ".repeat(padding), style));
+            if line.line.to_string() == "│ "
+                && let Some(rail) = line.line.spans.first_mut()
+            {
+                rail.content = "│".into();
             }
         }
         lines
+    }
+
+    fn background_style(&self) -> Option<Style> {
+        Some(transcript_user_message_style())
     }
 
     fn transcript_hyperlink_lines(&self, width: u16) -> Vec<HyperlinkLine> {
@@ -363,8 +369,8 @@ impl ReasoningSummaryCell {
         adaptive_wrap_lines(
             &summary_lines,
             RtOptions::new(width as usize)
-                .initial_indent("• ".dim().into())
-                .subsequent_indent("  ".into()),
+                .initial_indent("┊ ".dim().into())
+                .subsequent_indent("┊ ".dim().into()),
         )
     }
 }
@@ -421,12 +427,15 @@ impl HistoryCell for AgentMessageCell {
 
     fn display_hyperlink_lines(&self, width: u16) -> Vec<HyperlinkLine> {
         let mut wrapped = Vec::new();
-        for (index, line) in self.lines.iter().enumerate() {
-            let initial_indent = if index == 0 && self.is_first_line {
-                "• ".dim().into()
-            } else {
-                "  ".into()
-            };
+        if self.lines.is_empty() {
+            return wrapped;
+        }
+        if self.is_first_line {
+            wrapped.push(HyperlinkLine::new(Line::default()));
+            wrapped.push(HyperlinkLine::new(Line::from("CODEX".bold())));
+        }
+        for line in &self.lines {
+            let initial_indent = "  ".into();
             let mut subsequent_indent = Line::from("  ");
             subsequent_indent
                 .spans
@@ -475,6 +484,7 @@ pub(crate) struct AgentMarkdownCell {
     inline_visualization_context: Option<crate::inline_visualization::InlineVisualizationContext>,
     rendered_lines: Option<MarkdownRenderCache>,
     spoken_artifacts: bool,
+    phase: Option<codex_protocol::models::MessagePhase>,
 }
 
 impl AgentMarkdownCell {
@@ -508,6 +518,7 @@ impl AgentMarkdownCell {
             inline_visualization_context,
             rendered_lines,
             spoken_artifacts: false,
+            phase: None,
         }
     }
 
@@ -519,6 +530,14 @@ impl AgentMarkdownCell {
         );
         cell.spoken_artifacts = true;
         cell
+    }
+
+    pub(crate) fn with_phase(
+        mut self,
+        phase: Option<codex_protocol::models::MessagePhase>,
+    ) -> Self {
+        self.phase = phase;
+        self
     }
 }
 
@@ -554,26 +573,53 @@ impl HistoryCell for AgentMarkdownCell {
                 );
             };
 
-            // Re-render markdown from source at the current width. Reserve 2 columns for the "• " /
-            // " " prefix prepended below.
+            // Reserve two columns for the body gutter at the current width.
             let lines = crate::markdown::render_markdown_agent_with_links_cwd_and_visualizations(
                 &self.markdown_source,
                 Some(wrap_width),
                 Some(self.cwd.as_path()),
                 self.inline_visualization_context.as_ref(),
             );
+            if lines.is_empty() {
+                return lines;
+            }
             let lines = if self.spoken_artifacts {
                 let mut lines = lines;
                 super::spoken_artifacts::annotate_spoken_artifacts(&mut lines, &self.cwd);
-                lines
+                return normalize_whitespace_only_hyperlink_lines(prefix_hyperlink_lines(
+                    lines,
+                    "• ".dim(),
+                    "  ".into(),
+                ));
             } else {
                 lines
             };
-            normalize_whitespace_only_hyperlink_lines(prefix_hyperlink_lines(
+            let commentary = self.phase == Some(codex_protocol::models::MessagePhase::Commentary);
+            let gutter = if commentary {
+                "┊ ".dim()
+            } else {
+                "  ".into()
+            };
+            let mut body = normalize_whitespace_only_hyperlink_lines(prefix_hyperlink_lines(
                 lines,
-                "• ".dim(),
-                "  ".into(),
-            ))
+                gutter.clone(),
+                gutter,
+            ));
+            if commentary {
+                for line in &mut body {
+                    for span in &mut line.line.spans {
+                        span.style = span.style.dim();
+                    }
+                }
+                return body;
+            }
+            let mut labeled = vec![
+                HyperlinkLine::new(Line::default()),
+                HyperlinkLine::new(Line::from("CODEX".bold())),
+            ];
+            labeled.extend(body);
+            labeled.push(HyperlinkLine::new(Line::default()));
+            labeled
         };
 
         if let Some(rendered_lines) = &self.rendered_lines {

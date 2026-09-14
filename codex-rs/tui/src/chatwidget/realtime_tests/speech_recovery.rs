@@ -417,7 +417,7 @@ async fn answer_exceeding_speech_budget_is_shown_in_full_instead() {
             .split_whitespace()
             .collect::<Vec<_>>()
             .join(" "),
-        format!("• {text}")
+        format!("CODEX {text}")
             .split_whitespace()
             .collect::<Vec<_>>()
             .join(" ")

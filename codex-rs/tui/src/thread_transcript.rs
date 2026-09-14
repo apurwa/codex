@@ -127,14 +127,17 @@ pub(crate) fn thread_items_to_transcript_cells(
                     remote_image_urls: item.image_urls(),
                 }));
             }
-            ThreadItem::AgentMessage { text, .. } => {
+            ThreadItem::AgentMessage { text, phase, .. } => {
                 let parsed = parse_assistant_markdown(&text, cwd.as_path());
                 if !parsed.visible_markdown.trim().is_empty() {
-                    cells.push(Arc::new(AgentMarkdownCell::new_with_inline_visualizations(
-                        parsed.visible_markdown,
-                        cwd.as_path(),
-                        inline_visualization_context.clone(),
-                    )));
+                    cells.push(Arc::new(
+                        AgentMarkdownCell::new_with_inline_visualizations(
+                            parsed.visible_markdown,
+                            cwd.as_path(),
+                            inline_visualization_context.clone(),
+                        )
+                        .with_phase(phase),
+                    ));
                 }
             }
             ThreadItem::FunctionCallOutput {

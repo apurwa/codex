@@ -1,6 +1,5 @@
 ---
 source: tui/src/app/tests/realtime_requests.rs
-assertion_line: 561
 expression: "normalize_voice_snapshot_directory(&rendered, &app.config.cwd)"
 ---
 ╭────────────────────────────────────────╮
@@ -17,17 +16,24 @@ expression: "normalize_voice_snapshot_directory(&rendered, &app.config.cwd)"
   /permissions - choose what Codex is allowed to do
   /model - choose what model and reasoning effort to use
   /review - review any changes and find issues
-
-› show <code> & tests
-
-• spoken answer
-
-› typed words
+───────────────────────────────────────────────────────────────────────────────
+YOU
+│ show <code> & tests
 
 
-› show <code> & tests
+CODEX
+  spoken answer
 
+───────────────────────────────────────────────────────────────────────────────
+YOU
+│ typed words
 
-› typed words
+───────────────────────────────────────────────────────────────────────────────
+YOU
+│ show <code> & tests
+
+───────────────────────────────────────────────────────────────────────────────
+YOU
+│ typed words
 
 • different caption

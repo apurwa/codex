@@ -846,6 +846,7 @@ mod tests {
         }
         lines_to_plain_strings(&lines)
             .into_iter()
+            .skip(2) // Skip the first chunk's blank row and CODEX label.
             .map(|s| s.chars().skip(2).collect::<String>())
             .collect()
     }
@@ -1092,7 +1093,7 @@ mod tests {
                 .transcript_lines(u16::MAX),
         );
 
-        assert_eq!(rendered, vec!["• tail without newline".to_string()]);
+        assert_eq!(rendered, vec!["", "CODEX", "  tail without newline"]);
     }
 
     #[test]
@@ -1252,6 +1253,7 @@ mod tests {
 
         let streamed: Vec<_> = lines_to_plain_strings(&lines)
             .into_iter()
+            .skip(2)
             .map(|s| s.chars().skip(2).collect::<String>())
             .collect();
 
@@ -1374,6 +1376,7 @@ mod tests {
                 .transcript_lines(u16::MAX),
         )
         .into_iter()
+        .skip(2)
         .map(|line| line.chars().skip(2).collect::<String>())
         .collect::<Vec<_>>();
 
@@ -1650,15 +1653,20 @@ mod tests {
             loop {
                 let (cell, idle) = ctrl.on_commit_tick();
                 if let Some(cell) = cell {
-                    emitted_lines.extend(cell.transcript_lines(u16::MAX).into_iter().map(|line| {
-                        let plain: String = line
-                            .spans
-                            .iter()
-                            .map(|s| s.content.clone())
-                            .collect::<Vec<_>>()
-                            .join("");
-                        Line::from(plain.chars().skip(2).collect::<String>())
-                    }));
+                    emitted_lines.extend(
+                        cell.transcript_lines(u16::MAX)
+                            .into_iter()
+                            .skip(if cell.is_stream_continuation() { 0 } else { 2 })
+                            .map(|line| {
+                                let plain: String = line
+                                    .spans
+                                    .iter()
+                                    .map(|s| s.content.clone())
+                                    .collect::<Vec<_>>()
+                                    .join("");
+                                Line::from(plain.chars().skip(2).collect::<String>())
+                            }),
+                    );
                 }
                 if idle {
                     break;

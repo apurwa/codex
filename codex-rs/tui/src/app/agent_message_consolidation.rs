@@ -26,6 +26,7 @@ impl App {
         &mut self,
         tui: &mut tui::Tui,
         source: String,
+        phase: Option<codex_protocol::models::MessagePhase>,
         cwd: PathBuf,
         inline_visualization_context: Option<InlineVisualizationContext>,
         scrollback_reflow: ConsolidationScrollbackReflow,
@@ -60,7 +61,8 @@ impl App {
                     source,
                     &cwd,
                     inline_visualization_context,
-                ),
+                )
+                .with_phase(phase),
             );
             self.transcript_cells
                 .splice(start..end, std::iter::once(consolidated.clone()));

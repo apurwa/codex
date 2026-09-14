@@ -476,9 +476,10 @@ async fn stopping_voice_preserves_the_live_transcript_once() {
             }
         }
         insta::allow_duplicates! {
-            insta::assert_snapshot!(rendered.join("\n"), @r"
-
-            › Earlier question
+            insta::assert_snapshot!(rendered.join("\n"), @"
+            ───────────────────────────────────────────────────────────────────────────────
+            YOU
+            │ Earlier question
 
             • Earlier answer
             • Answer in progress
@@ -512,7 +513,7 @@ async fn transcript_completion_waits_for_normal_agent_stream_consolidation() {
         }
     }
 
-    chat.finalize_completed_assistant_message(Some("normal typed output"));
+    chat.finalize_completed_assistant_message(Some("normal typed output"), /*phase*/ None);
     chat.note_stream_consolidation_completed();
     chat.flush_realtime_transcript_history();
 
@@ -530,7 +531,9 @@ async fn transcript_completion_waits_for_normal_agent_stream_consolidation() {
     assert_eq!(
         rendered,
         [
-            "• normal typed output",
+            "",
+            "CODEX",
+            "  normal typed output",
             "• voice output",
             "• unfinished voice output"
         ]
@@ -556,7 +559,7 @@ async fn transcript_handoff_moves_deferred_repeats_and_partial_once() {
     assert_eq!(cells.len(), super::super::MAX_PENDING_TRANSCRIPT_CELLS + 1);
     assert!(chat.take_realtime_transcript_cells_for_replay().is_empty());
     chat.restore_realtime_transcript_cells(cells);
-    chat.finalize_completed_assistant_message(Some("ordinary stream"));
+    chat.finalize_completed_assistant_message(Some("ordinary stream"), /*phase*/ None);
     chat.note_stream_consolidation_completed();
     chat.flush_realtime_transcript_history();
 
@@ -759,7 +762,7 @@ async fn spoken_user_transcript_preserves_red_chevron_and_canonical_history() {
         .display_lines(/*width*/ 32)
         .into_iter()
         .flat_map(|line| line.spans)
-        .find(|span| span.content == "›")
+        .find(|span| span.content.trim_end() == "│")
         .expect("genuine spoken user marker");
     assert_eq!(marker.style.fg, Some(ratatui::style::Color::Red));
     assert!(
@@ -777,7 +780,7 @@ async fn spoken_user_transcript_preserves_red_chevron_and_canonical_history() {
             .unwrap()
             .display_lines(/*width*/ 32)
             .iter()
-            .any(|line| line.to_string() == "› hello world")
+            .any(|line| line.to_string() == "│ hello world")
     );
     chat.on_realtime_transcript_done("user".to_string(), " hello world".to_string());
     commit_realtime_history_events(&mut chat, &mut events);
@@ -789,7 +792,7 @@ async fn spoken_user_transcript_preserves_red_chevron_and_canonical_history() {
     assert!(
         cell.display_lines(/*width*/ 32)
             .iter()
-            .any(|line| line.to_string() == "› hello world")
+            .any(|line| line.to_string() == "│ hello world")
     );
 }
 
@@ -858,9 +861,10 @@ async fn completed_user_caption_stays_visible_until_history_commit() {
     // A scheduled draw must not clear the caption before its queued history event runs.
     chat.pre_draw_tick();
     let visible = chat.active_cell_transcript_lines(/*width*/ 80).unwrap();
-    insta::assert_snapshot!(visible.iter().map(ToString::to_string).collect::<Vec<_>>().join("\n"), @r"
-
-    › Keep these words visible.
+    insta::assert_snapshot!(visible.iter().map(ToString::to_string).collect::<Vec<_>>().join("\n"), @"
+    ───────────────────────────────────────────────────────────────────────────────
+    YOU
+    │ Keep these words visible.
     ");
     assert!(chat.active_cell_render_key().is_some());
     let viewport = render_bottom_popup(&chat, /*width*/ 80);
@@ -870,7 +874,7 @@ async fn completed_user_caption_stays_visible_until_history_commit() {
     chat.on_agent_message_delta("An earlier answer".into());
     assert!(chat.take_realtime_transcript_history().is_empty());
     assert!(render_bottom_popup(&chat, /*width*/ 80).contains("Keep these words visible."));
-    chat.finalize_completed_assistant_message(Some("An earlier answer"));
+    chat.finalize_completed_assistant_message(Some("An earlier answer"), /*phase*/ None);
     chat.note_stream_consolidation_completed();
     commit_realtime_history_events(&mut chat, &mut events);
     let history = std::iter::from_fn(|| events.try_recv().ok())
@@ -931,14 +935,16 @@ async fn animated_interleaved_captions_keep_settled_words_visible() {
     }
     insta::assert_snapshot!(settled.join("\n"), @"
     user first:
-
-    › Keep these words visible please
+    ───────────────────────────────────────────────────────────────────────────────
+    YOU
+    │ Keep these words visible please
 
 
     • Other speaker.
     assistant first:
-
-    › Other speaker.
+    ───────────────────────────────────────────────────────────────────────────────
+    YOU
+    │ Other speaker.
 
 
     • Keep these words visible please
@@ -964,7 +970,12 @@ async fn empty_interleaved_caption_completion_invalidates_overlay() {
         let visible = chat.active_cell_transcript_lines(/*width*/ 80).unwrap();
         assert_eq!(
             visible.iter().map(ToString::to_string).collect::<Vec<_>>(),
-            vec!["", "› Keep this caption", ""]
+            vec![
+                "─".repeat(79),
+                "YOU".into(),
+                "│ Keep this caption".into(),
+                "".into()
+            ]
         );
     }
 }

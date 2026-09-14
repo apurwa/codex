@@ -2,7 +2,9 @@
 source: tui/src/inline_visualization_tests.rs
 expression: snapshot_text
 ---
-• Before
+
+CODEX
+  Before
 
   Open chart visualization in the browser
   file://<viewer-path>

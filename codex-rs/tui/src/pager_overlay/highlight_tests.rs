@@ -138,8 +138,12 @@ fn moving_highlight_matches_full_rebuild_with_live_tail() {
         .collect::<Vec<_>>()
         .join("\n");
     insta::assert_snapshot!(content, @"
-    › first prompt
-    › second prompt
+    ───────────────────────────────────────
+    YOU
+    │ first prompt
+    ───────────────────────────────────────
+    YOU
+    │ second prompt
     live tail
     ");
 }

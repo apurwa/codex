@@ -2375,7 +2375,7 @@ fn user_history_cell_wraps_long_urls_inside_the_message_gutter() {
             line.line
                 .spans
                 .first()
-                .is_some_and(|span| span.content == "  ")
+                .is_some_and(|span| span.content == "│ ")
         }),
         "wrapped URL rows must retain the user-message gutter: {linked_rows:?}"
     );
@@ -2553,15 +2553,7 @@ fn render_uses_wrapping_for_long_url_like_line() {
     let rendered_blob = rendered.join("\n");
     let rendered_url = rendered
         .iter()
-        .filter(|row| !row.trim().is_empty())
-        .enumerate()
-        .map(|(index, row)| {
-            if index == 0 {
-                row.strip_prefix("› ").unwrap().trim()
-            } else {
-                row.trim()
-            }
-        })
+        .filter_map(|line| line.trim_end().strip_prefix("│ ").map(str::trim))
         .collect::<String>();
 
     assert_eq!(
@@ -2675,7 +2667,7 @@ fn reasoning_summary_block() {
     assert_eq!(rendered_display, Vec::<String>::new());
 
     let rendered_transcript = render_transcript(cell.as_ref());
-    assert_eq!(rendered_transcript, vec!["• Detailed reasoning goes here."]);
+    assert_eq!(rendered_transcript, vec!["┊ Detailed reasoning goes here."]);
 }
 
 #[test]
@@ -2718,8 +2710,8 @@ fn reasoning_summary_height_matches_wrapped_rendering_for_url_like_content() {
         })
         .collect::<String>();
     assert!(
-        first_row.contains("•"),
-        "expected first rendered row to keep summary bullet visible, got: {first_row:?}"
+        first_row.contains("┊"),
+        "expected first rendered row to keep summary rail visible, got: {first_row:?}"
     );
 }
 
@@ -2731,7 +2723,7 @@ fn reasoning_summary_block_returns_reasoning_cell_when_feature_disabled() {
     );
 
     let rendered = render_transcript(cell.as_ref());
-    assert_eq!(rendered, vec!["• Detailed reasoning goes here."]);
+    assert_eq!(rendered, vec!["┊ Detailed reasoning goes here."]);
 }
 
 #[tokio::test]
@@ -2755,7 +2747,7 @@ fn reasoning_summary_block_falls_back_when_header_is_missing() {
     );
 
     let rendered = render_transcript(cell.as_ref());
-    assert_eq!(rendered, vec!["• **High level reasoning without closing"]);
+    assert_eq!(rendered, vec!["┊ **High level reasoning without closing"]);
 }
 
 #[test]
@@ -2766,7 +2758,7 @@ fn reasoning_summary_block_falls_back_when_summary_is_missing() {
     );
 
     let rendered = render_transcript(cell.as_ref());
-    assert_eq!(rendered, vec!["• High level reasoning without closing"]);
+    assert_eq!(rendered, vec!["┊ High level reasoning without closing"]);
 
     let cell = new_reasoning_summary_block(
         vec!["**High level reasoning without closing**\n\n  ".to_string()],
@@ -2774,7 +2766,7 @@ fn reasoning_summary_block_falls_back_when_summary_is_missing() {
     );
 
     let rendered = render_transcript(cell.as_ref());
-    assert_eq!(rendered, vec!["• High level reasoning without closing"]);
+    assert_eq!(rendered, vec!["┊ High level reasoning without closing"]);
 }
 
 #[test]
@@ -2790,7 +2782,7 @@ fn reasoning_summary_block_keeps_title_only_summary_in_expanded_transcript() {
     let rendered_transcript = render_transcript(cell.as_ref());
     assert_eq!(
         rendered_transcript,
-        vec!["• Confirming backend JSONL source"]
+        vec!["┊ Confirming backend JSONL source"]
     );
 }
 
@@ -2805,7 +2797,7 @@ fn reasoning_summary_block_splits_header_and_summary_when_present() {
     assert_eq!(rendered_display, Vec::<String>::new());
 
     let rendered_transcript = render_transcript(cell.as_ref());
-    assert_eq!(rendered_transcript, vec!["• We should fix the bug next."]);
+    assert_eq!(rendered_transcript, vec!["┊ We should fix the bug next."]);
 }
 
 #[test]
@@ -2840,7 +2832,7 @@ fn reasoning_summary_block_preserves_bold_content_after_empty_html_comment_part(
     assert_eq!(rendered_display, Vec::<String>::new());
 
     let rendered_transcript = render_transcript(cell.as_ref());
-    assert_eq!(rendered_transcript, vec!["• Important conclusion"]);
+    assert_eq!(rendered_transcript, vec!["┊ Important conclusion"]);
 
     let cell = new_reasoning_summary_block(
         vec![
@@ -2851,7 +2843,7 @@ fn reasoning_summary_block_preserves_bold_content_after_empty_html_comment_part(
     );
 
     let rendered_transcript = render_transcript(cell.as_ref());
-    assert_eq!(rendered_transcript, vec!["• Result: keep this"]);
+    assert_eq!(rendered_transcript, vec!["┊ Result: keep this"]);
 }
 
 #[test]
@@ -2868,7 +2860,7 @@ fn reasoning_summary_block_strips_header_after_leading_empty_part() {
     assert_eq!(rendered_display, Vec::<String>::new());
 
     let rendered_transcript = render_transcript(cell.as_ref());
-    assert_eq!(rendered_transcript, vec!["• Tests passed"]);
+    assert_eq!(rendered_transcript, vec!["┊ Tests passed"]);
 }
 
 #[test]
@@ -2885,7 +2877,7 @@ fn reasoning_summary_block_drops_empty_part_after_real_content() {
     assert_eq!(rendered_display, Vec::<String>::new());
 
     let rendered_transcript = render_transcript(cell.as_ref());
-    assert_eq!(rendered_transcript, vec!["• done"]);
+    assert_eq!(rendered_transcript, vec!["┊ done"]);
 }
 
 #[test]
@@ -2899,7 +2891,7 @@ fn reasoning_summary_block_preserves_literal_html_comment() {
     assert_eq!(rendered_display, Vec::<String>::new());
 
     let rendered_transcript = render_transcript(cell.as_ref());
-    assert_eq!(rendered_transcript, vec!["• Use <!-- --> in JSX."]);
+    assert_eq!(rendered_transcript, vec!["┊ Use <!-- --> in JSX."]);
 }
 
 #[test]
@@ -2927,9 +2919,8 @@ fn agent_markdown_cell_renders_source_at_different_widths() {
 
     let lines_80 = render_lines(&cell.display_lines(/*width*/ 80));
     assert!(
-        lines_80.first().is_some_and(|line| line.starts_with("• ")),
-        "first line should start with bullet prefix: {:?}",
-        lines_80[0]
+        lines_80.get(1).is_some_and(|line| line == "CODEX"),
+        "assistant response should start with a CODEX label: {lines_80:?}"
     );
 
     let lines_32 = render_lines(&cell.display_lines(/*width*/ 32));
@@ -2946,11 +2937,11 @@ fn agent_markdown_cell_does_not_split_words_after_inline_markdown() {
 
     let lines = render_lines(&cell.display_lines(/*width*/ 190));
     assert!(
-        lines[0].ends_with("inline code,"),
+        lines[2].ends_with("inline code,"),
         "expected wrapping to stop before 'strikethrough': {lines:?}",
     );
     assert!(
-        lines[1].starts_with("  strikethrough,"),
+        lines[3].starts_with("  strikethrough,"),
         "expected the next line to resume with the full word: {lines:?}",
     );
 }

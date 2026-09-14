@@ -897,32 +897,22 @@ mod tests {
         let message_rows = rows
             .iter()
             .enumerate()
-            .filter(|(_, row)| !row.trim().is_empty())
+            .filter(|(_, row)| row.starts_with("│ "))
             .collect::<Vec<_>>();
 
         assert!(message_rows.len() > 1, "expected wrapped URL: {rows:?}");
         assert!(
-            message_rows[0].1.starts_with("› "),
+            rows.iter().any(|row| row.trim_end() == "YOU"),
             "the first user-message row must retain its prompt: {rows:?}"
         );
         assert!(
-            message_rows
-                .iter()
-                .skip(/*n*/ 1)
-                .all(|(_, row)| row.starts_with("  ")),
+            message_rows.iter().all(|(_, row)| row.starts_with("│ ")),
             "all wrapped URL rows must preserve the message gutter: {rows:?}"
         );
         assert_eq!(
             message_rows
                 .iter()
-                .enumerate()
-                .map(|(index, (_, row))| {
-                    if index == 0 {
-                        row.strip_prefix("› ").unwrap().trim()
-                    } else {
-                        row.trim()
-                    }
-                })
+                .map(|(_, row)| row.strip_prefix("│ ").unwrap().trim())
                 .collect::<String>(),
             url
         );

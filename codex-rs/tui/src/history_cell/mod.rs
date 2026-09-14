@@ -191,6 +191,11 @@ pub(crate) trait HistoryCell: std::fmt::Debug + Send + Sync + Any {
     /// Returns copy-friendly plain logical lines for raw scrollback mode.
     fn raw_lines(&self) -> Vec<Line<'static>>;
 
+    /// Optional full-cell background used by visually distinct transcript blocks.
+    fn background_style(&self) -> Option<Style> {
+        None
+    }
+
     /// Returns rich visible lines plus terminal hyperlink metadata.
     fn display_hyperlink_lines(&self, width: u16) -> Vec<HyperlinkLine> {
         plain_hyperlink_lines(self.display_lines(width))
@@ -305,6 +310,9 @@ impl Renderable for Box<dyn HistoryCell> {
         // Active-cell content can reflow dramatically during resize/stream updates. Clear the
         // entire draw area first so stale glyphs from previous frames never linger.
         Clear.render(area, buf);
+        if let Some(style) = self.background_style() {
+            buf.set_style(area, style);
+        }
         paragraph.scroll(y).render(area, buf);
     }
     fn desired_height(&self, width: u16) -> u16 {

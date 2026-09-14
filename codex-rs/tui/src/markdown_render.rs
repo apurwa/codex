@@ -1939,7 +1939,11 @@ where
 
     fn flush_current_line(&mut self) {
         if let Some(mut line) = self.current_line_content.take() {
-            let style = self.current_line_style;
+            let style = if self.current_line_in_code_block {
+                crate::style::user_message_style().patch(self.current_line_style)
+            } else {
+                self.current_line_style
+            };
             // NB we don't wrap code in code blocks, in order to preserve whitespace for copy/paste.
             if !self.current_line_in_code_block
                 && let Some(width) = self.wrap_width

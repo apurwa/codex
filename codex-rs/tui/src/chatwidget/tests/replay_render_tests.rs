@@ -29,11 +29,18 @@ async fn completed_replay_preserves_messages_and_draft_across_reconstruction() {
     }
     assert_eq!(outputs[0], outputs[1]);
     insta::assert_snapshot!(outputs[0].iter().map(ToString::to_string).collect::<Vec<_>>().join("\n").trim(), @"
-    › Question
+    ───────────────────────────────────────────────────────────────────────────────
+    YOU
+    │ Question
 
 
-    • First answer
 
-    • Second answer
+    CODEX
+      First answer
+
+
+
+    CODEX
+      Second answer
     ");
 }

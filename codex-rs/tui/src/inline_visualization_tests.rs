@@ -372,7 +372,7 @@ fn transcript_overlay_remeasures_visualization_when_artifact_becomes_available()
     );
     let mut overlay = TranscriptOverlay::new(vec![Arc::new(cell)], RuntimeKeymap::defaults().pager);
     let area = Rect::new(
-        /*x*/ 0, /*y*/ 0, /*width*/ 240, /*height*/ 12,
+        /*x*/ 0, /*y*/ 0, /*width*/ 240, /*height*/ 18,
     );
     let mut buffer = Buffer::empty(area);
 

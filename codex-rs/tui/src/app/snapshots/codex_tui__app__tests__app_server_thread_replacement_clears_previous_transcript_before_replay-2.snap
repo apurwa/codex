@@ -1,6 +1,5 @@
 ---
 source: tui/src/app/tests.rs
-assertion_line: 6350
 expression: rendered
 ---
 ╭────────────────────────────────────────╮
@@ -10,5 +9,6 @@ expression: rendered
 │ directory: <thread cwd>                │
 ╰────────────────────────────────────────╯
 
-
-› Next thread prompt
+───────────────────────────────────────────────────────────────────────────────
+YOU
+│ Next thread prompt

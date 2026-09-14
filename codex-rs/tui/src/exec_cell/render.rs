@@ -185,11 +185,21 @@ fn activity_marker(start_time: Option<Instant>, animations_enabled: bool) -> Spa
 
 impl HistoryCell for ExecCell {
     fn display_lines(&self, width: u16) -> Vec<Line<'static>> {
-        if self.is_exploring_cell() {
-            self.exploring_display_lines(width)
+        let content_width = width.saturating_sub(2).max(1);
+        let mut lines = if self.is_exploring_cell() {
+            self.exploring_display_lines(content_width)
         } else {
-            self.command_display_lines(width)
+            self.command_display_lines(content_width)
+        };
+        let secondary = Style::default().dim();
+        for line in &mut lines {
+            for span in &mut line.spans {
+                if span.style.fg != Some(Color::Red) {
+                    span.style = span.style.patch(secondary);
+                }
+            }
         }
+        prefix_lines(lines, "┊ ".dim(), "┊ ".dim())
     }
 
     fn transcript_lines(&self, width: u16) -> Vec<Line<'static>> {
@@ -232,6 +242,13 @@ impl HistoryCell for ExecCell {
                     };
                     result.push_span(format!(" • {duration}").dim());
                     lines.push(result);
+                }
+            }
+        }
+        for line in &mut lines {
+            for span in &mut line.spans {
+                if span.style.fg != Some(Color::Red) {
+                    span.style = span.style.dim();
                 }
             }
         }
@@ -986,9 +1003,9 @@ mod tests {
             .map(render_line_text)
             .join("\n");
 
-        insta::assert_snapshot!(rendered, @r"
-        • Exploring
-          └ Read SKILL.md
+        insta::assert_snapshot!(rendered, @"
+        ┊ • Exploring
+        ┊   └ Read SKILL.md
         ");
     }
 

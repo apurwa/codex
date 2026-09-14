@@ -1,14 +1,14 @@
 ---
 source: tui/src/app/tests/transcript_composer.rs
-expression: text
+expression: buffer_text(&buffer)
 ---
 / T R A N S C R I P T / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / / /
-
-› first
-
+│ first
 
 
-› second
+───────────────────────────────────────────────────────────────────────────────────────────────────
+YOU
+│ second
 
 ───────────────────────────────────────────────────────────────────────────────────────────── 100% ─
  ↑/↓ to scroll   pgup/pgdn to page   home/end to jump
