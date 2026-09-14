@@ -2181,7 +2181,7 @@ impl Renderable for ChatComposerDecoratedRenderable<'_> {
             return;
         }
         truncate_line_with_ellipsis_if_overflow(
-            Line::from(session_title.to_string()).dim(),
+            Line::from(session_title.to_string()).fg(ratatui::style::Color::Rgb(0, 95, 135)),
             usize::from(title_area.width),
         )
         .right_aligned()

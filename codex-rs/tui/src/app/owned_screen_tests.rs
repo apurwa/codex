@@ -274,7 +274,7 @@ async fn jump_to_bottom_button_restores_follow_mode() {
             (cell.fg, cell.bg),
             (
                 ratatui::style::Color::Rgb(255, 255, 255),
-                ratatui::style::Color::Rgb(81, 129, 191),
+                ratatui::style::Color::Rgb(0, 95, 135),
             )
         );
     }

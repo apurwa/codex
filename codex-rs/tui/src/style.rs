@@ -16,7 +16,7 @@ const LIGHT_BG_ACCENT_RGB: (u8, u8, u8) = (0, 95, 135);
 pub(crate) fn selected_control_style() -> Style {
     Style::default()
         .fg(Color::Rgb(255, 255, 255))
-        .bg(Color::Rgb(81, 129, 191))
+        .bg(Color::Rgb(0, 95, 135))
         .remove_modifier(ratatui::style::Modifier::DIM | ratatui::style::Modifier::REVERSED)
 }
 

@@ -191,7 +191,7 @@ impl HistoryCell for ExecCell {
         } else {
             self.command_display_lines(content_width)
         };
-        let secondary = Style::default().dim();
+        let secondary = Style::default().remove_modifier(ratatui::style::Modifier::DIM);
         for line in &mut lines {
             for span in &mut line.spans {
                 if span.style.fg != Some(Color::Red) {
@@ -248,7 +248,7 @@ impl HistoryCell for ExecCell {
         for line in &mut lines {
             for span in &mut line.spans {
                 if span.style.fg != Some(Color::Red) {
-                    span.style = span.style.dim();
+                    span.style = span.style.remove_modifier(ratatui::style::Modifier::DIM);
                 }
             }
         }

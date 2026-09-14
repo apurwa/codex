@@ -1,0 +1,10 @@
+---
+source: tui/src/conversation_viewport_tests.rs
+expression: "snapshots.join(\"\\n\")"
+---
+width=20, scrolled=false: right edge Rgb(230, 225, 193)
+width=20, scrolled=true: right edge Rgb(230, 225, 193)
+width=60, scrolled=false: right edge Rgb(230, 225, 193)
+width=60, scrolled=true: right edge Rgb(230, 225, 193)
+width=32, scrolled=false: right edge Rgb(230, 225, 193)
+width=32, scrolled=true: right edge Rgb(230, 225, 193)

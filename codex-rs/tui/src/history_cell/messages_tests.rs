@@ -4,7 +4,7 @@ use assert_matches::assert_matches;
 use pretty_assertions::assert_eq;
 
 #[test]
-fn commentary_is_secondary_but_final_answers_keep_their_label_and_raw_source() {
+fn commentary_and_final_answers_are_labeled_and_readable_with_unchanged_raw_source() {
     use codex_protocol::models::MessagePhase;
     let source = "Checking the **rendering** path.";
     let commentary = AgentMarkdownCell::new(source.into(), Path::new("/tmp"))
@@ -12,12 +12,13 @@ fn commentary_is_secondary_but_final_answers_keep_their_label_and_raw_source() {
     let answer = AgentMarkdownCell::new(source.into(), Path::new("/tmp"))
         .with_phase(Some(MessagePhase::FinalAnswer));
     let commentary_lines = commentary.display_lines(40);
-    assert!(commentary_lines[0].to_string().starts_with("┊ "));
+    assert_eq!(commentary_lines[1].to_string(), "CODEX");
     assert!(
         commentary_lines
             .iter()
             .flat_map(|line| &line.spans)
-            .all(|span| span.style.add_modifier.contains(Modifier::DIM))
+            .filter(|span| span.content.contains("Checking") || span.content.contains("rendering"))
+            .all(|span| !span.style.add_modifier.contains(Modifier::DIM))
     );
     assert_eq!(commentary.raw_lines(), answer.raw_lines());
     let rendered = commentary_lines

@@ -102,6 +102,25 @@ async fn composer_shows_right_aligned_truncated_session_title() {
     widget.thread_id = Some(thread_id);
     widget.on_thread_name_updated(thread_id, Some("Roadmap cleanup".to_string()));
     let wide = render_bottom_pane(&widget, /*width*/ 36);
+    let renderable = widget.bottom_pane_renderable();
+    let area = Rect::new(0, 0, 36, renderable.desired_height(36));
+    let mut buffer = Buffer::empty(area);
+    renderable.render(area, &mut buffer);
+    let title_cell = buffer
+        .content
+        .chunks(36)
+        .find_map(|row| {
+            let text: String = row.iter().map(ratatui::buffer::Cell::symbol).collect();
+            text.find("Roadmap cleanup").map(|x| &row[x])
+        })
+        .expect("session title is rendered");
+    assert_eq!(title_cell.fg, ratatui::style::Color::Rgb(0, 95, 135));
+    assert!(!title_cell.modifier.contains(ratatui::style::Modifier::DIM));
+    insta::assert_snapshot!(
+        "composer_session_title_color",
+        format!("{:?}", title_cell.style())
+    );
+    drop(renderable);
 
     widget.on_thread_name_updated(
         thread_id,

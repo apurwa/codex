@@ -2,7 +2,10 @@
 source: tui/src/history_cell/messages_tests.rs
 expression: rendered
 ---
+
+CODEX
 ┊ Checking the rendering path.
+
 
 CODEX
   Checking the rendering path.

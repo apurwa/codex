@@ -600,19 +600,11 @@ impl HistoryCell for AgentMarkdownCell {
             } else {
                 "  ".into()
             };
-            let mut body = normalize_whitespace_only_hyperlink_lines(prefix_hyperlink_lines(
+            let body = normalize_whitespace_only_hyperlink_lines(prefix_hyperlink_lines(
                 lines,
                 gutter.clone(),
                 gutter,
             ));
-            if commentary {
-                for line in &mut body {
-                    for span in &mut line.line.spans {
-                        span.style = span.style.dim();
-                    }
-                }
-                return body;
-            }
             let mut labeled = vec![
                 HyperlinkLine::new(Line::default()),
                 HyperlinkLine::new(Line::from("CODEX".bold())),

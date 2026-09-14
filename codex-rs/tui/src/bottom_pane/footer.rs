@@ -1538,6 +1538,9 @@ mod tests {
                             if can_show_left_and_context && let Some(line) = &right_line {
                                 render_context_right(area, f.buffer_mut(), line);
                             }
+                        } else if can_show_left_and_context && let Some(line) = &right_line {
+                            // An empty status command must not hide the mode/IDE indicators.
+                            render_context_right(area, f.buffer_mut(), line);
                         }
                     } else {
                         let (summary_left, show_context) = single_line_footer_layout(

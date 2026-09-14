@@ -90,16 +90,15 @@ async fn selected_overview_row_uses_full_width_theme_aware_background() {
             let other_y = selected_y + 1;
             assert!((2..area.width - 2).all(|x| {
                 let cell = &buffer[(x, selected_y)];
-                cell.bg == ratatui::style::Color::Rgb(81, 129, 191)
+                cell.bg == ratatui::style::Color::Rgb(0, 95, 135)
                     && cell.fg == ratatui::style::Color::Rgb(255, 255, 255)
                     && !cell.modifier.intersects(
                         ratatui::style::Modifier::DIM | ratatui::style::Modifier::REVERSED,
                     )
             }));
             assert!(
-                (2..area.width - 2).all(|x| {
-                    buffer[(x, other_y)].bg != ratatui::style::Color::Rgb(81, 129, 191)
-                })
+                (2..area.width - 2)
+                    .all(|x| { buffer[(x, other_y)].bg != ratatui::style::Color::Rgb(0, 95, 135) })
             );
             snapshot.push(format!(
                 "{theme}: selected full-width blue background and white text, other normal"
@@ -1572,7 +1571,7 @@ async fn clicking_task_row_selects_and_opens_it() {
         .expect("selected row")
         .iter()
         .filter(|cell| {
-            cell.bg == ratatui::style::Color::Rgb(81, 129, 191)
+            cell.bg == ratatui::style::Color::Rgb(0, 95, 135)
                 && cell.fg == ratatui::style::Color::Rgb(255, 255, 255)
         })
         .count();

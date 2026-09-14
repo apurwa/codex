@@ -248,6 +248,7 @@ impl Renderable for ConversationCellRenderable {
             .cell
             .display_hyperlink_lines_for_mode(area.width, self.render_mode);
         Paragraph::new(Text::from(visible_lines(hyperlink_lines.clone())))
+            .style(self.cell.background_style().unwrap_or_default())
             .wrap(Wrap { trim: false })
             .render(area, buf);
         mark_buffer_hyperlinks(buf, area, &hyperlink_lines, /*scroll_rows*/ 0);

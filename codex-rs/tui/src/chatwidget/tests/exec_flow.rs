@@ -152,10 +152,10 @@ async fn failed_exploration_keeps_overlapping_commands_active_until_all_finish()
 
     let later = begin_exec(&mut chat, "call-after-failure", "cat later.txt");
     end_exec(&mut chat, later, "later\n", "", /*exit_code*/ 0);
-    insta::assert_snapshot!(active_blob(&chat), @r"
-• Explored
-  └ Read later.txt
-");
+    insta::assert_snapshot!(active_blob(&chat), @"
+    ┊ • Explored
+    ┊   └ Read later.txt
+    ");
 }
 
 #[tokio::test]
