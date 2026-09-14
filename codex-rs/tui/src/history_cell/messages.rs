@@ -432,7 +432,10 @@ impl HistoryCell for AgentMessageCell {
         }
         if self.is_first_line {
             wrapped.push(HyperlinkLine::new(Line::default()));
-            wrapped.push(HyperlinkLine::new(Line::from("CODEX".bold())));
+            wrapped.push(HyperlinkLine::new(Line::from(Span::styled(
+                "CODEX",
+                crate::style::codex_label_style(),
+            ))));
         }
         for line in &self.lines {
             let initial_indent = "  ".into();
@@ -607,7 +610,10 @@ impl HistoryCell for AgentMarkdownCell {
             ));
             let mut labeled = vec![
                 HyperlinkLine::new(Line::default()),
-                HyperlinkLine::new(Line::from("CODEX".bold())),
+                HyperlinkLine::new(Line::from(Span::styled(
+                    "CODEX",
+                    crate::style::codex_label_style(),
+                ))),
             ];
             labeled.extend(body);
             labeled.push(HyperlinkLine::new(Line::default()));

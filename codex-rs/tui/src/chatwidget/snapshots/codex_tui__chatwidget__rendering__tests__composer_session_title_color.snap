@@ -2,4 +2,4 @@
 source: tui/src/chatwidget/rendering_tests.rs
 expression: "format!(\"{:?}\", title_cell.style())"
 ---
-Style::new().fg(Color::Rgb(0, 95, 135)).bg(Color::Reset).underline_color(Color::Reset)
+Style::new().fg(Color::Rgb(0, 95, 135)).bg(Color::Reset).underline_color(Color::Reset).bold()

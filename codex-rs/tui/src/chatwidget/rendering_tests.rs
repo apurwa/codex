@@ -127,6 +127,7 @@ async fn composer_shows_right_aligned_truncated_session_title() {
         })
         .expect("session title is rendered");
     assert_eq!(title_cell.fg, ratatui::style::Color::Rgb(0, 95, 135));
+    assert!(title_cell.modifier.contains(ratatui::style::Modifier::BOLD));
     assert!(!title_cell.modifier.contains(ratatui::style::Modifier::DIM));
     insta::assert_snapshot!(
         "composer_session_title_color",

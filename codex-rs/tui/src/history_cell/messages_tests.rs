@@ -13,6 +13,29 @@ fn commentary_and_final_answers_are_labeled_and_readable_with_unchanged_raw_sour
         .with_phase(Some(MessagePhase::FinalAnswer));
     let commentary_lines = commentary.display_lines(40);
     assert_eq!(commentary_lines[1].to_string(), "CODEX");
+    let streaming = AgentMessageCell::new(vec![source.into()], /*is_first_line*/ true);
+    let headings = [
+        commentary_lines.clone(),
+        answer.display_lines(40),
+        streaming.display_lines(40),
+    ]
+    .into_iter()
+    .map(|lines| {
+        let label = lines
+            .iter()
+            .flat_map(|line| &line.spans)
+            .find(|span| span.content == "CODEX")
+            .expect("speaker heading");
+        assert_eq!(label.style.fg, Some(ratatui::style::Color::Rgb(128, 0, 0)));
+        assert!(label.style.add_modifier.contains(Modifier::BOLD));
+        format!("{:?}", label.style)
+    })
+    .collect::<Vec<_>>();
+    insta::assert_snapshot!(headings.join("\n"), @r###"
+Style::new().fg(Color::Rgb(128, 0, 0)).bold()
+Style::new().fg(Color::Rgb(128, 0, 0)).bold()
+Style::new().fg(Color::Rgb(128, 0, 0)).bold()
+"###);
     assert!(
         commentary_lines
             .iter()

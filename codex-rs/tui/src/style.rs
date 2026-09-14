@@ -12,6 +12,11 @@ use ratatui::style::Style;
 
 const LIGHT_BG_ACCENT_RGB: (u8, u8, u8) = (0, 95, 135);
 
+/// Maroon speaker label, independent of terminal ANSI palette remapping.
+pub(crate) fn codex_label_style() -> Style {
+    Style::default().fg(Color::Rgb(128, 0, 0)).bold()
+}
+
 /// Shared selection/action colors, independent of remapped ANSI terminal palettes.
 pub(crate) fn selected_control_style() -> Style {
     Style::default()
