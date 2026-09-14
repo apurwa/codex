@@ -2944,6 +2944,36 @@ async fn status_line_invalid_items_warn_once() {
 }
 
 #[tokio::test]
+async fn multiple_status_line_rows_override_legacy_status_line_and_render_as_a_stack() {
+    let (mut chat, _rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
+    chat.show_welcome_banner = false;
+    chat.local_settings.tui.status_line = Some(vec!["hostname".to_string()]);
+    chat.local_settings.tui.status_lines = Some(vec![
+        Vec::new(),
+        vec!["run-state".to_string()],
+        vec!["context-used".to_string(), "context-remaining".to_string()],
+    ]);
+
+    chat.refresh_status_line();
+
+    assert_eq!(
+        status_line_text(&chat),
+        Some("Ready\nContext 0% used · Context 100% left".to_string())
+    );
+
+    let width = 58;
+    let height = chat.desired_height(width);
+    let mut terminal = Terminal::new(TestBackend::new(width, height)).expect("create terminal");
+    terminal
+        .draw(|frame| chat.render(frame.area(), frame.buffer_mut()))
+        .expect("draw multi-row status line footer");
+    assert_chatwidget_snapshot!(
+        "multiple_status_line_rows_footer",
+        normalized_backend_snapshot(terminal.backend())
+    );
+}
+
+#[tokio::test]
 async fn status_line_hostname_renders_current_machine_hostname() {
     let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
     chat.thread_id = Some(ThreadId::new());

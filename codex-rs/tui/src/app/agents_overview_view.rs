@@ -804,6 +804,23 @@ impl BottomPaneView for AgentsOverviewView {
     }
 
     fn handle_mouse_event(&mut self, mouse_event: MouseEvent) -> bool {
+        match mouse_event.kind {
+            MouseEventKind::ScrollUp => {
+                self.move_selection(/*forward*/ false);
+                return true;
+            }
+            MouseEventKind::ScrollDown => {
+                self.move_selection(/*forward*/ true);
+                return true;
+            }
+            MouseEventKind::Down(MouseButton::Left) => {}
+            MouseEventKind::Down(_)
+            | MouseEventKind::Up(_)
+            | MouseEventKind::Drag(_)
+            | MouseEventKind::ScrollLeft
+            | MouseEventKind::ScrollRight
+            | MouseEventKind::Moved => return false,
+        }
         if !matches!(mouse_event.kind, MouseEventKind::Down(MouseButton::Left))
             || !mouse_event.modifiers.is_empty()
         {

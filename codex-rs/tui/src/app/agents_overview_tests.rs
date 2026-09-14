@@ -39,6 +39,73 @@ async fn overview_thread_colors_match_footer_and_respect_color_suppression() {
 }
 
 #[tokio::test]
+async fn selected_overview_row_uses_full_width_theme_aware_background() {
+    let app = make_test_app().await;
+    let selected = ThreadId::from_u128(/*value*/ 1);
+    let other = ThreadId::from_u128(/*value*/ 2);
+    let threads = [(selected, "Selected task"), (other, "Other task")].map(|(thread_id, name)| {
+        overview_thread(
+            thread_id,
+            /*parent_thread_id*/ None,
+            name,
+            ThreadStatus::Idle,
+        )
+    });
+    let mut snapshot = Vec::new();
+
+    for (theme, colors) in [
+        (
+            "dark",
+            crate::terminal_probe::DefaultColors {
+                fg: (255, 255, 255),
+                bg: (0, 0, 0),
+            },
+        ),
+        (
+            "light",
+            crate::terminal_probe::DefaultColors {
+                fg: (0, 0, 0),
+                bg: (255, 255, 255),
+            },
+        ),
+    ] {
+        crate::terminal_palette::with_test_default_colors(colors, || {
+            let view = app.agents_overview_view(threads.to_vec(), Some(selected));
+            let area = Rect::new(
+                /*x*/ 0, /*y*/ 0, /*width*/ 80, /*height*/ 30,
+            );
+            let mut buffer = ratatui::buffer::Buffer::empty(area);
+            view.render(area, &mut buffer);
+            let selected_y = buffer
+                .content()
+                .chunks(usize::from(area.width))
+                .position(|cells| {
+                    cells
+                        .iter()
+                        .map(ratatui::buffer::Cell::symbol)
+                        .collect::<String>()
+                        .contains("Selected task")
+                })
+                .expect("selected task should be visible") as u16;
+            let other_y = selected_y + 1;
+            let selected_bg = buffer[(2, selected_y)].style().bg;
+            let other_bg = buffer[(2, other_y)].style().bg;
+            assert!((2..area.width - 2).all(|x| buffer[(x, selected_y)].style().bg == selected_bg));
+            assert!((2..area.width - 2).all(|x| buffer[(x, other_y)].style().bg == other_bg));
+            assert_ne!(selected_bg, other_bg);
+            snapshot.push(format!(
+                "{theme}: selected {selected_bg:?}, other {other_bg:?}"
+            ));
+        });
+    }
+
+    insta::assert_snapshot!(snapshot.join("\n"), @r"
+    dark: selected Some(Rgb(51, 51, 51)), other Some(Reset)
+    light: selected Some(Rgb(204, 204, 204)), other Some(Reset)
+    ");
+}
+
+#[tokio::test]
 async fn older_server_notice_is_visible_in_agents_overview() {
     let mut app = make_test_app().await;
     app.update_server_version_overview_notice("0.153.0", Some("0.152.1"));
@@ -1573,6 +1640,56 @@ async fn new_task_composer_is_visible_and_clickable() {
             prompt: Some(UserMessage { text, .. }),
         }) if text == "Create from the composer"
     ));
+}
+
+#[tokio::test]
+async fn scrolling_task_list_moves_selection() {
+    let app = make_test_app().await;
+    let first = ThreadId::new();
+    let second = ThreadId::new();
+    let (event_tx, _event_rx) = tokio::sync::mpsc::unbounded_channel();
+    let mut view = AgentsOverviewView::new(
+        app.agents_overview_view(
+            vec![
+                overview_thread(
+                    first,
+                    /*parent_thread_id*/ None,
+                    "First task",
+                    ThreadStatus::Idle,
+                ),
+                overview_thread(
+                    second,
+                    /*parent_thread_id*/ None,
+                    "Second task",
+                    ThreadStatus::Idle,
+                ),
+            ],
+            Some(first),
+        )
+        .rows,
+        Some(first),
+        /*worktrees_enabled*/ false,
+        /*use_theme_colors*/ false,
+        crate::app_event_sender::AppEventSender::new(event_tx),
+        app.keymap.clone(),
+        Arc::clone(&app.agents_overview.view_state),
+    );
+
+    assert_eq!(view.selected_index(), Some(0));
+    assert!(view.handle_mouse_event(crossterm::event::MouseEvent {
+        kind: crossterm::event::MouseEventKind::ScrollDown,
+        column: 0,
+        row: 0,
+        modifiers: KeyModifiers::NONE,
+    }));
+    assert_eq!(view.selected_index(), Some(1));
+    assert!(view.handle_mouse_event(crossterm::event::MouseEvent {
+        kind: crossterm::event::MouseEventKind::ScrollUp,
+        column: 0,
+        row: 0,
+        modifiers: KeyModifiers::NONE,
+    }));
+    assert_eq!(view.selected_index(), Some(0));
 }
 
 #[tokio::test]

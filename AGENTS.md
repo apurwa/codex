@@ -1,3 +1,15 @@
+## Local Codex development and installation
+
+- Use one feature branch and one Git worktree per concurrent session. Do not edit another session's worktree.
+- Keep feature worktrees outside this checkout, under `../Codex-worktrees/<feature>`.
+- Reserve `integration/codex-dev` and `../Codex-worktrees/integration` for combining reviewed feature commits and validating the combined build. Only one session may own integration at a time.
+- Use a separate Cargo target directory per active worktree. A cache may be reassigned only after its previous build has stopped; never run parallel builds against the same target directory.
+- Feature sessions must not change `~/.local/bin/codex-dev`, install binaries, or change shared Codex configuration.
+- The integration owner is the only installer. Use `scripts/install-codex-dev.sh <tested-binary>` from a clean integration worktree. The script takes an installation lock and records the installed commit and binary hash.
+- Keep `codex` unchanged. The everyday custom command is `codex-dev agents`; `codex-dev` opens a normal session.
+- Preserve existing local launcher settings when integrating features. Do not replace another session's unfinished work or silently discard it.
+- Before handoff, report the worktree, branch, commit, validation results, and whether the combined version was actually installed.
+
 # Rust/codex-rs
 
 In the codex-rs folder where the rust code lives:

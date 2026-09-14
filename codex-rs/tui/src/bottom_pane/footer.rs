@@ -76,7 +76,7 @@ pub(crate) struct FooterProps {
     ///
     /// This is rendered when `mode` is `FooterMode::QuitShortcutReminder`.
     pub(crate) quit_shortcut_key: KeyBinding,
-    pub(crate) status_line_value: Option<Line<'static>>,
+    pub(crate) status_line_values: Vec<Line<'static>>,
     pub(crate) status_line_enabled: bool,
     pub(crate) key_hints: FooterKeyHints,
     /// Active thread label shown when the footer is rendering contextual information instead of an
@@ -249,8 +249,13 @@ pub(crate) fn footer_height(props: &FooterProps) -> u16 {
 
 /// Render a single precomputed footer line.
 pub(crate) fn render_footer_line(area: Rect, buf: &mut Buffer, line: Line<'static>) {
+    render_footer_lines(area, buf, vec![line]);
+}
+
+/// Render precomputed footer lines as a compact stack.
+pub(crate) fn render_footer_lines(area: Rect, buf: &mut Buffer, lines: Vec<Line<'static>>) {
     Paragraph::new(prefix_lines(
-        vec![line],
+        lines,
         " ".repeat(FOOTER_INDENT_COLS).into(),
         " ".repeat(FOOTER_INDENT_COLS).into(),
     ))
@@ -729,8 +734,9 @@ fn footer_from_props_lines(
     let key_hints = props.key_hints;
     // Passive footer context can come from the configurable status line, the
     // active agent label, or both combined.
-    if let Some(status_line) = passive_footer_status_line(props) {
-        return vec![status_line];
+    let status_lines = passive_footer_status_lines(props);
+    if !status_lines.is_empty() {
+        return status_lines;
     }
     match props.mode {
         FooterMode::QuitShortcutReminder => {
@@ -790,34 +796,48 @@ fn footer_from_props_lines(
 /// The returned line may contain the configured status line, the currently viewed agent label, or
 /// both combined. Active instructional states such as quit reminders, shortcut overlays, and queue
 /// prompts deliberately return `None` so those call-to-action hints stay visible.
-pub(crate) fn passive_footer_status_line(props: &FooterProps) -> Option<Line<'static>> {
+pub(crate) fn passive_footer_status_lines(props: &FooterProps) -> Vec<Line<'static>> {
     if !shows_passive_footer_line(props) {
-        return None;
+        return Vec::new();
     }
 
-    let mut line = if props.status_line_enabled {
-        props.status_line_value.clone()
-    } else {
-        None
-    };
+    let mut lines = Vec::new();
+    if props.mode == FooterMode::ComposerHasDraft && props.is_task_running {
+        lines.push(left_side_line(
+            None,
+            LeftSideState {
+                hint: SummaryHintKind::QueueMessage,
+                show_cycle_hint: false,
+            },
+            props.key_hints,
+        ));
+    }
+    if props.status_line_enabled {
+        lines.extend(props.status_line_values.clone());
+    }
 
     if let Some(active_agent_label) = props.active_agent_label.as_ref() {
-        if let Some(existing) = line.as_mut() {
+        if let Some(existing) = lines.last_mut() {
             existing.spans.push(" · ".dim());
             existing.spans.push(active_agent_label.clone().dim());
         } else {
-            line = Some(Line::from(active_agent_label.clone()).dim());
+            lines.push(Line::from(active_agent_label.clone()).dim());
         }
     }
 
     if props.mode == FooterMode::ComposerEmpty
         && let Some(key) = props.key_hints.agents
-        && let Some(line) = line.as_mut()
+        && let Some(line) = lines.last_mut()
     {
         line.extend(vec![" · ".dim(), key.into(), " for agents".dim()]);
     }
 
-    line
+    lines
+}
+
+/// Returns the last contextual footer row for single-row effects such as the effort transition.
+pub(crate) fn passive_footer_status_line(props: &FooterProps) -> Option<Line<'static>> {
+    passive_footer_status_lines(props).pop()
 }
 
 /// Whether the current footer mode allows contextual information to replace instructional hints.
@@ -827,7 +847,7 @@ pub(crate) fn passive_footer_status_line(props: &FooterProps) -> Option<Line<'st
 pub(crate) fn shows_passive_footer_line(props: &FooterProps) -> bool {
     match props.mode {
         FooterMode::ComposerEmpty => true,
-        FooterMode::ComposerHasDraft => !props.is_task_running,
+        FooterMode::ComposerHasDraft => true,
         FooterMode::HistorySearch
         | FooterMode::QuitShortcutReminder
         | FooterMode::ShortcutOverlay
@@ -1487,11 +1507,24 @@ mod tests {
                     FooterMode::ComposerEmpty | FooterMode::ComposerHasDraft
                 ) {
                     if status_line_active {
-                        if let Some(line) = truncated_status_line.clone() {
+                        let status_lines = passive_footer_status_lines(props);
+                        if status_lines.len() > 1 {
+                            let status_line_count = status_lines.len() as u16;
+                            render_footer_lines(area, f.buffer_mut(), status_lines);
+                            if can_show_left_and_context && let Some(line) = &right_line {
+                                let context_area = Rect::new(
+                                    area.x,
+                                    area.y + status_line_count - 1,
+                                    area.width,
+                                    1,
+                                );
+                                render_context_right(context_area, f.buffer_mut(), line);
+                            }
+                        } else if let Some(line) = truncated_status_line.clone() {
                             render_footer_line(area, f.buffer_mut(), line);
-                        }
-                        if can_show_left_and_context && let Some(line) = &right_line {
-                            render_context_right(area, f.buffer_mut(), line);
+                            if can_show_left_and_context && let Some(line) = &right_line {
+                                render_context_right(area, f.buffer_mut(), line);
+                            }
                         }
                     } else {
                         let (summary_left, show_context) = single_line_footer_layout(
@@ -1637,7 +1670,7 @@ mod tests {
                 collaboration_modes_enabled: false,
                 is_wsl: false,
                 quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
-                status_line_value: None,
+                status_line_values: Vec::new(),
                 status_line_enabled: false,
                 key_hints: FooterKeyHints::default_bindings(),
                 active_agent_label: None,
@@ -1655,7 +1688,7 @@ mod tests {
                 collaboration_modes_enabled: false,
                 is_wsl: false,
                 quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
-                status_line_value: None,
+                status_line_values: Vec::new(),
                 status_line_enabled: false,
                 key_hints: FooterKeyHints {
                     insert_newline: Some(key_hint::shift(KeyCode::Enter).into()),
@@ -1676,7 +1709,7 @@ mod tests {
                 collaboration_modes_enabled: true,
                 is_wsl: false,
                 quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
-                status_line_value: None,
+                status_line_values: Vec::new(),
                 status_line_enabled: false,
                 key_hints: FooterKeyHints::default_bindings(),
                 active_agent_label: None,
@@ -1694,7 +1727,7 @@ mod tests {
                 collaboration_modes_enabled: false,
                 is_wsl: false,
                 quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
-                status_line_value: None,
+                status_line_values: Vec::new(),
                 status_line_enabled: false,
                 key_hints: FooterKeyHints::default_bindings(),
                 active_agent_label: None,
@@ -1712,7 +1745,7 @@ mod tests {
                 collaboration_modes_enabled: false,
                 is_wsl: false,
                 quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
-                status_line_value: None,
+                status_line_values: Vec::new(),
                 status_line_enabled: false,
                 key_hints: FooterKeyHints::default_bindings(),
                 active_agent_label: None,
@@ -1730,7 +1763,7 @@ mod tests {
                 collaboration_modes_enabled: false,
                 is_wsl: false,
                 quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
-                status_line_value: None,
+                status_line_values: Vec::new(),
                 status_line_enabled: false,
                 key_hints: FooterKeyHints::default_bindings(),
                 active_agent_label: None,
@@ -1748,7 +1781,7 @@ mod tests {
                 collaboration_modes_enabled: false,
                 is_wsl: false,
                 quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
-                status_line_value: None,
+                status_line_values: Vec::new(),
                 status_line_enabled: false,
                 key_hints: FooterKeyHints::default_bindings(),
                 active_agent_label: None,
@@ -1766,7 +1799,7 @@ mod tests {
                 collaboration_modes_enabled: false,
                 is_wsl: false,
                 quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
-                status_line_value: None,
+                status_line_values: Vec::new(),
                 status_line_enabled: false,
                 key_hints: FooterKeyHints::default_bindings(),
                 active_agent_label: None,
@@ -1784,7 +1817,7 @@ mod tests {
                 collaboration_modes_enabled: false,
                 is_wsl: false,
                 quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
-                status_line_value: None,
+                status_line_values: Vec::new(),
                 status_line_enabled: false,
                 key_hints: FooterKeyHints::default_bindings(),
                 active_agent_label: None,
@@ -1804,7 +1837,7 @@ mod tests {
                 collaboration_modes_enabled: false,
                 is_wsl: false,
                 quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
-                status_line_value: None,
+                status_line_values: Vec::new(),
                 status_line_enabled: false,
                 key_hints: FooterKeyHints::default_bindings(),
                 active_agent_label: None,
@@ -1824,7 +1857,7 @@ mod tests {
                 collaboration_modes_enabled: false,
                 is_wsl: false,
                 quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
-                status_line_value: None,
+                status_line_values: Vec::new(),
                 status_line_enabled: false,
                 key_hints: FooterKeyHints::default_bindings(),
                 active_agent_label: None,
@@ -1840,7 +1873,7 @@ mod tests {
             collaboration_modes_enabled: true,
             is_wsl: false,
             quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
-            status_line_value: None,
+            status_line_values: Vec::new(),
             status_line_enabled: false,
             key_hints: FooterKeyHints::default_bindings(),
             active_agent_label: None,
@@ -1869,7 +1902,7 @@ mod tests {
             collaboration_modes_enabled: true,
             is_wsl: false,
             quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
-            status_line_value: None,
+            status_line_values: Vec::new(),
             status_line_enabled: false,
             key_hints: FooterKeyHints::default_bindings(),
             active_agent_label: None,
@@ -1891,7 +1924,7 @@ mod tests {
             collaboration_modes_enabled: false,
             is_wsl: false,
             quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
-            status_line_value: Some(Line::from("Status line content".to_string())),
+            status_line_values: vec![Line::from("Status line content".to_string())],
             status_line_enabled: true,
             key_hints: FooterKeyHints::default_bindings(),
             active_agent_label: None,
@@ -1908,7 +1941,7 @@ mod tests {
             collaboration_modes_enabled: false,
             is_wsl: false,
             quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
-            status_line_value: Some(Line::from("Status line content".to_string())),
+            status_line_values: vec![Line::from("Status line content".to_string())],
             status_line_enabled: true,
             key_hints: FooterKeyHints::default_bindings(),
             active_agent_label: None,
@@ -1925,7 +1958,7 @@ mod tests {
             collaboration_modes_enabled: false,
             is_wsl: false,
             quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
-            status_line_value: Some(Line::from("Status line content".to_string())),
+            status_line_values: vec![Line::from("Status line content".to_string())],
             status_line_enabled: true,
             key_hints: FooterKeyHints::default_bindings(),
             active_agent_label: None,
@@ -1942,7 +1975,7 @@ mod tests {
             collaboration_modes_enabled: true,
             is_wsl: false,
             quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
-            status_line_value: None, // command timed out / empty
+            status_line_values: Vec::new(), // command timed out / empty
             status_line_enabled: true,
             key_hints: FooterKeyHints::default_bindings(),
             active_agent_label: None,
@@ -1973,7 +2006,7 @@ mod tests {
             collaboration_modes_enabled: true,
             is_wsl: false,
             quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
-            status_line_value: None,
+            status_line_values: Vec::new(),
             status_line_enabled: false,
             key_hints: FooterKeyHints::default_bindings(),
             active_agent_label: None,
@@ -1996,7 +2029,7 @@ mod tests {
             collaboration_modes_enabled: false,
             is_wsl: false,
             quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
-            status_line_value: None,
+            status_line_values: Vec::new(),
             status_line_enabled: true,
             key_hints: FooterKeyHints::default_bindings(),
             active_agent_label: None,
@@ -2020,9 +2053,9 @@ mod tests {
             collaboration_modes_enabled: true,
             is_wsl: false,
             quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
-            status_line_value: Some(Line::from(
+            status_line_values: vec![Line::from(
                 "Status line content that should truncate before the mode indicator".to_string(),
-            )),
+            )],
             status_line_enabled: true,
             key_hints: FooterKeyHints::default_bindings(),
             active_agent_label: None,
@@ -2045,7 +2078,7 @@ mod tests {
             collaboration_modes_enabled: false,
             is_wsl: false,
             quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
-            status_line_value: None,
+            status_line_values: Vec::new(),
             status_line_enabled: false,
             key_hints: FooterKeyHints::default_bindings(),
             active_agent_label: Some("Robie [explorer]".to_string()),
@@ -2062,7 +2095,7 @@ mod tests {
             collaboration_modes_enabled: false,
             is_wsl: false,
             quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
-            status_line_value: Some(Line::from("Status line content".to_string())),
+            status_line_values: vec![Line::from("Status line content".to_string())],
             status_line_enabled: true,
             key_hints: FooterKeyHints::default_bindings(),
             active_agent_label: Some("Robie [explorer]".to_string()),
@@ -2082,10 +2115,10 @@ mod tests {
             collaboration_modes_enabled: true,
             is_wsl: false,
             quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
-            status_line_value: Some(Line::from(
+            status_line_values: vec![Line::from(
                 "Status line content that is definitely too long to fit alongside the mode label"
                     .to_string(),
-            )),
+            )],
             status_line_enabled: true,
             key_hints: FooterKeyHints::default_bindings(),
             active_agent_label: None,

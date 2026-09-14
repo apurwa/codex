@@ -172,7 +172,6 @@ pub struct TuiEventStream<S: EventSource + Default + Unpin = CrosstermEventSourc
     suspend_context: crate::tui::job_control::SuspendContext,
     #[cfg(unix)]
     alt_screen_active: Arc<AtomicBool>,
-    #[cfg(unix)]
     mouse_capture_active: Arc<AtomicBool>,
 }
 
@@ -183,7 +182,7 @@ impl<S: EventSource + Default + Unpin> TuiEventStream<S> {
         terminal_focused: Arc<AtomicBool>,
         #[cfg(unix)] suspend_context: crate::tui::job_control::SuspendContext,
         #[cfg(unix)] alt_screen_active: Arc<AtomicBool>,
-        #[cfg(unix)] mouse_capture_active: Arc<AtomicBool>,
+        mouse_capture_active: Arc<AtomicBool>,
     ) -> Self {
         let resume_stream = WatchStream::from_changes(broker.resume_events_rx());
         Self {
@@ -196,7 +195,6 @@ impl<S: EventSource + Default + Unpin> TuiEventStream<S> {
             suspend_context,
             #[cfg(unix)]
             alt_screen_active,
-            #[cfg(unix)]
             mouse_capture_active,
         }
     }
@@ -301,12 +299,12 @@ impl<S: EventSource + Default + Unpin> TuiEventStream<S> {
             }
             Event::Paste(pasted) => Some(TuiEvent::Paste(pasted)),
             Event::Mouse(mouse_event)
-                if matches!(
-                    mouse_event.kind,
-                    MouseEventKind::Down(MouseButton::Left)
-                        | MouseEventKind::ScrollUp
-                        | MouseEventKind::ScrollDown
-                ) =>
+                if matches!(mouse_event.kind, MouseEventKind::Down(MouseButton::Left))
+                    || (self.mouse_capture_active.load(Ordering::Relaxed)
+                        && matches!(
+                            mouse_event.kind,
+                            MouseEventKind::ScrollUp | MouseEventKind::ScrollDown
+                        )) =>
             {
                 Some(TuiEvent::Mouse(mouse_event))
             }
@@ -434,7 +432,6 @@ mod tests {
             crate::tui::job_control::SuspendContext::new(),
             #[cfg(unix)]
             Arc::new(AtomicBool::new(false)),
-            #[cfg(unix)]
             Arc::new(AtomicBool::new(false)),
         )
     }
@@ -502,13 +499,14 @@ mod tests {
     }
 
     #[tokio::test(flavor = "current_thread")]
-    async fn vertical_mouse_wheel_is_forwarded() {
+    async fn mouse_scroll_is_forwarded() {
         let (broker, handle, _draw_tx, draw_rx, terminal_focused) = setup();
         let mut stream = make_stream(broker, draw_rx, terminal_focused);
+        stream.mouse_capture_active.store(true, Ordering::Relaxed);
         let mouse_event = MouseEvent {
-            kind: MouseEventKind::ScrollUp,
-            column: 5,
-            row: 6,
+            kind: MouseEventKind::ScrollDown,
+            column: 7,
+            row: 9,
             modifiers: KeyModifiers::NONE,
         };
 
@@ -517,6 +515,17 @@ mod tests {
         assert!(
             matches!(stream.next().await, Some(TuiEvent::Mouse(event)) if event == mouse_event)
         );
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn mouse_scroll_is_ignored_without_capture() {
+        let (broker, _handle, _draw_tx, draw_rx, terminal_focused) = setup();
+        let mut stream = make_stream(broker, draw_rx, terminal_focused);
+        for kind in [MouseEventKind::ScrollUp, MouseEventKind::ScrollDown] {
+            assert!(stream.map_crossterm_event(Event::Mouse(MouseEvent {
+                kind, column: 0, row: 0, modifiers: KeyModifiers::NONE,
+            })).is_none());
+        }
     }
 
     #[tokio::test(flavor = "current_thread")]
