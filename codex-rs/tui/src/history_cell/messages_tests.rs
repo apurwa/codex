@@ -4,6 +4,32 @@ use assert_matches::assert_matches;
 use pretty_assertions::assert_eq;
 
 #[test]
+fn user_message_has_matching_rules_without_changing_raw_text() {
+    let cell = UserHistoryCell {
+        spoken: false,
+        message: "First line\nSecond line".into(),
+        text_elements: Vec::new(),
+        local_image_paths: Vec::new(),
+        remote_image_urls: Vec::new(),
+    };
+    let raw = cell.raw_lines();
+    assert_eq!(
+        raw.iter()
+            .map(ToString::to_string)
+            .collect::<Vec<_>>()
+            .join("\n"),
+        "First line\nSecond line"
+    );
+    for width in [12, 40, 100] {
+        let lines = cell.display_lines(width);
+        assert_eq!(lines.first(), lines.last());
+        assert_eq!(lines[0].to_string(), "─".repeat(usize::from(width - 1)));
+        assert_eq!(cell.transcript_lines(width), lines);
+        assert_eq!(cell.raw_lines(), raw);
+    }
+}
+
+#[test]
 fn commentary_and_final_answers_are_labeled_and_readable_with_unchanged_raw_source() {
     use codex_protocol::models::MessagePhase;
     let source = "Checking the **rendering** path.";

@@ -287,7 +287,8 @@ impl HistoryCell for UserHistoryCell {
             ));
         }
 
-        lines.push(HyperlinkLine::new(Line::from("").style(style)));
+        // Reuse the existing bottom padding row so the matching rule does not change cell height.
+        lines.push(lines[0].clone());
         for line in &mut lines {
             if line.line.to_string() == "│ "
                 && let Some(rail) = line.line.spans.first_mut()

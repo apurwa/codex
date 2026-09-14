@@ -142,8 +142,10 @@ fn moving_highlight_matches_full_rebuild_with_live_tail() {
     YOU
     │ first prompt
     ───────────────────────────────────────
+    ───────────────────────────────────────
     YOU
     │ second prompt
+    ───────────────────────────────────────
     live tail
     ");
 }

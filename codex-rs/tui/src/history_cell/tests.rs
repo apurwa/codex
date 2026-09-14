@@ -2484,9 +2484,11 @@ fn user_history_cell_trims_trailing_blank_message_lines() {
     let trailing_blank_count = rendered
         .iter()
         .rev()
+        .skip(1) // Skip the bottom border and inspect the message itself.
         .take_while(|line| line.trim().is_empty())
         .count();
-    assert_eq!(trailing_blank_count, 1);
+    assert_eq!(trailing_blank_count, 0);
+    assert_eq!(rendered.first(), rendered.last());
     assert!(rendered.iter().any(|line| line.contains("line one")));
 }
 
@@ -2508,9 +2510,11 @@ fn user_history_cell_trims_trailing_blank_message_lines_with_text_elements() {
     let trailing_blank_count = rendered
         .iter()
         .rev()
+        .skip(1) // Skip the bottom border and inspect the message itself.
         .take_while(|line| line.trim().is_empty())
         .count();
-    assert_eq!(trailing_blank_count, 1);
+    assert_eq!(trailing_blank_count, 0);
+    assert_eq!(rendered.first(), rendered.last());
     assert!(rendered.iter().any(|line| line.contains("tokenized")));
 }
 

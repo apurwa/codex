@@ -480,7 +480,7 @@ async fn stopping_voice_preserves_the_live_transcript_once() {
             ───────────────────────────────────────────────────────────────────────────────
             YOU
             │ Earlier question
-
+            ───────────────────────────────────────────────────────────────────────────────
             • Earlier answer
             • Answer in progress
             ");
@@ -865,6 +865,7 @@ async fn completed_user_caption_stays_visible_until_history_commit() {
     ───────────────────────────────────────────────────────────────────────────────
     YOU
     │ Keep these words visible.
+    ───────────────────────────────────────────────────────────────────────────────
     ");
     assert!(chat.active_cell_render_key().is_some());
     let viewport = render_bottom_popup(&chat, /*width*/ 80);
@@ -938,14 +939,14 @@ async fn animated_interleaved_captions_keep_settled_words_visible() {
     ───────────────────────────────────────────────────────────────────────────────
     YOU
     │ Keep these words visible please
-
+    ───────────────────────────────────────────────────────────────────────────────
 
     • Other speaker.
     assistant first:
     ───────────────────────────────────────────────────────────────────────────────
     YOU
     │ Other speaker.
-
+    ───────────────────────────────────────────────────────────────────────────────
 
     • Keep these words visible please
     ");
@@ -974,7 +975,7 @@ async fn empty_interleaved_caption_completion_invalidates_overlay() {
                 "─".repeat(79),
                 "YOU".into(),
                 "│ Keep this caption".into(),
-                "".into()
+                "─".repeat(79)
             ]
         );
     }
