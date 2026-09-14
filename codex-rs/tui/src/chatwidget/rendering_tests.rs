@@ -75,6 +75,46 @@ fn contains_text(buffer: &Buffer, text: &str) -> bool {
         })
 }
 
+fn render_bottom_pane(widget: &ChatWidget, width: u16) -> String {
+    let renderable = widget.bottom_pane_renderable();
+    let height = renderable.desired_height(width);
+    let area = Rect::new(/*x*/ 0, /*y*/ 0, width, height);
+    let mut buffer = Buffer::empty(area);
+    renderable.render(area, &mut buffer);
+    buffer
+        .content
+        .chunks(usize::from(width))
+        .map(|row| {
+            row.iter()
+                .map(ratatui::buffer::Cell::symbol)
+                .collect::<String>()
+                .trim_end()
+                .to_string()
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+#[tokio::test]
+async fn composer_shows_right_aligned_truncated_session_title() {
+    let (mut widget, _sender, _events, _operations) = make_chatwidget_manual_with_sender().await;
+    let thread_id = ThreadId::new();
+    widget.thread_id = Some(thread_id);
+    widget.on_thread_name_updated(thread_id, Some("Roadmap cleanup".to_string()));
+    let wide = render_bottom_pane(&widget, /*width*/ 36);
+
+    widget.on_thread_name_updated(
+        thread_id,
+        Some("Investigate pinned composer session title".to_string()),
+    );
+    let narrow = render_bottom_pane(&widget, /*width*/ 24);
+
+    insta::assert_snapshot!(
+        "composer_session_title",
+        format!("wide:\n{wide}\n\nnarrow:\n{narrow}")
+    );
+}
+
 #[tokio::test]
 async fn external_writer_view_shows_notice_instead_of_composer() {
     let (mut widget, _sender, _events, _operations) = make_chatwidget_manual_with_sender().await;

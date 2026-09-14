@@ -32,6 +32,7 @@ use crate::key_hint::KeyBindingListExt;
 use crate::keymap::KeymapContext;
 use crate::keymap::KeymapContextSet;
 use crate::keymap::RuntimeKeymap;
+use crate::line_truncation::truncate_line_with_ellipsis_if_overflow;
 use crate::render::renderable::FlexRenderable;
 use crate::render::renderable::Renderable;
 use crate::render::renderable::RenderableItem;
@@ -248,6 +249,8 @@ pub(crate) struct BottomPane {
     /// Composer is retained even when a BottomPaneView is displayed so the
     /// input state is retained when the view is closed.
     composer: ChatComposer,
+    /// Current conversation name rendered above the draft, aligned to the right.
+    composer_session_title: Option<String>,
 
     /// Stack of views displayed instead of the composer (e.g. popups/modals).
     view_stack: Vec<Box<dyn BottomPaneView>>,
@@ -332,6 +335,7 @@ impl BottomPane {
         composer.set_skill_mentions(skills);
         Self {
             composer,
+            composer_session_title: None,
             view_stack: Vec::new(),
             questions: None,
             delayed_approval_requests: VecDeque::new(),
@@ -361,6 +365,17 @@ impl BottomPane {
     pub fn set_skills(&mut self, skills: Option<Vec<SkillMetadata>>) {
         self.composer.set_skill_mentions(skills);
         self.request_redraw();
+    }
+
+    pub(crate) fn set_composer_session_title(&mut self, title: Option<String>) {
+        let title = title.and_then(|title| {
+            let title = title.trim();
+            (!title.is_empty()).then(|| title.to_string())
+        });
+        if self.composer_session_title != title {
+            self.composer_session_title = title;
+            self.request_redraw();
+        }
     }
 
     /// Update image-paste behavior for the active composer and repaint immediately.
@@ -2087,12 +2102,13 @@ impl BottomPane {
             flex2.push(/*flex*/ 1, RenderableItem::Owned(flex.into()));
             let composer: RenderableItem<'_> = if let Some(questions) = question_editor {
                 RenderableItem::Borrowed(questions.as_ref())
-            } else if composer_right_reserve == 0 {
+            } else if composer_right_reserve == 0 && self.composer_session_title.is_none() {
                 RenderableItem::Borrowed(&self.composer)
             } else {
-                RenderableItem::Owned(Box::new(ChatComposerRightReserveRenderable {
+                RenderableItem::Owned(Box::new(ChatComposerDecoratedRenderable {
                     composer: &self.composer,
                     right_reserve: composer_right_reserve,
+                    session_title: self.composer_session_title.as_deref(),
                 }))
             };
             flex2.push(/*flex*/ 0, composer);
@@ -2141,18 +2157,37 @@ impl BottomPane {
     }
 }
 
-struct ChatComposerRightReserveRenderable<'a> {
+struct ChatComposerDecoratedRenderable<'a> {
     composer: &'a chat_composer::ChatComposer,
     right_reserve: u16,
+    session_title: Option<&'a str>,
 }
 
-impl Renderable for ChatComposerRightReserveRenderable<'_> {
+impl Renderable for ChatComposerDecoratedRenderable<'_> {
     fn render(&self, area: Rect, buf: &mut Buffer) {
         self.composer.render_with_mask_and_textarea_right_reserve(
             area,
             buf,
             /*mask_char*/ None,
             self.right_reserve,
+        );
+        let Some(session_title) = self.session_title else {
+            return;
+        };
+        let title_area = area.inner(ratatui::layout::Margin::new(
+            /*horizontal*/ 2, /*vertical*/ 0,
+        ));
+        if title_area.width == 0 || title_area.height == 0 {
+            return;
+        }
+        truncate_line_with_ellipsis_if_overflow(
+            Line::from(session_title.to_string()).dim(),
+            usize::from(title_area.width),
+        )
+        .right_aligned()
+        .render(
+            Rect::new(title_area.x, title_area.y, title_area.width, 1),
+            buf,
         );
     }
 

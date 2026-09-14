@@ -40,7 +40,7 @@ impl ChatWidget {
         }
         self.turn_lifecycle.reset_thread();
         self.clear_safety_buffering();
-        self.thread_name = session.thread_name.clone();
+        self.set_current_thread_name(session.thread_name.clone());
         self.current_goal_status_indicator = None;
         self.current_goal_status = None;
         self.update_collaboration_mode_indicator();
@@ -273,7 +273,7 @@ impl ChatWidget {
     /// Update status surfaces before a confirmed manual rename's server notification arrives.
     pub(crate) fn expect_manual_thread_name(&mut self, thread_id: ThreadId, name: String) {
         if self.thread_id == Some(thread_id) {
-            self.thread_name = Some(name);
+            self.set_current_thread_name(Some(name));
             self.refresh_status_surfaces();
             self.request_redraw();
         }
@@ -286,11 +286,17 @@ impl ChatWidget {
         thread_name: Option<String>,
     ) {
         if self.thread_id == Some(thread_id) {
-            self.thread_name = thread_name;
+            self.set_current_thread_name(thread_name);
             self.refresh_status_surfaces();
             self.request_redraw();
             self.maybe_send_next_queued_input();
         }
+    }
+
+    fn set_current_thread_name(&mut self, thread_name: Option<String>) {
+        self.bottom_pane
+            .set_composer_session_title(thread_name.clone());
+        self.thread_name = thread_name;
     }
 
     pub(super) fn set_skills(&mut self, skills: Option<Vec<SkillMetadata>>) {

@@ -1,0 +1,17 @@
+---
+source: tui/src/chatwidget/rendering_tests.rs
+expression: "format!(\"wide:\\n{wide}\\n\\nnarrow:\\n{narrow}\")"
+---
+wide:
+
+                   Roadmap cleanup
+› Ask Codex to do anything
+
+  gpt-5.6-sol default · /tmp/projec…
+
+narrow:
+
+  Investigate pinned …
+› Ask Codex to do anyth
+
+  gpt-5.6-sol default ·…
