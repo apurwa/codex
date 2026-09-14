@@ -594,6 +594,25 @@ pub enum TuiEvent {
     FocusLost,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum MouseScrollDirection {
+    Up,
+    Down,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct MouseScrollEvent {
+    pub direction: MouseScrollDirection,
+    pub column: u16,
+    pub row: u16,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct MouseClickEvent {
+    pub column: u16,
+    pub row: u16,
+}
+
 pub struct Tui {
     frame_requester: FrameRequester,
     draw_tx: broadcast::Sender<()>,
@@ -704,6 +723,11 @@ impl Tui {
 
     pub fn frame_requester(&self) -> FrameRequester {
         self.frame_requester.clone()
+    }
+
+    #[cfg(test)]
+    pub(crate) fn subscribe_draws_for_test(&self) -> broadcast::Receiver<()> {
+        self.draw_tx.subscribe()
     }
 
     pub fn enhanced_keys_supported(&self) -> bool {
@@ -951,6 +975,11 @@ impl Tui {
 
     pub fn clear_pending_history_lines(&mut self) {
         self.pending_history_lines.clear();
+    }
+
+    #[cfg(test)]
+    pub(crate) fn has_pending_history_lines(&self) -> bool {
+        !self.pending_history_lines.is_empty()
     }
 
     /// Resize the inline viewport for the resize-reflow path.

@@ -10,7 +10,7 @@
 //! stream-continuation flag (spacing), and an animation tick (time-based spinner/shimmer output).
 //!
 //! The transcript overlay live tail is kept in sync by `App` during draws: `App` supplies an
-//! `ActiveCellTranscriptKey` and a function to compute the active cell transcript lines, and
+//! `ActiveCellRenderKey` and a function to compute the active cell transcript lines, and
 //! `TranscriptOverlay::sync_live_tail` uses the key to decide when the cached tail must be
 //! recomputed. `ChatWidget` is responsible for producing a key that changes when the active cell
 //! mutates in place or when its transcript output is time-dependent.
@@ -24,7 +24,7 @@ mod highlight_tests;
 use std::io::Result;
 use std::sync::Arc;
 
-use crate::chatwidget::ActiveCellTranscriptKey;
+use crate::chatwidget::ActiveCellRenderKey;
 use crate::history_cell::HistoryCell;
 use crate::history_cell::SessionInfoCell;
 use crate::key_hint;
@@ -37,6 +37,7 @@ use crate::render::renderable::InsetRenderable;
 use crate::render::renderable::Renderable;
 use crate::terminal_hyperlinks::HyperlinkLine;
 use crate::tui;
+use crate::tui::MouseScrollDirection;
 use crate::tui::TuiEvent;
 use crossterm::event::KeyCode;
 use crossterm::event::KeyEvent;
@@ -54,6 +55,8 @@ use ratatui::widgets::Wrap;
 use scrolling::CellRenderable;
 use scrolling::HyperlinkLinesRenderable;
 use scrolling::render_offset_content;
+
+const MOUSE_SCROLL_ROWS: usize = 3;
 
 pub(crate) enum Overlay {
     Transcript(TranscriptOverlay),
@@ -154,6 +157,8 @@ fn render_navigation_hints(area: Rect, buf: &mut Buffer, keymap: &PagerKeymap) {
 struct PagerView {
     renderables: Vec<Box<dyn Renderable>>,
     scroll_offset: usize,
+    /// Rows to move upward from the freshly measured bottom on the next render.
+    pending_rows_from_bottom: usize,
     title: String,
     keymap: PagerKeymap,
     last_content_height: Option<usize>,
@@ -174,6 +179,7 @@ impl PagerView {
         Self {
             renderables,
             scroll_offset,
+            pending_rows_from_bottom: 0,
             title,
             keymap,
             last_content_height: None,
@@ -202,11 +208,9 @@ impl PagerView {
         if let Some(idx) = self.pending_scroll_chunk.take() {
             self.ensure_chunk_visible(idx, content_area);
         }
-        self.scroll_offset = self
-            .scroll_offset
-            .min(content_height.saturating_sub(content_area.height as usize));
+        self.resolve_scroll_offset(content_height, content_area.height as usize);
 
-        self.render_content(content_area, buf);
+        self.render_content(content_area, buf, /*empty_row_marker*/ Some('~'));
 
         self.render_bottom_bar(area, content_area, buf, content_height);
     }
@@ -219,7 +223,7 @@ impl PagerView {
         header.dim().render(area, buf);
     }
 
-    fn render_content(&self, area: Rect, buf: &mut Buffer) {
+    fn render_content(&self, area: Rect, buf: &mut Buffer, empty_row_marker: Option<char>) {
         let mut y = -(self.scroll_offset as isize);
         let mut drawn_bottom = area.y;
         for renderable in &self.renderables {
@@ -244,11 +248,14 @@ impl PagerView {
             }
         }
 
+        let Some(empty_row_marker) = empty_row_marker else {
+            return;
+        };
         for y in drawn_bottom..area.bottom() {
             if area.width == 0 {
                 break;
             }
-            buf[(area.x, y)] = Cell::from('~');
+            buf[(area.x, y)] = Cell::from(empty_row_marker);
             for x in area.x + 1..area.right() {
                 buf[(x, y)] = Cell::from(' ');
             }
@@ -291,48 +298,87 @@ impl PagerView {
     }
 
     fn handle_key_event(&mut self, tui: &mut tui::Tui, key_event: KeyEvent) -> Result<()> {
+        if self.apply_key_event(tui.terminal.viewport_area, key_event) {
+            tui.frame_requester()
+                .schedule_frame_in(crate::tui::TARGET_FRAME_INTERVAL);
+        }
+        Ok(())
+    }
+
+    fn apply_key_event(&mut self, viewport_area: Rect, key_event: KeyEvent) -> bool {
         match key_event {
             e if self.keymap.scroll_up.is_pressed(e) => {
-                self.scroll_offset = self.scroll_offset.saturating_sub(1);
+                self.scroll_up_rows(/*rows*/ 1);
             }
             e if self.keymap.scroll_down.is_pressed(e) => {
-                self.scroll_offset = self.scroll_offset.saturating_add(1);
+                self.scroll_down_rows(/*rows*/ 1);
             }
             e if self.keymap.page_up.is_pressed(e) => {
-                let page_height = self.page_height(tui.terminal.viewport_area);
-                self.scroll_offset = self.scroll_offset.saturating_sub(page_height);
+                let page_height = self.page_height(viewport_area);
+                self.scroll_up_rows(page_height);
             }
             e if self.keymap.page_down.is_pressed(e) => {
-                let page_height = self.page_height(tui.terminal.viewport_area);
-                self.scroll_offset = self.scroll_offset.saturating_add(page_height);
+                let page_height = self.page_height(viewport_area);
+                self.scroll_down_rows(page_height);
             }
             e if self.keymap.half_page_down.is_pressed(e) => {
-                let half_page = self
-                    .page_height(tui.terminal.viewport_area)
-                    .saturating_add(1)
-                    / 2;
-                self.scroll_offset = self.scroll_offset.saturating_add(half_page);
+                let half_page = self.page_height(viewport_area).saturating_add(1) / 2;
+                self.scroll_down_rows(half_page);
             }
             e if self.keymap.half_page_up.is_pressed(e) => {
-                let half_page = self
-                    .page_height(tui.terminal.viewport_area)
-                    .saturating_add(1)
-                    / 2;
-                self.scroll_offset = self.scroll_offset.saturating_sub(half_page);
+                let half_page = self.page_height(viewport_area).saturating_add(1) / 2;
+                self.scroll_up_rows(half_page);
             }
             e if self.keymap.jump_top.is_pressed(e) => {
                 self.scroll_offset = 0;
+                self.pending_rows_from_bottom = 0;
             }
             e if self.keymap.jump_bottom.is_pressed(e) => {
-                self.scroll_offset = usize::MAX;
+                self.scroll_to_bottom();
             }
             _ => {
-                return Ok(());
+                return false;
             }
         }
-        tui.frame_requester()
-            .schedule_frame_in(crate::tui::TARGET_FRAME_INTERVAL);
-        Ok(())
+        true
+    }
+
+    fn apply_mouse_scroll(&mut self, direction: MouseScrollDirection) {
+        match direction {
+            MouseScrollDirection::Up => self.scroll_up_rows(MOUSE_SCROLL_ROWS),
+            MouseScrollDirection::Down => self.scroll_down_rows(MOUSE_SCROLL_ROWS),
+        }
+    }
+
+    fn scroll_up_rows(&mut self, rows: usize) {
+        if self.scroll_offset == usize::MAX {
+            self.pending_rows_from_bottom = self.pending_rows_from_bottom.saturating_add(rows);
+        } else {
+            self.scroll_offset = self.scroll_offset.saturating_sub(rows);
+        }
+    }
+
+    fn scroll_down_rows(&mut self, rows: usize) {
+        if self.scroll_offset == usize::MAX {
+            self.pending_rows_from_bottom = self.pending_rows_from_bottom.saturating_sub(rows);
+        } else {
+            self.scroll_offset = self.scroll_offset.saturating_add(rows);
+        }
+    }
+
+    fn scroll_to_bottom(&mut self) {
+        self.scroll_offset = usize::MAX;
+        self.pending_rows_from_bottom = 0;
+    }
+
+    fn resolve_scroll_offset(&mut self, content_height: usize, viewport_height: usize) {
+        let max_scroll = content_height.saturating_sub(viewport_height);
+        if self.scroll_offset == usize::MAX {
+            self.scroll_offset = max_scroll.saturating_sub(self.pending_rows_from_bottom);
+            self.pending_rows_from_bottom = 0;
+        } else {
+            self.scroll_offset = self.scroll_offset.min(max_scroll);
+        }
     }
 
     /// Returns the height of one page in content rows.
@@ -355,12 +401,32 @@ impl PagerView {
         area.height = area.height.saturating_sub(2);
         area
     }
+
+    /// Render only scrollable content, without pager header, footer, or empty-row markers.
+    ///
+    /// This is the shared rendering primitive for application-owned views that provide their own
+    /// chrome. A view that was following the bottom stays pinned there when wrapping or the
+    /// available height changes.
+    fn render_content_only(&mut self, area: Rect, buf: &mut Buffer) {
+        let follow_bottom = self.is_scrolled_to_bottom();
+        Clear.render(area, buf);
+        self.update_last_content_height(area.height);
+        let content_height = self.content_height(area.width);
+        self.last_rendered_height = Some(content_height);
+        if let Some(idx) = self.pending_scroll_chunk.take() {
+            self.ensure_chunk_visible(idx, area);
+        } else if follow_bottom {
+            self.scroll_to_bottom();
+        }
+        self.resolve_scroll_offset(content_height, area.height as usize);
+        self.render_content(area, buf, /*empty_row_marker*/ None);
+    }
 }
 
 impl PagerView {
     fn is_scrolled_to_bottom(&self) -> bool {
         if self.scroll_offset == usize::MAX {
-            return true;
+            return self.pending_rows_from_bottom == 0;
         }
         let Some(height) = self.last_content_height else {
             return false;
@@ -381,6 +447,7 @@ impl PagerView {
     /// Request that the given text chunk index be scrolled into view on next render.
     fn scroll_chunk_into_view(&mut self, chunk_index: usize) {
         self.pending_scroll_chunk = Some(chunk_index);
+        self.pending_rows_from_bottom = 0;
     }
 
     fn ensure_chunk_visible(&mut self, idx: usize, area: Rect) {
@@ -401,6 +468,64 @@ impl PagerView {
         } else if last > current_bottom {
             self.scroll_offset = last.saturating_sub(area.height.saturating_sub(1) as usize);
         }
+    }
+}
+
+/// Scrollable content state shared by full-frame views that provide their own chrome.
+pub(crate) struct PagerContent {
+    view: PagerView,
+}
+
+impl PagerContent {
+    pub(crate) fn new(renderables: Vec<Box<dyn Renderable>>, keymap: PagerKeymap) -> Self {
+        Self {
+            view: PagerView::new(
+                renderables,
+                /*title*/ String::new(),
+                /*scroll_offset*/ usize::MAX,
+                keymap,
+            ),
+        }
+    }
+
+    pub(crate) fn render(&mut self, area: Rect, buf: &mut Buffer) {
+        self.view.render_content_only(area, buf);
+    }
+
+    pub(crate) fn replace(&mut self, renderables: Vec<Box<dyn Renderable>>) {
+        self.view.renderables = renderables;
+    }
+
+    pub(crate) fn push(&mut self, renderable: Box<dyn Renderable>) {
+        self.view.renderables.push(renderable);
+    }
+
+    pub(crate) fn pop(&mut self) -> Option<Box<dyn Renderable>> {
+        self.view.renderables.pop()
+    }
+
+    pub(crate) fn len(&self) -> usize {
+        self.view.renderables.len()
+    }
+
+    pub(crate) fn is_following_bottom(&self) -> bool {
+        self.view.is_scrolled_to_bottom()
+    }
+
+    pub(crate) fn scroll_to_bottom(&mut self) {
+        self.view.scroll_to_bottom();
+    }
+
+    pub(crate) fn handle_navigation_key(
+        &mut self,
+        viewport_area: Rect,
+        key_event: KeyEvent,
+    ) -> bool {
+        self.view.apply_key_event(viewport_area, key_event)
+    }
+
+    pub(crate) fn handle_mouse_scroll(&mut self, direction: MouseScrollDirection) {
+        self.view.apply_mouse_scroll(direction);
     }
 }
 
@@ -636,7 +761,7 @@ impl TranscriptOverlay {
             self.view.renderables.push(tail);
         }
         if follow_bottom {
-            self.view.scroll_offset = usize::MAX;
+            self.view.scroll_to_bottom();
         }
     }
 
@@ -682,6 +807,7 @@ impl TranscriptOverlay {
         self.rebuild_renderables(live_tail);
         let content_height = self.view.content_height(width);
         self.view.scroll_offset = if follow_bottom {
+            self.view.pending_rows_from_bottom = 0;
             usize::MAX
         } else {
             self.view
@@ -709,7 +835,7 @@ impl TranscriptOverlay {
         }
         self.rebuild_renderables(live_tail);
         if follow_bottom {
-            self.view.scroll_offset = usize::MAX;
+            self.view.scroll_to_bottom();
         }
     }
 
@@ -753,7 +879,7 @@ impl TranscriptOverlay {
             self.rebuild_renderables(live_tail);
         }
         if follow_bottom {
-            self.view.scroll_offset = usize::MAX;
+            self.view.scroll_to_bottom();
         }
     }
 
@@ -772,7 +898,7 @@ impl TranscriptOverlay {
     pub(crate) fn sync_live_tail(
         &mut self,
         width: u16,
-        active_key: Option<ActiveCellTranscriptKey>,
+        active_key: Option<ActiveCellRenderKey>,
         compute_lines: impl FnOnce(u16) -> Option<Vec<HyperlinkLine>>,
     ) {
         let next_key = active_key.map(|key| LiveTailKey {
@@ -801,7 +927,7 @@ impl TranscriptOverlay {
             }
         }
         if follow_bottom {
-            self.view.scroll_offset = usize::MAX;
+            self.view.scroll_to_bottom();
         }
     }
 
@@ -902,7 +1028,7 @@ impl TranscriptOverlay {
     pub(crate) fn render(&mut self, area: Rect, buf: &mut Buffer) {
         // Preserve following the tail before the composer changes the available height.
         if self.view.is_scrolled_to_bottom() {
-            self.view.scroll_offset = usize::MAX;
+            self.view.scroll_to_bottom();
         }
         let top_h = area.height.saturating_sub(3);
         let top = Rect::new(area.x, area.y, area.width, top_h);
@@ -1281,7 +1407,7 @@ mod tests {
         })]);
         overlay.sync_live_tail(
             /*width*/ 40,
-            Some(ActiveCellTranscriptKey {
+            Some(ActiveCellRenderKey {
                 revision: 1,
                 is_stream_continuation: false,
                 animation_tick: None,
@@ -1302,7 +1428,7 @@ mod tests {
         })]);
         overlay.sync_live_tail(
             /*width*/ 40,
-            Some(ActiveCellTranscriptKey {
+            Some(ActiveCellRenderKey {
                 revision: 1,
                 is_stream_continuation: false,
                 animation_tick: None,
@@ -1342,7 +1468,7 @@ mod tests {
 
         overlay.sync_live_tail(
             area.width,
-            Some(ActiveCellTranscriptKey {
+            Some(ActiveCellRenderKey {
                 revision: 1,
                 is_stream_continuation: false,
                 animation_tick: None,
@@ -1365,7 +1491,7 @@ mod tests {
         })]);
 
         let calls = std::cell::Cell::new(0usize);
-        let key = ActiveCellTranscriptKey {
+        let key = ActiveCellRenderKey {
             revision: 1,
             is_stream_continuation: false,
             animation_tick: None,
@@ -1585,7 +1711,7 @@ mod tests {
                         })
                         .to_vec(),
                 );
-                let key = tail.as_ref().map(|_| ActiveCellTranscriptKey {
+                let key = tail.as_ref().map(|_| ActiveCellRenderKey {
                     revision: 1,
                     is_stream_continuation: false,
                     animation_tick: None,

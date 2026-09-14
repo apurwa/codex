@@ -301,7 +301,12 @@ impl<S: EventSource + Default + Unpin> TuiEventStream<S> {
             }
             Event::Paste(pasted) => Some(TuiEvent::Paste(pasted)),
             Event::Mouse(mouse_event)
-                if matches!(mouse_event.kind, MouseEventKind::Down(MouseButton::Left)) =>
+                if matches!(
+                    mouse_event.kind,
+                    MouseEventKind::Down(MouseButton::Left)
+                        | MouseEventKind::ScrollUp
+                        | MouseEventKind::ScrollDown
+                ) =>
             {
                 Some(TuiEvent::Mouse(mouse_event))
             }
@@ -486,6 +491,24 @@ mod tests {
             kind: MouseEventKind::Down(MouseButton::Left),
             column: 7,
             row: 9,
+            modifiers: KeyModifiers::NONE,
+        };
+
+        handle.send(Ok(Event::Mouse(mouse_event)));
+
+        assert!(
+            matches!(stream.next().await, Some(TuiEvent::Mouse(event)) if event == mouse_event)
+        );
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn vertical_mouse_wheel_is_forwarded() {
+        let (broker, handle, _draw_tx, draw_rx, terminal_focused) = setup();
+        let mut stream = make_stream(broker, draw_rx, terminal_focused);
+        let mouse_event = MouseEvent {
+            kind: MouseEventKind::ScrollUp,
+            column: 5,
+            row: 6,
             modifiers: KeyModifiers::NONE,
         };
 

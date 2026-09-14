@@ -3,6 +3,7 @@
 //! This module owns the `App` struct, shared imports, and the high-level run loop that coordinates
 //! the focused app submodules.
 
+use self::owned_screen::OwnedScreen;
 use crate::AppServerTarget;
 use crate::app_backtrack::BacktrackState;
 use crate::app_command::AppCommand;
@@ -39,6 +40,7 @@ use crate::chatwidget::ChatWidget;
 use crate::chatwidget::ExternalEditorState;
 use crate::chatwidget::ReplayKind;
 use crate::chatwidget::ThreadInputState;
+use crate::conversation_viewport::ConversationViewport;
 use crate::cwd_prompt::CwdPromptAction;
 use crate::diff_render::DiffSummary;
 use crate::exec_command::split_command_string;
@@ -228,6 +230,7 @@ mod managed_worktree_creation;
 mod misalignment_policy;
 mod model_defaults;
 mod new_session;
+mod owned_screen;
 pub(crate) use new_session::has_launch_setting;
 mod pending_interactive_replay;
 mod permission_shortcuts;
@@ -568,6 +571,7 @@ pub(crate) struct App {
     pub(crate) file_search: FileSearchManager,
 
     pub(crate) transcript_cells: Vec<Arc<dyn HistoryCell>>,
+    owned_screen: Option<OwnedScreen>,
     last_rendered_history_tail: Option<history_ui::RenderedHistoryTail>,
     last_thread_usage_status_cell: Option<history_ui::ThreadUsageStatusHistory>,
     pub(crate) pending_thread_usage_history_refresh: bool,
@@ -921,7 +925,9 @@ impl App {
                     self.handle_key_event(tui, app_server, key_event).await;
                 }
                 TuiEvent::Mouse(mouse_event) => {
-                    self.chat_widget.handle_mouse_event(mouse_event);
+                    if !self.handle_owned_screen_mouse_event(tui, mouse_event) {
+                        self.chat_widget.handle_mouse_event(mouse_event);
+                    }
                 }
                 TuiEvent::Paste(pasted) => {
                     // Pasted text may contain CRLF pairs or bare CRs (e.g., from iTerm2),
@@ -1017,7 +1023,7 @@ impl App {
             .chat_widget
             .selected_index_for_active_view(AGENTS_OVERVIEW_VIEW_ID)
             .is_some();
-        tui.set_mouse_capture_enabled(dashboard_active)?;
+        tui.set_mouse_capture_enabled(dashboard_active || self.has_owned_screen())?;
         let dashboard_visible = self
             .chat_widget
             .selected_index_for_present_view(AGENTS_OVERVIEW_VIEW_ID)
@@ -1035,6 +1041,11 @@ impl App {
         if !dashboard_visible && (dashboard_was_visible || restoring_inline_viewport) {
             self.schedule_immediate_resize_reflow(tui);
             self.maybe_run_resize_reflow(tui, screen_size)?;
+        }
+        if !dashboard_visible
+            && let Some(rendered_area) = self.render_owned_screen_frame(tui, screen_size)?
+        {
+            return Ok(rendered_area);
         }
         self.with_chat_widget_frame(screen_size.width, |desired_height, chat_widget| {
             let desired_height = if dashboard_visible {

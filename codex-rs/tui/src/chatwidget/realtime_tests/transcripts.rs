@@ -462,7 +462,7 @@ async fn stopping_voice_preserves_the_live_transcript_once() {
             RealtimeConversationPhase::Inactive
         );
         commit_realtime_history_events(&mut chat, &mut events);
-        assert!(chat.active_cell_transcript_key().is_none());
+        assert!(chat.active_cell_render_key().is_none());
         let mut rendered = Vec::new();
         commit_realtime_history_events(&mut chat, &mut events);
         while let Ok(event) = events.try_recv() {
@@ -726,14 +726,14 @@ async fn live_voice_split_flap_animates_without_changing_final_history() {
     };
     assert_eq!(cell.raw_lines()[0].to_string(), "gate 73");
     assert!(
-        chat.active_cell_transcript_key()
+        chat.active_cell_render_key()
             .is_some_and(|key| { key.animation_tick.is_some() })
     );
 
     chat.on_realtime_transcript_done("assistant".to_string(), "gate 73".to_string());
 
     commit_realtime_history_events(&mut chat, &mut events);
-    assert!(chat.active_cell_transcript_key().is_none());
+    assert!(chat.active_cell_render_key().is_none());
     commit_realtime_history_events(&mut chat, &mut events);
     let Ok(AppEvent::InsertHistoryCell(cell)) = events.try_recv() else {
         panic!("a completed voice transcript should commit ordinary history");
@@ -862,7 +862,7 @@ async fn completed_user_caption_stays_visible_until_history_commit() {
 
     › Keep these words visible.
     ");
-    assert!(chat.active_cell_transcript_key().is_some());
+    assert!(chat.active_cell_render_key().is_some());
     let viewport = render_bottom_popup(&chat, /*width*/ 80);
     assert!(viewport.contains("Keep these words visible."));
 
@@ -905,7 +905,7 @@ async fn animated_interleaved_captions_keep_settled_words_visible() {
             assert!(render_bottom_popup(&chat, /*width*/ 80).contains(words));
             let overlay = chat.active_cell_transcript_lines(/*width*/ 80).unwrap();
             assert!(overlay.iter().any(|line| line.to_string().contains(words)));
-            let key = chat.active_cell_transcript_key().unwrap();
+            let key = chat.active_cell_render_key().unwrap();
             assert!(key.animation_tick.is_some());
         }
         tokio::time::sleep(std::time::Duration::from_millis(/*millis*/ 750)).await;
@@ -927,7 +927,7 @@ async fn animated_interleaved_captions_keep_settled_words_visible() {
         assert_eq!(live_count, 0);
         let history = chat.take_realtime_transcript_history();
         assert_eq!(history.len(), 2);
-        assert!(chat.active_cell_transcript_key().is_none());
+        assert!(chat.active_cell_render_key().is_none());
     }
     insta::assert_snapshot!(settled.join("\n"), @"
     user first:
@@ -957,9 +957,9 @@ async fn empty_interleaved_caption_completion_invalidates_overlay() {
         chat.on_realtime_transcript_delta("assistant".into(), "Discard this caption".into());
         chat.on_realtime_transcript_delta("user".into(), "Keep this caption".into());
         chat.realtime_conversation.phase = phase;
-        let previous_key = chat.active_cell_transcript_key().unwrap();
+        let previous_key = chat.active_cell_render_key().unwrap();
         chat.on_realtime_transcript_done("assistant".into(), String::new());
-        let current_key = chat.active_cell_transcript_key().unwrap();
+        let current_key = chat.active_cell_render_key().unwrap();
         assert_ne!(previous_key, current_key);
         let visible = chat.active_cell_transcript_lines(/*width*/ 80).unwrap();
         assert_eq!(

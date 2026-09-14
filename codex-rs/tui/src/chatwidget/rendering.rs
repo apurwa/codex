@@ -119,6 +119,22 @@ impl ExternalWriterNotice {
 }
 
 impl ChatWidget {
+    pub(crate) fn bottom_pane_renderable(&self) -> RenderableItem<'_> {
+        let active_cell_right_reserve = self.ambient_pet_wrap_reserved_cols();
+        let bottom = if self.external_writer_view && !self.bottom_pane.has_active_view() {
+            RenderableItem::Owned(Box::new(ExternalWriterNotice {
+                command_center_available: self.remote_connection.is_some(),
+                transcript_hint: self.bottom_pane.transcript_shortcut_hint(),
+            }))
+        } else {
+            self.bottom_pane
+                .as_renderable_with_composer_right_reserve(active_cell_right_reserve)
+        };
+        bottom.inset(Insets::tlbr(
+            /*top*/ 1, /*left*/ 0, /*bottom*/ 0, /*right*/ 0,
+        ))
+    }
+
     pub(crate) fn as_renderable(&self) -> RenderableItem<'_> {
         if self
             .bottom_pane
@@ -196,21 +212,7 @@ impl ChatWidget {
                 })),
             );
         }
-        let bottom = if self.external_writer_view && !self.bottom_pane.has_active_view() {
-            RenderableItem::Owned(Box::new(ExternalWriterNotice {
-                command_center_available: self.remote_connection.is_some(),
-                transcript_hint: self.bottom_pane.transcript_shortcut_hint(),
-            }))
-        } else {
-            self.bottom_pane
-                .as_renderable_with_composer_right_reserve(active_cell_right_reserve)
-        };
-        flex.push(
-            /*flex*/ 0,
-            bottom.inset(Insets::tlbr(
-                /*top*/ 1, /*left*/ 0, /*bottom*/ 0, /*right*/ 0,
-            )),
-        );
+        flex.push(/*flex*/ 0, self.bottom_pane_renderable());
         RenderableItem::Owned(Box::new(flex))
     }
 

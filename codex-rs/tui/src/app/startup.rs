@@ -135,6 +135,7 @@ impl App {
     #[allow(clippy::too_many_arguments)]
     pub async fn run(
         tui: &mut tui::Tui,
+        alt_screen_behavior: crate::AltScreenBehavior,
         mut app_server: AppServerSession,
         mut config: Config,
         launch_cwd: PathBuf,
@@ -726,6 +727,12 @@ See the Codex keymap documentation for supported actions and examples."
         #[cfg(not(debug_assertions))]
         let upgrade_version = crate::updates::get_upgrade_version(&config);
 
+        let owned_screen = Self::owned_screen_for_behavior(
+            alt_screen_behavior,
+            &chat_widget,
+            runtime_keymap.pager.clone(),
+        );
+
         let mut app = Self {
             feature_write_lock: Arc::default(),
             model_catalog,
@@ -750,6 +757,7 @@ See the Codex keymap documentation for supported actions and examples."
             keymap: runtime_keymap,
             key_chord_matcher: KeyChordMatcher::default(),
             transcript_cells: Vec::new(),
+            owned_screen,
             last_rendered_history_tail: None,
             last_thread_usage_status_cell: None,
             pending_thread_usage_history_refresh: false,
