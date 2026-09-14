@@ -19,6 +19,8 @@ use crate::app_event_sender::AppEventSender;
 use crate::bottom_pane::BottomPaneView;
 use crate::bottom_pane::CancellationEvent;
 use crate::bottom_pane::ViewCompletion;
+use crate::color::blend;
+use crate::color::is_light;
 use crate::key_hint::KeyBindingListExt;
 use crate::key_hint::ShortcutHint;
 use crate::key_hint::is_plain_text_key_event;
@@ -29,6 +31,8 @@ use crate::keymap::ListAction;
 use crate::keymap::ListKeymap;
 use crate::keymap::RuntimeKeymap;
 use crate::render::renderable::Renderable;
+use crate::terminal_palette::best_color;
+use crate::terminal_palette::default_bg;
 use codex_app_server_protocol::Thread;
 use codex_app_server_protocol::ThreadActiveFlag;
 use codex_app_server_protocol::ThreadStatus;
@@ -43,6 +47,7 @@ use ratatui::layout::Constraint;
 use ratatui::layout::Layout;
 use ratatui::layout::Margin;
 use ratatui::layout::Rect;
+use ratatui::style::Color;
 use ratatui::style::Style;
 use ratatui::style::Stylize;
 use ratatui::text::Line;
@@ -408,6 +413,17 @@ impl AgentsOverviewView {
                 spans.extend(["  ".into(), status.dim()]);
             }
             let row_area = Rect::new(area.x, area.y + offset, area.width, 1);
+            if self.selected == index {
+                let background = default_bg().map_or(Color::DarkGray, |background| {
+                    let overlay = if is_light(background) {
+                        (0, 0, 0)
+                    } else {
+                        (255, 255, 255)
+                    };
+                    best_color(blend(overlay, background, 0.2))
+                });
+                buf.set_style(row_area, Style::default().bg(background));
+            }
             Line::from(spans).render(row_area, buf);
             row_hitboxes.push((row_area, index));
             offset += 1;
