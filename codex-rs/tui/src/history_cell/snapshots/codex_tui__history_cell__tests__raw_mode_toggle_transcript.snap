@@ -10,6 +10,7 @@ YOU
 ───────────────────────────────────────
 
 CODEX
+
   - first item
   - second item
 
@@ -19,11 +20,7 @@ CODEX
 
   copy me
 
-• Called
-  └ workspace.inspect({"path":"README.md
-        "})
-    structured output
-    second line
+✓ workspace.insp… · 5ms · Ctrl+T details
 
 raw on:
 Please format this
@@ -50,6 +47,7 @@ YOU
 ───────────────────────────────────────
 
 CODEX
+
   - first item
   - second item
 
@@ -59,8 +57,4 @@ CODEX
 
   copy me
 
-• Called
-  └ workspace.inspect({"path":"README.md
-        "})
-    structured output
-    second line
+✓ workspace.insp… · 5ms · Ctrl+T details

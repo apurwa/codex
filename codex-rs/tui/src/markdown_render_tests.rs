@@ -153,11 +153,11 @@ fn headings() {
         Line::default(),
         Line::from_iter(["### ".bold().italic(), "Heading 3".bold().italic()]),
         Line::default(),
-        Line::from_iter(["#### ".italic(), "Heading 4".italic()]),
+        Line::from_iter(["#### ".bold().italic(), "Heading 4".bold().italic()]),
         Line::default(),
-        Line::from_iter(["##### ".italic(), "Heading 5".italic()]),
+        Line::from_iter(["##### ".bold().italic(), "Heading 5".bold().italic()]),
         Line::default(),
-        Line::from_iter(["###### ".italic(), "Heading 6".italic()]),
+        Line::from_iter(["###### ".bold().italic(), "Heading 6".bold().italic()]),
     ]);
     assert_eq!(text, expected);
 }

@@ -2,6 +2,4 @@
 source: tui/src/history_cell/tests.rs
 expression: rendered
 ---
-┊ • Ran echo one
-┊   │ echo two
-┊   └ (no output)
+┊ ✓ echo one · 1ms · 0 lines · Ctrl+T details

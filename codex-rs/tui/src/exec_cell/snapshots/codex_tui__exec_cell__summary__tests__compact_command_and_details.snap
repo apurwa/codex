@@ -1,0 +1,10 @@
+---
+source: tui/src/exec_cell/summary_tests.rs
+expression: "format!(\"{}\\n\\n{full}\", summary[0])"
+---
+┊ ✓ printf 'first\nsecond' · 2.00s · 2 lines · Ctrl+T details
+
+$ printf 'first\nsecond'
+first
+second
+✓ • 2.00s

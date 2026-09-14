@@ -1440,13 +1440,7 @@ fn code_mode_tool_call_uses_title_and_preserves_full_transcript() {
     let transcript = render_lines(&cell.transcript_lines(/*width*/ 180)).join("\n");
     insta::assert_snapshot!(format!("history:\n{history}\n\ntranscript:\n{transcript}"), @r#"
     history:
-    • Called Inspect Spotify workspace
-      └ 012345678901234567890123456789012345
-            67890123456789012345678901234567
-            89012345678901234567890123456789
-            01234567890123456789012345678901
-            23456789012345678901234567890123
-            45678901...
+    ✓ node_repl.js · 0ms · Ctrl+T details
 
     transcript:
     • Called node_repl.js({"title":"Inspect Spotify workspace","code":"await tools.exec_command({ cmd: 'git status' })"})
@@ -2941,11 +2935,11 @@ fn agent_markdown_cell_does_not_split_words_after_inline_markdown() {
 
     let lines = render_lines(&cell.display_lines(/*width*/ 190));
     assert!(
-        lines[2].ends_with("inline code,"),
+        lines[3].ends_with("inline code,"),
         "expected wrapping to stop before 'strikethrough': {lines:?}",
     );
     assert!(
-        lines[3].starts_with("  strikethrough,"),
+        lines[4].starts_with("  strikethrough,"),
         "expected the next line to resume with the full word: {lines:?}",
     );
 }

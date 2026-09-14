@@ -156,7 +156,7 @@ impl McpToolCallCell {
                 " · {} · Ctrl+T details",
                 codex_utils_elapsed::format_duration(duration)
             );
-            let title_width = usize::from(width).saturating_sub(2 + hint.width());
+            let title_width = usize::from(width).saturating_sub(2 + hint.chars().count());
             let mut line = Line::from("✓ ".green().bold());
             line.extend(
                 crate::line_truncation::truncate_line_with_ellipsis_if_overflow(

@@ -74,7 +74,7 @@ async fn replayed_command_completion_preserves_tracking_without_duplicate_starts
         .collect::<Vec<_>>();
     assert_eq!(
         history,
-        vec!["┊ • Ran cat replay\n┊   └ (no output)\n".to_string()]
+        vec!["┊ ✓ cat replay · 0ms · 0 lines · Ctrl+T details\n".to_string()]
     );
 }
 
@@ -152,10 +152,7 @@ async fn failed_exploration_keeps_overlapping_commands_active_until_all_finish()
 
     let later = begin_exec(&mut chat, "call-after-failure", "cat later.txt");
     end_exec(&mut chat, later, "later\n", "", /*exit_code*/ 0);
-    insta::assert_snapshot!(active_blob(&chat), @"
-    ┊ • Explored
-    ┊   └ Read later.txt
-    ");
+    insta::assert_snapshot!(active_blob(&chat), @"┊ ✓ Explored · 5ms · 1 lines · Ctrl+T details");
 }
 
 #[tokio::test]
@@ -561,9 +558,9 @@ async fn exec_history_cell_shows_working_then_completed() {
     // Inspect the flushed exec cell rendering.
     let lines = &cells[0];
     let blob = lines_to_single_string(lines);
-    // New behavior: no glyph markers; ensure command is shown and no panic.
+    // Successful commands collapse to one line while retaining the command title.
     assert!(
-        blob.contains("• Ran"),
+        blob.contains("✓ echo done"),
         "expected summary header present: {blob:?}"
     );
     assert!(
@@ -631,7 +628,7 @@ async fn exec_end_without_begin_uses_event_command() {
     assert_eq!(cells.len(), 1, "expected finalized exec cell to flush");
     let blob = lines_to_single_string(&cells[0]);
     assert!(
-        blob.contains("• Ran echo orphaned"),
+        blob.contains("✓ echo orphaned"),
         "expected command text to come from event: {blob:?}"
     );
     assert!(
@@ -665,7 +662,7 @@ async fn exec_end_without_begin_does_not_flush_unrelated_running_exploring_cell(
     assert_eq!(cells.len(), 1, "only the orphan end should be inserted");
     let orphan_blob = lines_to_single_string(&cells[0]);
     assert!(
-        orphan_blob.contains("• Ran echo repro-marker"),
+        orphan_blob.contains("✓ echo repro-marker"),
         "expected orphan end to render a standalone entry: {orphan_blob:?}"
     );
     let active = active_blob(&chat);
@@ -691,7 +688,7 @@ async fn exec_end_without_begin_flushes_completed_unrelated_exploring_cell() {
     let begin_ls = begin_exec(&mut chat, "call-ls", "ls -la");
     end_exec(&mut chat, begin_ls, "", "", /*exit_code*/ 0);
     assert!(drain_insert_history(&mut rx).is_empty());
-    assert!(active_blob(&chat).contains("ls -la"));
+    assert!(active_blob(&chat).contains("✓ Explored"));
 
     let orphan = begin_unified_exec_startup(&mut chat, "call-after", "proc-1", "echo after");
     end_exec(&mut chat, orphan, "after\n", "", /*exit_code*/ 0);
@@ -705,15 +702,15 @@ async fn exec_end_without_begin_flushes_completed_unrelated_exploring_cell() {
     let first = lines_to_single_string(&cells[0]);
     let second = lines_to_single_string(&cells[1]);
     assert!(
-        first.contains("• Explored"),
+        first.contains("✓ Explored"),
         "expected flushed exploring cell: {first:?}"
     );
     assert!(
-        first.contains("List ls -la"),
-        "expected flushed exploring cell: {first:?}"
+        first.contains("Ctrl+T details"),
+        "expected compact details affordance: {first:?}"
     );
     assert!(
-        second.contains("• Ran echo after"),
+        second.contains("✓ echo after"),
         "expected orphan end entry after flush: {second:?}"
     );
     assert!(
@@ -782,7 +779,7 @@ async fn exec_history_shows_unified_exec_startup_commands() {
     assert_eq!(cells.len(), 1, "expected finalized exec cell to flush");
     let blob = lines_to_single_string(&cells[0]);
     assert!(
-        blob.contains("• Ran echo unified exec startup"),
+        blob.contains("✓ echo unified exec startup"),
         "expected startup command to render: {blob:?}"
     );
 }
@@ -801,7 +798,7 @@ async fn exec_history_shows_unified_exec_tool_calls() {
     end_exec(&mut chat, begin, "", "", /*exit_code*/ 0);
 
     let blob = active_blob(&chat);
-    assert_eq!(blob, "┊ • Explored\n┊   └ List ls\n");
+    assert_eq!(blob, "┊ ✓ Explored · 5ms · 0 lines · Ctrl+T details\n");
 }
 
 #[tokio::test]

@@ -2,5 +2,4 @@
 source: tui/src/chatwidget/tests/exec_flow.rs
 expression: active_blob(&chat)
 ---
-┊ • Explored
-┊   └ List ls -la
+┊ ✓ Explored · 5ms · 0 lines · Ctrl+T details

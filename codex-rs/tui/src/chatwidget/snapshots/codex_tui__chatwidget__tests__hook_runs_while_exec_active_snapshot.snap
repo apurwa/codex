@@ -16,8 +16,7 @@ exec and hook running:
 "────────────────────────────────────────────────────────────────────────────────"
 "  gpt-5.6-sol default · /tmp/project                                            "
 history after exec:
-┊ • Ran echo done
-┊   └ done
+┊ ✓ echo done · 5ms · 1 lines · Ctrl+T details
 
 hook running after exec:
 "                                                                                "

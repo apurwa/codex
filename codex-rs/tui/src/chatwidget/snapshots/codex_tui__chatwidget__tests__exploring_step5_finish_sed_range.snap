@@ -2,6 +2,4 @@
 source: tui/src/chatwidget/tests/exec_flow.rs
 expression: active_blob(&chat)
 ---
-┊ • Explored
-┊   └ List ls -la
-┊     Read foo.txt
+┊ ✓ Explored · 3 commands · 15ms · 2 lines · Ctrl+T details

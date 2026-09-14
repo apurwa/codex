@@ -146,7 +146,9 @@ fn completed_success_is_compact_but_transcript_keeps_details() {
     );
     cell.complete(
         Duration::from_millis(1250),
-        Ok(result(vec![json!({"type": "text", "text": "Issue details"})])),
+        Ok(result(vec![
+            json!({"type": "text", "text": "Issue details"}),
+        ])),
     );
 
     assert_eq!(
@@ -183,7 +185,7 @@ fn failed_call_keeps_error_visible_in_history() {
         Duration::from_secs(1),
         Ok(CallToolResult {
             is_error: Some(true),
-            ..result(vec![json!({"type": "text", "text": "Not found"})]))
+            ..result(vec![json!({"type": "text", "text": "Not found"})])
         }),
     );
 
@@ -294,9 +296,7 @@ fn code_mode_preserves_text_fields_on_nontext_and_unknown_blocks() {
         .join("\n");
     insta::assert_snapshot!(format!("history:\n{display}\n\ntranscript:\n{transcript}"), @r#"
     history:
-    • Called Inspect results
-      └ image-side output
-        unknown-side output
+    ✓ node_repl.js · 0ms · Ctrl+T details
 
     transcript:
     • Called node_repl.js({"title":"Inspect results"})
@@ -344,9 +344,7 @@ fn code_mode_preserves_text_fields_on_nontext_and_unknown_blocks() {
         .join("\n");
     insta::assert_snapshot!(format!("history:\n{display}\n\ntranscript:\n{transcript}"), @r"
     history:
-    • Called cua_repl.js
-      └ image-side output
-        unknown-side output
+    ✓ cua_repl.js · 0ms · Ctrl+T details
 
     transcript:
     • Called cua_repl.js()

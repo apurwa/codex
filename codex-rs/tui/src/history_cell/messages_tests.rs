@@ -213,7 +213,7 @@ fn finalized_markdown_reuses_lines_primed_by_transcript_height() {
     let cell = AgentMarkdownCell::new("finalized **markdown**".to_string(), Path::new("/tmp"));
     let width = 48;
 
-    assert_eq!(cell.desired_transcript_height(width), 4);
+    assert_eq!(cell.desired_transcript_height(width), 5);
     replace_cached_lines(&cell, |_| {});
 
     assert_eq!(
@@ -238,6 +238,7 @@ fn finalized_assistant_file_citation_renders_as_local_path_snapshot() {
     insta::assert_snapshot!(rendered, @"
 
     CODEX
+
       Generated Quarterly Report.xlsx.
     ");
 }
@@ -337,7 +338,7 @@ fn spoken_artifacts_link_only_real_workspace_files_and_preserve_existing_urls() 
 
     let ordinary = AgentMarkdownCell::new(markdown.to_string(), workspace.path());
     assert_eq!(
-        ordinary.display_hyperlink_lines(/*width*/ 90)[2].hyperlinks[0].destination,
+        ordinary.display_hyperlink_lines(/*width*/ 90)[3].hyperlinks[0].destination,
         "https://example.com"
     );
     let bare = AgentMarkdownCell::new_spoken("src/lib.rs".to_string(), workspace.path());

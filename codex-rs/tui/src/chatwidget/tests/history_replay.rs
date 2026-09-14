@@ -1364,7 +1364,8 @@ async fn deferred_mcp_lifecycle_events_keep_fifo_after_stream_finishes() {
         .into_iter()
         .map(|lines| lines_to_single_string(&lines))
         .collect::<String>();
-    assert!(rendered.contains("deferred result"), "{rendered}");
+    assert!(rendered.contains("✓ copilot-bridge.copilot"), "{rendered}");
+    assert!(rendered.contains("Ctrl+T details"), "{rendered}");
 }
 
 #[tokio::test]

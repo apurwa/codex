@@ -599,6 +599,7 @@ async fn buffered_replay_renders_completed_text_without_streaming_again() {
         .join("\n");
     insta::assert_snapshot!(text.trim(), @"
     CODEX
+
       Final answer
     ");
 }
