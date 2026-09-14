@@ -2427,6 +2427,9 @@ impl App {
             AppEvent::OpenAgentsOverview => {
                 self.open_agents_overview(app_server);
             }
+            AppEvent::AgentsOverviewError(message) => {
+                self.add_agents_overview_error(message);
+            }
             AppEvent::AgentsOverviewThreadsLoaded { request_id, result } => {
                 self.apply_agents_overview_thread_refresh(app_server, request_id, result);
             }
@@ -2444,8 +2447,11 @@ impl App {
                     AppRunControl::Exit(reason) => return Ok(AppRunControl::Exit(reason)),
                 }
             }
-            AppEvent::NewAgentsOverviewSession { cwd } => {
-                return Box::pin(self.new_agents_overview_session(tui, app_server, cwd)).await;
+            AppEvent::NewAgentsOverviewSession { cwd, prompt } => {
+                return Box::pin(self.new_agents_overview_session_with_prompt(
+                    tui, app_server, cwd, prompt,
+                ))
+                .await;
             }
             AppEvent::RenameAgentsOverviewThread { thread_id, name } => {
                 match app_server.thread_set_name(thread_id, name.clone()).await {

@@ -748,6 +748,10 @@ impl ChatComposer {
         self.frame_requester = Some(frame_requester);
     }
 
+    pub(crate) fn set_app_event_sender(&mut self, app_event_tx: AppEventSender) {
+        self.app_event_tx = app_event_tx;
+    }
+
     /// Records the effective reasoning tier, captures the outgoing status
     /// line, and queues the one-shot effects for a genuine Max/Ultra change
     /// after the initial baseline.

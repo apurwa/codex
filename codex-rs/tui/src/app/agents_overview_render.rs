@@ -39,7 +39,7 @@ impl AgentsOverviewView {
         }
         if width < 24 {
             let hints = [
-                ("new_task", &self.agents_keymap.new_task, "new"),
+                ("new_task", &self.agents_keymap.new_task, "new task"),
                 ("search", &self.agents_keymap.search, "search"),
             ]
             .into_iter()
@@ -122,7 +122,7 @@ impl AgentsOverviewView {
         add_hint(
             self.agents_keymap
                 .primary_hint("new_task", &self.agents_keymap.new_task),
-            "new",
+            "new task",
             true,
         );
         add_hint(
@@ -199,12 +199,26 @@ impl Renderable for AgentsOverviewView {
         24
     }
 
+    fn cursor_style(&self, area: Rect) -> SetCursorStyle {
+        let state = self.state();
+        if state.composing()
+            && let Some(composer) = &state.composer
+        {
+            composer.cursor_style(area)
+        } else {
+            SetCursorStyle::DefaultUserShape
+        }
+    }
+
     fn cursor_pos(&self, area: Rect) -> Option<(u16, u16)> {
         if area.width < 12 || area.height < 8 {
             return None;
         }
-        let [_, _, _, _, prompt, _] = self.layout_areas(area);
+        let [_, _, _, _, _, prompt, _] = self.layout_areas(area);
         let state = self.state();
+        if state.composing() {
+            return state.composer.as_ref()?.cursor_pos(prompt);
+        }
         if !state.editing_metadata() {
             return None;
         }
@@ -225,7 +239,7 @@ impl Renderable for AgentsOverviewView {
             return;
         }
         Clear.render(area, buf);
-        let [header, summary, divider, body, prompt, footer] = self.layout_areas(area);
+        let [header, summary, divider, body, title, prompt, footer] = self.layout_areas(area);
         let inset =
             |rect: Rect| rect.inner(Margin::new(/*horizontal*/ 2, /*vertical*/ 0));
         if let Some(notice) = &self.state().server_version_notice {
@@ -282,11 +296,11 @@ impl Renderable for AgentsOverviewView {
         } else {
             self.render_rows(body, buf);
         }
-        let state = self.state();
+        let mut state = self.state();
         let (label, input) = if state.searching {
-            ("Search › ", &state.search)
+            ("Search › ", state.search.clone())
         } else {
-            ("Rename › ", &state.input)
+            ("Rename › ", state.input.clone())
         };
         let available_width = usize::from(inset(prompt).width)
             .saturating_sub(label.width())
@@ -302,8 +316,21 @@ impl Renderable for AgentsOverviewView {
             visible_start = index;
         }
         if state.editing_metadata() {
-            Line::from(vec![label.cyan().bold(), input[visible_start..].into()])
-                .render(inset(prompt), buf);
+            state.composer_hitbox = None;
+            Line::from(vec![
+                label.cyan().bold(),
+                input[visible_start..].to_string().into(),
+            ])
+            .render(inset(prompt), buf);
+        } else {
+            Line::from("New task".dim()).render(inset(title), buf);
+            state.composer_hitbox = Some(prompt);
+            if let Some(composer) = &state.composer {
+                composer.render(prompt, buf);
+            }
+        }
+        if state.composing() {
+            return;
         }
         drop(state);
         Paragraph::new(self.footer_lines(inset(footer).width)).render(inset(footer), buf);

@@ -274,6 +274,8 @@ pub(crate) enum AppEvent {
     CloseMisalignmentReview,
     /// Open the daemon-wide overview of recent and locally retained root sessions.
     OpenAgentsOverview,
+    /// Present a failed command-center composer action above the retained dashboard.
+    AgentsOverviewError(String),
     /// Update the daemon-wide overview after a background thread listing finishes.
     AgentsOverviewThreadsLoaded {
         request_id: Uuid,
@@ -283,9 +285,10 @@ pub(crate) enum AppEvent {
     SelectAgentsOverviewThread {
         thread_id: ThreadId,
     },
-    /// Open an empty session in the selected checkout.
+    /// Open a session in the selected checkout, optionally submitting the first turn.
     NewAgentsOverviewSession {
         cwd: Option<AbsolutePathBuf>,
+        prompt: Option<UserMessage>,
     },
     /// Rename a task directly from the shared dashboard.
     RenameAgentsOverviewThread {
