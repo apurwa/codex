@@ -134,6 +134,71 @@ fn result(content: Vec<Value>) -> CallToolResult {
 }
 
 #[test]
+fn completed_success_is_compact_but_transcript_keeps_details() {
+    let mut cell = new_active_mcp_tool_call(
+        "call-compact".to_string(),
+        McpInvocation {
+            server: "linear".to_string(),
+            tool: "get_issue".to_string(),
+            arguments: Some(json!({"id": "ENG-42"})),
+        },
+        /* animations_enabled */ false,
+    );
+    cell.complete(
+        Duration::from_millis(1250),
+        Ok(result(vec![json!({"type": "text", "text": "Issue details"})])),
+    );
+
+    assert_eq!(
+        cell.display_lines(/* width */ 100)
+            .iter()
+            .map(ToString::to_string)
+            .collect::<Vec<_>>(),
+        vec!["✓ linear.get_issue · 1.25s · Ctrl+T details"]
+    );
+    assert_eq!(
+        cell.transcript_lines(/* width */ 100)
+            .iter()
+            .map(ToString::to_string)
+            .collect::<Vec<_>>(),
+        vec![
+            "• Called linear.get_issue({\"id\":\"ENG-42\"})",
+            "  └ Issue details",
+        ]
+    );
+}
+
+#[test]
+fn failed_call_keeps_error_visible_in_history() {
+    let mut cell = new_active_mcp_tool_call(
+        "call-failed".to_string(),
+        McpInvocation {
+            server: "linear".to_string(),
+            tool: "get_issue".to_string(),
+            arguments: None,
+        },
+        /* animations_enabled */ false,
+    );
+    cell.complete(
+        Duration::from_secs(1),
+        Ok(CallToolResult {
+            is_error: Some(true),
+            ..result(vec![json!({"type": "text", "text": "Not found"})]))
+        }),
+    );
+
+    let rendered = cell
+        .display_lines(/* width */ 100)
+        .iter()
+        .map(ToString::to_string)
+        .collect::<Vec<_>>()
+        .join("\n");
+    assert!(rendered.contains("Called linear.get_issue()"));
+    assert!(rendered.contains("Not found"));
+    assert!(!rendered.contains("Ctrl+T details"));
+}
+
+#[test]
 fn projected_content_preserves_width_dependent_rendering() {
     let text = "{\"result\": [1, 2, 3], \"text\": \"long output 🦀\"}";
     let malformed = json!({"type": "image", "data": PNG});
