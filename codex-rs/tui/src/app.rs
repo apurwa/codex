@@ -1052,11 +1052,6 @@ impl App {
             return Ok(rendered_area);
         }
         self.with_chat_widget_frame(screen_size.width, |desired_height, chat_widget| {
-            let desired_height = if dashboard_visible {
-                screen_size.height
-            } else {
-                desired_height
-            };
             let mut rendered_area = Rect::default();
             tui.draw_with_resize_reflow(desired_height, screen_size, |frame| {
                 let area = frame.area();
