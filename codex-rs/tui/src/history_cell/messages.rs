@@ -612,9 +612,14 @@ impl HistoryCell for AgentMarkdownCell {
             let mut labeled = vec![
                 HyperlinkLine::new(Line::default()),
                 HyperlinkLine::new(Line::from(Span::styled(
-                    "CODEX",
+                    match self.phase {
+                        Some(codex_protocol::models::MessagePhase::Commentary) => "CODEX · Update",
+                        Some(codex_protocol::models::MessagePhase::FinalAnswer) => "CODEX · Answer",
+                        None => "CODEX",
+                    },
                     crate::style::codex_label_style(),
                 ))),
+                HyperlinkLine::new(Line::default()),
             ];
             labeled.extend(body);
             labeled.push(HyperlinkLine::new(Line::default()));

@@ -186,7 +186,9 @@ fn activity_marker(start_time: Option<Instant>, animations_enabled: bool) -> Spa
 impl HistoryCell for ExecCell {
     fn display_lines(&self, width: u16) -> Vec<Line<'static>> {
         let content_width = width.saturating_sub(2).max(1);
-        let mut lines = if self.is_exploring_cell() {
+        let mut lines = if let Some(summary) = self.completed_summary(content_width) {
+            summary
+        } else if self.is_exploring_cell() {
             self.exploring_display_lines(content_width)
         } else {
             self.command_display_lines(content_width)

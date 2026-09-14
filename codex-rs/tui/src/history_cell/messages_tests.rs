@@ -38,7 +38,8 @@ fn commentary_and_final_answers_are_labeled_and_readable_with_unchanged_raw_sour
     let answer = AgentMarkdownCell::new(source.into(), Path::new("/tmp"))
         .with_phase(Some(MessagePhase::FinalAnswer));
     let commentary_lines = commentary.display_lines(40);
-    assert_eq!(commentary_lines[1].to_string(), "CODEX");
+    assert_eq!(commentary_lines[1].to_string(), "CODEX · Update");
+    assert_eq!(answer.display_lines(40)[1].to_string(), "CODEX · Answer");
     let streaming = AgentMessageCell::new(vec![source.into()], /*is_first_line*/ true);
     let headings = [
         commentary_lines.clone(),
@@ -50,7 +51,7 @@ fn commentary_and_final_answers_are_labeled_and_readable_with_unchanged_raw_sour
         let label = lines
             .iter()
             .flat_map(|line| &line.spans)
-            .find(|span| span.content == "CODEX")
+            .find(|span| span.content.starts_with("CODEX"))
             .expect("speaker heading");
         assert_eq!(label.style.fg, Some(ratatui::style::Color::Rgb(128, 0, 0)));
         assert!(label.style.add_modifier.contains(Modifier::BOLD));
