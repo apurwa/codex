@@ -78,6 +78,34 @@ async fn committed_cell_updates_viewport_without_queuing_terminal_history() {
 }
 
 #[tokio::test]
+async fn conversation_mouse_capture_is_selection_first_and_can_be_enabled() {
+    let mut app = super::super::test_support::make_test_app().await;
+    app.owned_screen = App::owned_screen_for_behavior(
+        AltScreenBehavior::Owned,
+        &app.chat_widget,
+        app.keymap.pager.clone(),
+    );
+    let mut tui = crate::tui::test_support::make_test_tui().expect("create test TUI");
+    let screen_size = tui.terminal.last_known_screen_size;
+
+    app.render_chat_widget_frame(&mut tui, screen_size)
+        .expect("render selection-first conversation");
+    assert!(tui.is_mouse_capture_enabled());
+
+    app.chat_widget
+        .set_conversation_mouse_capture_enabled(/*enabled*/ false);
+    app.render_chat_widget_frame(&mut tui, screen_size)
+        .expect("restore selection-first conversation");
+    assert!(!tui.is_mouse_capture_enabled());
+
+    app.chat_widget
+        .set_conversation_mouse_capture_enabled(/*enabled*/ true);
+    app.render_chat_widget_frame(&mut tui, screen_size)
+        .expect("restore mouse-enabled conversation");
+    assert!(tui.is_mouse_capture_enabled());
+}
+
+#[tokio::test]
 async fn replay_retains_cells_while_draw_scheduling_is_deferred() {
     let mut app = super::super::test_support::make_test_app().await;
     app.owned_screen = App::owned_screen_for_behavior(

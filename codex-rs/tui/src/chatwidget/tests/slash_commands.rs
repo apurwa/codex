@@ -3779,6 +3779,41 @@ async fn raw_slash_command_reports_usage_for_invalid_arg() {
 }
 
 #[tokio::test]
+async fn mouse_slash_command_defaults_on_and_accepts_toggle_and_args() {
+    let (mut chat, _rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
+
+    assert!(chat.conversation_mouse_capture_enabled());
+
+    chat.dispatch_command(SlashCommand::Mouse);
+    assert!(!chat.conversation_mouse_capture_enabled());
+
+    chat.dispatch_command_with_args(SlashCommand::Mouse, "off".to_string(), Vec::new());
+    assert!(!chat.conversation_mouse_capture_enabled());
+
+    chat.dispatch_command_with_args(SlashCommand::Mouse, "on".to_string(), Vec::new());
+    assert!(chat.conversation_mouse_capture_enabled());
+}
+
+#[tokio::test]
+async fn mouse_slash_command_reports_usage_for_invalid_arg() {
+    let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
+
+    chat.dispatch_command_with_args(SlashCommand::Mouse, "status".to_string(), Vec::new());
+
+    assert!(chat.conversation_mouse_capture_enabled());
+    let cells = drain_insert_history(&mut rx);
+    let rendered = cells
+        .iter()
+        .map(|lines| lines_to_single_string(lines))
+        .collect::<Vec<_>>()
+        .join("\n");
+    assert!(
+        rendered.contains("Usage: /mouse [on|off]"),
+        "expected mouse usage error, got {rendered:?}"
+    );
+}
+
+#[tokio::test]
 async fn compact_queues_user_messages_snapshot() {
     let (mut chat, _rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
     chat.thread_id = Some(ThreadId::new());

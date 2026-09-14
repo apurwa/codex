@@ -1023,7 +1023,11 @@ impl App {
             .chat_widget
             .selected_index_for_active_view(AGENTS_OVERVIEW_VIEW_ID)
             .is_some();
-        tui.set_mouse_capture_enabled(dashboard_active || self.has_owned_screen())?;
+        tui.set_mouse_capture_enabled(
+            dashboard_active
+                || (self.has_owned_screen()
+                    && self.chat_widget.conversation_mouse_capture_enabled()),
+        )?;
         let dashboard_visible = self
             .chat_widget
             .selected_index_for_present_view(AGENTS_OVERVIEW_VIEW_ID)

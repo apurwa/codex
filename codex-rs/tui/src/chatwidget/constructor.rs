@@ -113,6 +113,7 @@ impl ChatWidget {
             }),
             transcript: TranscriptState::new(active_cell),
             raw_output_mode: local_settings.tui.raw_output_mode,
+            conversation_mouse_capture_enabled: true,
             config,
             local_settings,
             effective_service_tier,

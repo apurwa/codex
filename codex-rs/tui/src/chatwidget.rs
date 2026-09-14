@@ -574,6 +574,7 @@ pub(crate) struct ChatWidget {
     config: Config,
     pub(crate) local_settings: crate::local_settings::LocalSettings,
     raw_output_mode: bool,
+    conversation_mouse_capture_enabled: bool,
     /// Runtime value resolved by core. `config.service_tier` remains the explicit user choice.
     effective_service_tier: Option<String>,
     /// The unmasked collaboration mode settings (always Default mode).
@@ -1653,6 +1654,24 @@ impl ChatWidget {
 
     pub(crate) fn raw_output_mode(&self) -> bool {
         self.raw_output_mode
+    }
+
+    pub(crate) fn conversation_mouse_capture_enabled(&self) -> bool {
+        self.conversation_mouse_capture_enabled
+    }
+
+    pub(crate) fn set_conversation_mouse_capture_enabled(&mut self, enabled: bool) {
+        self.conversation_mouse_capture_enabled = enabled;
+        let message = if enabled {
+            "Mouse controls on: use the wheel to scroll and click Jump to bottom. Hold Shift while dragging to select and copy text."
+        } else {
+            "Mouse controls off: drag normally to select visible transcript text. Use Page Up and Page Down to navigate."
+        };
+        self.add_info_message(message.to_string(), /*hint*/ None);
+    }
+
+    pub(crate) fn toggle_conversation_mouse_capture_and_notify(&mut self) {
+        self.set_conversation_mouse_capture_enabled(!self.conversation_mouse_capture_enabled);
     }
 
     pub(crate) fn history_render_mode(&self) -> HistoryRenderMode {

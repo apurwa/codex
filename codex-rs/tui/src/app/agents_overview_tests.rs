@@ -1270,11 +1270,13 @@ async fn shared_overview_shows_only_root_sessions() {
     app.render_chat_widget_frame(&mut tui, screen_size)
         .expect("render full-screen dashboard");
     assert_eq!(tui.terminal.viewport_area.height, screen_size.height);
+    assert!(tui.is_mouse_capture_enabled());
     app.agents_overview.view_state.lock().unwrap().completion =
         Some(crate::bottom_pane::ViewCompletion::Accepted);
     app.chat_widget.pre_draw_tick();
     app.render_chat_widget_frame(&mut tui, screen_size)
         .expect("restore conversation after closing dashboard");
+    assert!(!tui.is_mouse_capture_enabled());
     assert!(tui.terminal.viewport_area.height < screen_size.height);
     assert!(app.last_rendered_history_tail.is_some());
 }

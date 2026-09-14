@@ -752,6 +752,11 @@ impl Tui {
         Ok(())
     }
 
+    #[cfg(test)]
+    pub(crate) fn is_mouse_capture_enabled(&self) -> bool {
+        self.mouse_capture_active.load(Ordering::Relaxed)
+    }
+
     // Drop crossterm EventStream to avoid stdin conflicts with other processes.
     pub fn pause_events(&mut self) {
         self.event_broker.pause_events();

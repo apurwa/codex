@@ -47,6 +47,7 @@ pub enum SlashCommand {
     Copy,
     Export,
     Raw,
+    Mouse,
     Diff,
     Mention,
     Status,
@@ -104,6 +105,7 @@ impl SlashCommand {
             SlashCommand::Copy => "copy the last response or part of it",
             SlashCommand::Export => "export the conversation as markdown",
             SlashCommand::Raw => "toggle raw scrollback mode for copy-friendly terminal selection",
+            SlashCommand::Mouse => "toggle mouse controls in the conversation transcript",
             SlashCommand::Diff => "show git diff (including untracked files)",
             SlashCommand::Mention => "mention a file",
             SlashCommand::Skills => "use skills to improve how Codex performs specific tasks",
@@ -173,6 +175,7 @@ impl SlashCommand {
                 | SlashCommand::Mcp
                 | SlashCommand::Export
                 | SlashCommand::Raw
+                | SlashCommand::Mouse
                 | SlashCommand::Cd
                 | SlashCommand::Pwd
                 | SlashCommand::Usage
@@ -191,6 +194,7 @@ impl SlashCommand {
                 | SlashCommand::Agents
                 | SlashCommand::Export
                 | SlashCommand::Raw
+                | SlashCommand::Mouse
                 | SlashCommand::Diff
                 | SlashCommand::Mention
                 | SlashCommand::Status
@@ -231,6 +235,7 @@ impl SlashCommand {
             | SlashCommand::Permissions
             | SlashCommand::Copy
             | SlashCommand::Raw
+            | SlashCommand::Mouse
             | SlashCommand::Rename
             | SlashCommand::Mention
             | SlashCommand::Skills
