@@ -801,11 +801,20 @@ pub(crate) fn passive_footer_status_lines(props: &FooterProps) -> Vec<Line<'stat
         return Vec::new();
     }
 
-    let mut lines = if props.status_line_enabled {
-        props.status_line_values.clone()
-    } else {
-        Vec::new()
-    };
+    let mut lines = Vec::new();
+    if props.mode == FooterMode::ComposerHasDraft && props.is_task_running {
+        lines.push(left_side_line(
+            None,
+            LeftSideState {
+                hint: SummaryHintKind::QueueMessage,
+                show_cycle_hint: false,
+            },
+            props.key_hints,
+        ));
+    }
+    if props.status_line_enabled {
+        lines.extend(props.status_line_values.clone());
+    }
 
     if let Some(active_agent_label) = props.active_agent_label.as_ref() {
         if let Some(existing) = lines.last_mut() {
@@ -838,7 +847,7 @@ pub(crate) fn passive_footer_status_line(props: &FooterProps) -> Option<Line<'st
 pub(crate) fn shows_passive_footer_line(props: &FooterProps) -> bool {
     match props.mode {
         FooterMode::ComposerEmpty => true,
-        FooterMode::ComposerHasDraft => !props.is_task_running,
+        FooterMode::ComposerHasDraft => true,
         FooterMode::HistorySearch
         | FooterMode::QuitShortcutReminder
         | FooterMode::ShortcutOverlay
@@ -1498,11 +1507,24 @@ mod tests {
                     FooterMode::ComposerEmpty | FooterMode::ComposerHasDraft
                 ) {
                     if status_line_active {
-                        if let Some(line) = truncated_status_line.clone() {
+                        let status_lines = passive_footer_status_lines(props);
+                        if status_lines.len() > 1 {
+                            let status_line_count = status_lines.len() as u16;
+                            render_footer_lines(area, f.buffer_mut(), status_lines);
+                            if can_show_left_and_context && let Some(line) = &right_line {
+                                let context_area = Rect::new(
+                                    area.x,
+                                    area.y + status_line_count - 1,
+                                    area.width,
+                                    1,
+                                );
+                                render_context_right(context_area, f.buffer_mut(), line);
+                            }
+                        } else if let Some(line) = truncated_status_line.clone() {
                             render_footer_line(area, f.buffer_mut(), line);
-                        }
-                        if can_show_left_and_context && let Some(line) = &right_line {
-                            render_context_right(area, f.buffer_mut(), line);
+                            if can_show_left_and_context && let Some(line) = &right_line {
+                                render_context_right(area, f.buffer_mut(), line);
+                            }
                         }
                     } else {
                         let (summary_left, show_context) = single_line_footer_layout(
