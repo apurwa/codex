@@ -44,18 +44,18 @@ async fn renders_committed_conversation_above_fixed_composer() {
         })
         .expect("render owned screen");
 
-    assert_snapshot!(terminal.backend(), @r###"
-"committed response                                "
-"                                                  "
-"                                                  "
-"                                                  "
-"                                                  "
-"                                                  "
-"                                                  "
-"› draft sentinel                                  "
-"                                                  "
-"  gpt-5.6-sol default · /tmp/project              "
-"###);
+    assert_snapshot!(terminal.backend(), @r#"
+    "committed response                                "
+    "                                                  "
+    "                                                  "
+    "                                                  "
+    "                                                  "
+    "                                                  "
+    "──────────────────────────────────────────────────"
+    "› draft sentinel                                  "
+    "──────────────────────────────────────────────────"
+    "  gpt-5.6-sol default · /tmp/project              "
+    "#);
 }
 
 #[tokio::test]
@@ -205,16 +205,16 @@ async fn mouse_wheel_scrolls_transcript_without_changing_draft() {
         })
         .expect("render scrolled");
 
-    assert_snapshot!(terminal.backend(), @r###"
-"                                        "
-"middle                                  "
-"        Jump to bottom (click) ↓        "
-"                                        "
-"                                        "
-"› draft sentinel                        "
-"                                        "
-"  gpt-5.6-sol default · /tmp/project    "
-"###);
+    assert_snapshot!(terminal.backend(), @r#"
+    "                                        "
+    "middle                                  "
+    "        Jump to bottom (click) ↓        "
+    "                                        "
+    "────────────────────────────────────────"
+    "› draft sentinel                        "
+    "────────────────────────────────────────"
+    "  gpt-5.6-sol default · /tmp/project    "
+    "#);
     assert!(!screen.viewport.is_following_bottom());
     assert!(!screen.handle_mouse_scroll(MouseScrollEvent {
         direction: MouseScrollDirection::Up,

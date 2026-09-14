@@ -2664,13 +2664,13 @@ async fn bottom_pane_renderable_can_be_laid_out_independently() {
         .draw(|frame| bottom_pane.render(frame.area(), frame.buffer_mut()))
         .expect("render bottom pane");
 
-    assert_snapshot!(normalized_backend_snapshot(terminal.backend()), @r###"
-"                                                "
-"                                                "
-"› Ask Codex to do anything                      "
-"                                                "
-"  gpt-5.6-sol default · /tmp/project            "
-"###);
+    assert_snapshot!(normalized_backend_snapshot(terminal.backend()), @r#"
+    "                                                "
+    "────────────────────────────────────────────────"
+    "› Ask Codex to do anything                      "
+    "────────────────────────────────────────────────"
+    "  gpt-5.6-sol default · /tmp/project            "
+    "#);
 }
 
 fn buffer_row_containing(buffer: &ratatui::buffer::Buffer, text: &str) -> Option<String> {

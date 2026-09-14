@@ -1682,6 +1682,13 @@ async fn dashboard_composer_stays_at_terminal_bottom_after_resize() {
             .position(|line| line.contains("Describe a new task"))
             .expect("composer remains visible");
         assert!(composer_y >= usize::from(height.saturating_sub(6)));
+        for y in [composer_y - 1, composer_y + 1] {
+            for x in 0..width {
+                let cell = &buffer[(x, y as u16)];
+                assert_eq!(cell.symbol(), "─");
+                assert_eq!(cell.fg, ratatui::style::Color::Rgb(0, 95, 135));
+            }
+        }
         snapshot.push(format!(
             "{width}x{height}: composer {} rows from bottom",
             usize::from(height) - composer_y
@@ -1815,6 +1822,7 @@ async fn root_switch_preserves_vim_line_yank() -> Result<()> {
     );
     let composer_lines = render_bottom_popup(&app.chat_widget, /*width*/ 80)
         .lines()
+        .skip_while(|line| !line.starts_with('›'))
         .take(2)
         .collect::<Vec<_>>()
         .join("\n");

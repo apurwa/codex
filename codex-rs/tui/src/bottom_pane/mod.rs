@@ -327,7 +327,10 @@ impl BottomPane {
             enhanced_keys_supported,
             placeholder_text,
             disable_paste_burst,
-            composer_config,
+            chat_composer::ChatComposerConfig {
+                borders_enabled: true,
+                ..composer_config
+            },
         );
         composer.set_frame_requester(frame_requester.clone());
         let keymap = RuntimeKeymap::defaults();

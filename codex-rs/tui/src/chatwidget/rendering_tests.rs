@@ -106,12 +106,24 @@ async fn composer_shows_right_aligned_truncated_session_title() {
     let area = Rect::new(0, 0, 36, renderable.desired_height(36));
     let mut buffer = Buffer::empty(area);
     renderable.render(area, &mut buffer);
+    let border_rows = buffer
+        .content
+        .chunks(36)
+        .filter(|row| row[0].symbol() == "─" && row[35].symbol() == "─")
+        .collect::<Vec<_>>();
+    assert_eq!(border_rows.len(), 2);
+    for row in border_rows {
+        for cell in row.iter().filter(|cell| cell.symbol() == "─") {
+            assert_eq!(cell.fg, ratatui::style::Color::Rgb(0, 95, 135));
+        }
+    }
     let title_cell = buffer
         .content
         .chunks(36)
         .find_map(|row| {
             let text: String = row.iter().map(ratatui::buffer::Cell::symbol).collect();
-            text.find("Roadmap cleanup").map(|x| &row[x])
+            text.find("Roadmap cleanup")
+                .map(|x| &row[text[..x].chars().count()])
         })
         .expect("session title is rendered");
     assert_eq!(title_cell.fg, ratatui::style::Color::Rgb(0, 95, 135));

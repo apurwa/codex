@@ -1,11 +1,10 @@
 ---
 source: tui/src/chatwidget/tests/status_and_layout.rs
-assertion_line: 2950
 expression: normalized_backend_snapshot(terminal.backend())
 ---
 "                                                          "
-"                                                          "
+"──────────────────────────────────────────────────────────"
 "› Ask Codex to do anything                                "
-"                                                          "
+"──────────────────────────────────────────────────────────"
 "  Ready                                                   "
 "  Context 0% used · Context 100% left                     "

@@ -477,6 +477,8 @@ enum PendingPasteHandling {
 /// Shared composer behavior; defaults match the main chat input.
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct ChatComposerConfig {
+    /// Draw horizontal borders for standalone conversation and dashboard composers.
+    pub(crate) borders_enabled: bool,
     /// Whether command/file/skill popups are allowed to appear.
     pub(crate) popups_enabled: bool,
     /// Whether `/...` input is parsed and dispatched as slash commands.
@@ -494,6 +496,7 @@ pub(crate) struct ChatComposerConfig {
 impl Default for ChatComposerConfig {
     fn default() -> Self {
         Self {
+            borders_enabled: false,
             popups_enabled: true,
             slash_commands_enabled: true,
             shell_commands_enabled: true,
@@ -511,6 +514,7 @@ impl ChatComposerConfig {
     /// so the composer behaves like a simple notes field.
     pub(crate) const fn plain_text() -> Self {
         Self {
+            borders_enabled: false,
             popups_enabled: false,
             slash_commands_enabled: false,
             shell_commands_enabled: false,
@@ -4985,7 +4989,15 @@ impl ChatComposer {
             }
         }
         let style = user_message_style();
-        Block::default().style(style).render(composer_rect, buf);
+        Block::default()
+            .style(style)
+            .borders(if self.config.borders_enabled {
+                ratatui::widgets::Borders::TOP | ratatui::widgets::Borders::BOTTOM
+            } else {
+                ratatui::widgets::Borders::NONE
+            })
+            .border_style(Style::default().fg(ratatui::style::Color::Rgb(0, 95, 135)))
+            .render(composer_rect, buf);
         if !remote_images_rect.is_empty() {
             Paragraph::new(self.attachments.remote_image_lines())
                 .style(style)

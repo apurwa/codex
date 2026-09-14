@@ -157,7 +157,7 @@ async fn lost_mutation_reply_preserves_work_without_resubmitting() -> Result<()>
         .split_once("› ")
         .unwrap()
         .1
-        .split("\n\n")
+        .split("\n─")
         .next()
         .unwrap();
     assert_snapshot!("offline_expanded_paste", draft);

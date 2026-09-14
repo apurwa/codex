@@ -4,14 +4,14 @@ expression: "format!(\"wide:\\n{wide}\\n\\nnarrow:\\n{narrow}\")"
 ---
 wide:
 
-                   Roadmap cleanup
+───────────────────Roadmap cleanup──
 › Ask Codex to do anything
-
+────────────────────────────────────
   gpt-5.6-sol default · /tmp/projec…
 
 narrow:
 
-  Investigate pinned …
+──Investigate pinned …──
 › Ask Codex to do anyth
-
+────────────────────────
   gpt-5.6-sol default ·…

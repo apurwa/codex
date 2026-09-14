@@ -20,6 +20,7 @@ impl App {
                 "Describe a new task".to_string(),
                 self.config.disable_paste_burst,
                 ChatComposerConfig {
+                    borders_enabled: true,
                     trim_submission: false,
                     image_paste_enabled: true,
                     ..ChatComposerConfig::plain_text()
