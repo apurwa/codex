@@ -1,21 +1,39 @@
-//! Creates empty sessions from the command center without interrupting other agents.
+//! Creates sessions from the command center without interrupting other agents.
 
 use super::*;
 
 impl App {
+    #[cfg(test)]
     pub(in crate::app) async fn new_agents_overview_session(
         &mut self,
         tui: &mut tui::Tui,
         app_server: &mut AppServerSession,
         cwd: Option<AbsolutePathBuf>,
     ) -> Result<AppRunControl> {
+        self.new_agents_overview_session_with_prompt(tui, app_server, cwd, /*prompt*/ None)
+            .await
+    }
+
+    pub(in crate::app) async fn new_agents_overview_session_with_prompt(
+        &mut self,
+        tui: &mut tui::Tui,
+        app_server: &mut AppServerSession,
+        cwd: Option<AbsolutePathBuf>,
+        prompt: Option<crate::chatwidget::UserMessage>,
+    ) -> Result<AppRunControl> {
         if self.reconnect.offline || self.windows_sandbox_blocks_thread_switch() {
+            if let Some(prompt) = prompt {
+                self.restore_agents_overview_prompt(prompt);
+            }
             return Ok(AppRunControl::Continue);
         }
         let Some((config, remote_cwd)) = self
             .agents_overview_session_config(tui, app_server, cwd)
             .await
         else {
+            if let Some(prompt) = prompt {
+                self.restore_agents_overview_prompt(prompt);
+            }
             return Ok(AppRunControl::Continue);
         };
         let selected_profile = self.chat_widget.thread_id().and_then(|thread_id| {
@@ -45,6 +63,9 @@ impl App {
         {
             Ok(started) => started,
             Err(error) => {
+                if let Some(prompt) = prompt {
+                    self.restore_agents_overview_prompt(prompt);
+                }
                 self.add_agents_overview_error(format!("Failed to start session: {error}"));
                 return Ok(AppRunControl::Continue);
             }
@@ -58,9 +79,15 @@ impl App {
         self.agents_overview
             .blank_sessions
             .insert(thread_id, started.clone());
-        // Preserve running agents and unsent input without sending an initial turn.
+        // Preserve running agents while attaching the new session and optional first turn.
         let control = self
-            .attach_agents_overview_thread(tui, app_server, thread_id, Some((config, started)))
+            .attach_agents_overview_thread(
+                tui,
+                app_server,
+                thread_id,
+                Some((config, started)),
+                prompt,
+            )
             .await?;
         if self.current_displayed_thread_id() != Some(thread_id) {
             self.agents_overview.blank_sessions.remove(&thread_id);

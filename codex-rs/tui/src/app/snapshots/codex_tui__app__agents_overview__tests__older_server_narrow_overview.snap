@@ -17,12 +17,12 @@ expression: "render_bottom_popup(&app.chat_widget, 12)"
 
 
 
+  New task
 
-
-
-
+› Describe
 
   n new
+  task
   f search
   ctrl+c
   quit

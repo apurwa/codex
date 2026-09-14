@@ -112,6 +112,11 @@ impl App {
             return;
         }
 
+        self.sync_agents_overview_composer();
+        if let Ok(mut state) = self.agents_overview.view_state.lock() {
+            state.focus = super::agents_overview_view::AgentsOverviewFocus::List;
+        }
+
         let threads = self
             .agents_overview
             .threads
@@ -237,6 +242,7 @@ impl App {
         mut threads: Vec<Thread>,
         selected_thread_id: Option<ThreadId>,
     ) -> AgentsOverviewView {
+        self.sync_agents_overview_composer();
         threads.retain(|thread| !thread.ephemeral);
         for thread in &mut threads {
             if thread.parent_thread_id.is_none()
@@ -306,8 +312,10 @@ impl App {
         app_server: &mut AppServerSession,
         thread_id: ThreadId,
     ) -> Result<AppRunControl> {
-        Box::pin(self.attach_agents_overview_thread(tui, app_server, thread_id, /*started*/ None))
-            .await
+        Box::pin(self.attach_agents_overview_thread(
+            tui, app_server, thread_id, /*started*/ None, /*initial_user_message*/ None,
+        ))
+        .await
     }
 
     async fn attach_agents_overview_thread(
@@ -316,6 +324,7 @@ impl App {
         app_server: &mut AppServerSession,
         root_thread_id: ThreadId,
         started: Option<(Config, crate::app_server_session::AppServerStartedThread)>,
+        initial_user_message: Option<crate::chatwidget::UserMessage>,
     ) -> color_eyre::Result<AppRunControl> {
         if self.windows_sandbox_blocks_thread_switch() {
             return Ok(AppRunControl::Continue);
@@ -594,7 +603,7 @@ impl App {
                     tui,
                     resumed,
                     super::session_lifecycle::ThreadAttachPresentation::SessionLineage,
-                    /*initial_user_message*/ None,
+                    initial_user_message,
                 )
                 .await
             {

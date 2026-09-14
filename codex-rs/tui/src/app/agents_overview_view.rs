@@ -18,6 +18,7 @@ use crate::app_event::AppEvent;
 use crate::app_event_sender::AppEventSender;
 use crate::bottom_pane::BottomPaneView;
 use crate::bottom_pane::CancellationEvent;
+use crate::bottom_pane::ChatComposer;
 use crate::bottom_pane::ViewCompletion;
 use crate::key_hint::KeyBindingListExt;
 use crate::key_hint::ShortcutHint;
@@ -33,6 +34,7 @@ use codex_app_server_protocol::Thread;
 use codex_app_server_protocol::ThreadActiveFlag;
 use codex_app_server_protocol::ThreadStatus;
 use codex_protocol::ThreadId;
+use crossterm::cursor::SetCursorStyle;
 use crossterm::event::KeyCode;
 use crossterm::event::KeyEvent;
 use crossterm::event::MouseButton;
@@ -136,7 +138,9 @@ impl AgentsOverviewProjectGroup {
 #[derive(Default)]
 pub(super) struct AgentsOverviewViewState {
     pub(super) input: String,
+    pub(super) composer: Option<ChatComposer>,
     pub(super) key_chord_hint: Option<Vec<(String, String)>>,
+    pub(super) focus: AgentsOverviewFocus,
     pub(super) refresh_failed: bool,
     pub(super) connection_notice: Option<&'static str>,
     pub(super) server_version_notice: Option<String>,
@@ -147,11 +151,40 @@ pub(super) struct AgentsOverviewViewState {
     // The picker can finish this retained view when it selects the already active session.
     pub(super) completion: Option<ViewCompletion>,
     row_hitboxes: Vec<(Rect, usize)>,
+    composer_hitbox: Option<Rect>,
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub(super) enum AgentsOverviewFocus {
+    Composer,
+    #[default]
+    List,
 }
 
 impl AgentsOverviewViewState {
+    pub(super) fn focus_composer(&mut self) {
+        self.focus = AgentsOverviewFocus::Composer;
+        if let Some(composer) = self.composer.as_mut() {
+            composer.resume_text_entry();
+        }
+    }
+
     pub(super) fn editing_metadata(&self) -> bool {
         self.searching || self.renaming
+    }
+
+    fn composing(&self) -> bool {
+        self.focus == AgentsOverviewFocus::Composer && !self.searching && !self.renaming
+    }
+
+    fn composer_owns_escape(&self) -> bool {
+        self.composer.as_ref().is_some_and(|composer| {
+            composer.popup_active()
+                || (composer.is_vim_enabled()
+                    && !composer
+                        .keymap_contexts()
+                        .contains(KeymapContext::VimNormal))
+        })
     }
 }
 
@@ -164,6 +197,8 @@ pub(super) struct AgentsOverviewView {
     app_event_tx: AppEventSender,
     keymap: ListKeymap,
     agents_keymap: AgentsKeymap,
+    composer_hints: Vec<(String, String)>,
+    composer_keymap: crate::keymap::ComposerKeymap,
 }
 
 impl AgentsOverviewView {
@@ -180,6 +215,18 @@ impl AgentsOverviewView {
             .and_then(|thread_id| rows.iter().position(|row| row.thread_id == thread_id))
             .or_else(|| rows.iter().position(|row| row.is_current))
             .unwrap_or(0);
+        let composer_hints = [
+            (KeymapContext::Composer, "submit", "create task"),
+            (KeymapContext::Editor, "insert_newline", "newline"),
+        ]
+        .into_iter()
+        .filter_map(|(context, action, label)| {
+            keymap
+                .primary_hint(context, action)
+                .map(|hint| (hint.display_label().replace(" + ", "+"), label.to_string()))
+        })
+        .chain([("esc".to_string(), "tasks".to_string())])
+        .collect();
         let project_groups = rows
             .iter()
             .map(|row| AgentsOverviewProjectGroup::for_thread(&row.thread, worktrees_enabled))
@@ -193,6 +240,8 @@ impl AgentsOverviewView {
             app_event_tx,
             keymap: keymap.list,
             agents_keymap: keymap.agents,
+            composer_hints,
+            composer_keymap: keymap.composer,
         };
         view.state().completion = None;
         let visible = view.visible_indices();
@@ -483,9 +532,7 @@ impl AgentsOverviewView {
                 );
             }
             let mut details = crate::wrapping::word_wrap_lines(details, width);
-            if !row.details.usage_lines.is_empty()
-                && details.len() > usize::from(area.height).saturating_sub(lines.len())
-            {
+            if details.len() > usize::from(area.height).saturating_sub(lines.len()) {
                 // Activity and usage take precedence over repeating the original prompt.
                 lines.truncate(prompt_start);
             }
@@ -503,6 +550,10 @@ impl AgentsOverviewView {
 }
 
 impl BottomPaneView for AgentsOverviewView {
+    fn next_frame_delay(&self) -> Option<std::time::Duration> {
+        self.state().composer.as_ref()?.footer_flash_delay()
+    }
+
     fn view_id(&self) -> Option<&'static str> {
         Some(AGENTS_OVERVIEW_VIEW_ID)
     }
@@ -512,7 +563,15 @@ impl BottomPaneView for AgentsOverviewView {
     }
 
     fn keymap_contexts(&self) -> KeymapContextSet {
-        KeymapContextSet::new(KeymapContext::List).with(KeymapContext::Agents)
+        let state = self.state();
+        if state.composing() {
+            state
+                .composer
+                .as_ref()
+                .map_or_else(KeymapContextSet::default, ChatComposer::keymap_contexts)
+        } else {
+            KeymapContextSet::new(KeymapContext::List).with(KeymapContext::Agents)
+        }
     }
 
     fn completion(&self) -> Option<ViewCompletion> {
@@ -544,6 +603,13 @@ impl BottomPaneView for AgentsOverviewView {
             }
             return CancellationEvent::Handled;
         }
+        if let Some(composer) = state.composer.as_mut()
+            && (composer.cancel_vim_search()
+                || composer.cancel_history_search()
+                || composer.clear_for_ctrl_c().is_some())
+        {
+            return CancellationEvent::Handled;
+        }
         CancellationEvent::NotHandled
     }
 
@@ -553,11 +619,36 @@ impl BottomPaneView for AgentsOverviewView {
                 input.push_str(&crate::history_cell::sanitize_user_text(pasted.into()))
             });
         }
-        false
+        let mut state = self.state();
+        if state.focus == AgentsOverviewFocus::List {
+            state.focus_composer();
+        }
+        state
+            .composer
+            .as_mut()
+            .is_some_and(|composer| composer.handle_paste(pasted))
+    }
+
+    fn flush_paste_burst_if_due(&mut self) -> bool {
+        self.state()
+            .composer
+            .as_mut()
+            .is_some_and(ChatComposer::flush_paste_burst_if_due)
+    }
+
+    fn is_in_paste_burst(&self) -> bool {
+        self.state()
+            .composer
+            .as_ref()
+            .is_some_and(ChatComposer::is_in_paste_burst)
     }
 
     fn handle_key_event(&mut self, key: KeyEvent) {
         if key.kind == crossterm::event::KeyEventKind::Release {
+            return;
+        }
+        if self.state().composing() {
+            self.handle_composer_key(key);
             return;
         }
         if key.code == KeyCode::Esc {
@@ -618,9 +709,12 @@ impl BottomPaneView for AgentsOverviewView {
             return;
         }
         if self.agents_keymap.new_task.is_pressed(key) {
-            self.app_event_tx.send(AppEvent::NewAgentsOverviewSession {
-                cwd: self.selected_row().map(|row| row.thread.cwd.clone()),
-            });
+            let mut state = self.state();
+            state.search.clear();
+            state.searching = false;
+            state.renaming = false;
+            state.input.clear();
+            state.focus_composer();
             return;
         }
         if self.agents_keymap.rename.is_pressed(key) {
@@ -708,6 +802,16 @@ impl BottomPaneView for AgentsOverviewView {
             || !mouse_event.modifiers.is_empty()
         {
             return false;
+        }
+        let composer_clicked = self.state().composer_hitbox.is_some_and(|area| {
+            area.contains(ratatui::layout::Position::new(
+                mouse_event.column,
+                mouse_event.row,
+            ))
+        });
+        if composer_clicked {
+            self.state().focus_composer();
+            return true;
         }
         let selected = self.state().row_hitboxes.iter().find_map(|(area, index)| {
             area.contains(ratatui::layout::Position::new(
