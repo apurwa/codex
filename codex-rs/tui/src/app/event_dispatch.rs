@@ -2788,15 +2788,19 @@ impl App {
             } => {
                 let ids = items.iter().map(ToString::to_string).collect::<Vec<_>>();
                 let items_edit = crate::legacy_core::config::edit::status_line_items_edit(&ids);
+                let rows_edit = crate::legacy_core::config::edit::ConfigEdit::ClearPath {
+                    segments: vec!["tui".to_string(), "status_lines".to_string()],
+                };
                 let colors_edit =
                     crate::legacy_core::config::edit::status_line_use_colors_edit(use_theme_colors);
                 let apply_result = ConfigEditsBuilder::for_config_path(self.local_settings.user_config_path.as_path())
-                    .with_edits([items_edit, colors_edit])
+                    .with_edits([items_edit, rows_edit, colors_edit])
                     .apply()
                     .await;
                 match apply_result {
                     Ok(()) => {
                         self.local_settings.tui.status_line = Some(ids.clone());
+                        self.local_settings.tui.status_lines = None;
                         self.local_settings.tui.status_line_use_colors = use_theme_colors;
                         self.chat_widget.setup_status_line(items, use_theme_colors);
                     }

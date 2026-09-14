@@ -81,9 +81,9 @@ impl ChatWidget {
         )
     }
 
-    /// Sets the currently rendered footer status-line value.
-    pub(crate) fn set_status_line(&mut self, status_line: Option<Line<'static>>) {
-        self.bottom_pane.set_status_line(status_line);
+    /// Sets the rows rendered by the configurable footer status area.
+    pub(crate) fn set_status_lines(&mut self, status_lines: Vec<Line<'static>>) {
+        self.bottom_pane.set_status_lines(status_lines);
     }
 
     /// Sets the terminal hyperlink target for the currently rendered footer status line.
@@ -130,6 +130,7 @@ impl ChatWidget {
         );
         let ids = items.iter().map(ToString::to_string).collect::<Vec<_>>();
         self.local_settings.tui.status_line = Some(ids);
+        self.local_settings.tui.status_lines = None;
         self.local_settings.tui.status_line_use_colors = use_theme_colors;
         self.refresh_status_line();
     }
