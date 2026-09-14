@@ -226,7 +226,49 @@ impl ChatWidget {
                         .map(|value| (*item, value))
                 })
                 .collect::<Vec<_>>();
-            if let Some(row) = status_line_from_segments(segments, use_theme_colors, thread_id) {
+            // Standalone multi-row footers use the same one-column Nerd Font glyphs as
+            // the local Claude/Ghostty setup. Compact single-row configurations stay icon-free.
+            let icon = if selections.status_line_rows.len() > 1 {
+                segments.first().and_then(|(item, _)| match item {
+                    StatusLineItem::CurrentDir | StatusLineItem::ProjectRoot => Some("\u{f07b}"),
+                    StatusLineItem::GitBranch
+                    | StatusLineItem::PullRequestNumber
+                    | StatusLineItem::BranchChanges => Some("\u{f09b}"),
+                    StatusLineItem::FiveHourLimit
+                    | StatusLineItem::WeeklyLimit
+                    | StatusLineItem::ContextUsed
+                    | StatusLineItem::ContextRemaining
+                    | StatusLineItem::ContextWindowSize => Some("\u{f017}"),
+                    StatusLineItem::ModelName
+                    | StatusLineItem::ModelWithReasoning
+                    | StatusLineItem::Reasoning
+                    | StatusLineItem::Status => Some("\u{f2db}"),
+                    _ => None,
+                })
+            } else {
+                None
+            };
+            if let Some(mut row) = status_line_from_segments(segments, use_theme_colors, thread_id)
+            {
+                row.style = row
+                    .style
+                    .bold()
+                    .remove_modifier(ratatui::style::Modifier::DIM);
+                for span in &mut row.spans {
+                    span.style = span
+                        .style
+                        .bold()
+                        .remove_modifier(ratatui::style::Modifier::DIM);
+                }
+                if let Some(icon) = icon {
+                    let style = row
+                        .spans
+                        .first()
+                        .map(|span| span.style)
+                        .unwrap_or(row.style);
+                    row.spans
+                        .insert(0, ratatui::text::Span::styled(format!("{icon} "), style));
+                }
                 rows.push(row);
             }
         }

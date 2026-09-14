@@ -2944,6 +2944,47 @@ async fn status_line_invalid_items_warn_once() {
 }
 
 #[tokio::test]
+async fn status_line_rows_render_bold_nerd_font_icons() {
+    let (mut chat, _rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
+    chat.show_welcome_banner = false;
+    chat.status_line_branch_cwd = Some(
+        chat.current_cwd
+            .clone()
+            .unwrap_or_else(|| chat.config.cwd.to_path_buf()),
+    );
+    chat.status_line_branch = Some("main".to_string());
+    chat.status_line_branch_lookup_complete = true;
+    chat.local_settings.tui.status_lines = Some(vec![
+        vec!["current-dir".to_string()],
+        vec!["git-branch".to_string()],
+        vec!["context-used".to_string()],
+        vec!["model-with-reasoning".to_string(), "run-state".to_string()],
+    ]);
+    chat.refresh_status_line();
+    let mut terminal =
+        Terminal::new(TestBackend::new(100, chat.desired_height(100))).expect("terminal");
+    terminal
+        .draw(|frame| chat.render(frame.area(), frame.buffer_mut()))
+        .expect("render");
+    let buffer = terminal.backend().buffer();
+    for icon in ["\u{f07b}", "\u{f09b}", "\u{f017}", "\u{f2db}"] {
+        let row = buffer
+            .content
+            .chunks(100)
+            .find(|row| row.iter().any(|cell| cell.symbol() == icon))
+            .expect("status icon row");
+        for cell in row.iter().filter(|cell| !cell.symbol().trim().is_empty()) {
+            assert!(cell.modifier.contains(ratatui::style::Modifier::BOLD));
+            assert!(!cell.modifier.contains(ratatui::style::Modifier::DIM));
+        }
+    }
+    assert_chatwidget_snapshot!(
+        "bold_status_line_icons",
+        normalized_backend_snapshot(terminal.backend())
+    );
+}
+
+#[tokio::test]
 async fn multiple_status_line_rows_override_legacy_status_line_and_render_as_a_stack() {
     let (mut chat, _rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
     chat.show_welcome_banner = false;
@@ -2958,7 +2999,7 @@ async fn multiple_status_line_rows_override_legacy_status_line_and_render_as_a_s
 
     assert_eq!(
         status_line_text(&chat),
-        Some("Ready\nContext 0% used · Context 100% left".to_string())
+        Some("\u{f2db} Ready\n\u{f017} Context 0% used · Context 100% left".to_string())
     );
 
     let width = 58;
