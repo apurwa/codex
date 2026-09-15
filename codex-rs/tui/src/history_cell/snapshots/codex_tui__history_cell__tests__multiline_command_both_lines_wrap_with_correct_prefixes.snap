@@ -3,5 +3,5 @@ source: tui/src/history_cell/tests.rs
 expression: rendered
 ---
 
-CODEX · Tool Call
+CODEX · Tool Calls
 ┊ ✓ first_token_is… · Ctrl+T

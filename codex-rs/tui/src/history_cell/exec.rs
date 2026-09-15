@@ -94,6 +94,10 @@ impl HistoryCell for UnifiedExecInteractionCell {
         out.extend(raw_lines_from_source(&self.stdin));
         plain_lines(prepend_codex_tool_call_label(out))
     }
+
+    fn is_codex_tool_call(&self) -> bool {
+        true
+    }
 }
 
 pub(crate) fn new_unified_exec_interaction(

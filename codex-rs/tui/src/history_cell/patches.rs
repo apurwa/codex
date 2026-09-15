@@ -25,6 +25,10 @@ impl HistoryCell for PatchHistoryCell {
             RAW_DIFF_SUMMARY_WIDTH,
         )))
     }
+
+    fn is_codex_tool_call(&self) -> bool {
+        true
+    }
 }
 /// Create a new `PendingPatch` cell that lists the file‑level summary of
 /// a proposed patch. The summary lines should already be formatted (e.g.

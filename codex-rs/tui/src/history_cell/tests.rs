@@ -628,24 +628,24 @@ fn unified_exec_interaction_cell_renders_input() {
     assert_eq!(lines, render_transcript(&cell));
     insta::assert_snapshot!(lines.join("\n"), @"
 
-    CODEX · Tool Call
-    ↳ Interacted with background terminal · cat
-      └ line 1
-        line 2
-        line 3
-        line 4
-        line 5
-        line 6
-        line 7
-        line 8
-        line 9
-        line 10
-        line 11
-        line 12
-        line 13
-        line 14
-        line 15
-        line 16
+    CODEX · Tool Calls
+    ┊ ↳ Interacted with background terminal · cat
+    ┊   └ line 1
+    ┊     line 2
+    ┊     line 3
+    ┊     line 4
+    ┊     line 5
+    ┊     line 6
+    ┊     line 7
+    ┊     line 8
+    ┊     line 9
+    ┊     line 10
+    ┊     line 11
+    ┊     line 12
+    ┊     line 13
+    ┊     line 14
+    ┊     line 15
+    ┊     line 16
     ");
 }
 
@@ -655,8 +655,35 @@ fn unified_exec_interaction_cell_renders_wait() {
     let lines = render_transcript(&cell);
     assert_eq!(
         lines,
-        vec!["", "CODEX · Tool Call", "• Waited for background terminal"]
+        vec![
+            "",
+            "CODEX · Tool Calls",
+            "┊ • Waited for background terminal"
+        ]
     );
+}
+
+#[test]
+fn consecutive_tool_call_cell_reuses_group_heading() {
+    let first = new_unified_exec_interaction(/*command_display*/ None, String::new());
+    let continuation = ToolCallContinuationCell::new(Box::new(new_unified_exec_interaction(
+        Some("cargo test".to_string()),
+        String::new(),
+    )));
+
+    assert_eq!(
+        render_lines(&first.display_lines(/*width*/ 80)),
+        vec![
+            "",
+            "CODEX · Tool Calls",
+            "┊ • Waited for background terminal"
+        ]
+    );
+    assert_eq!(
+        render_lines(&continuation.display_lines(/*width*/ 80)),
+        vec!["┊ • Waited for background terminal · cargo test"]
+    );
+    assert!(continuation.is_codex_tool_call());
 }
 
 #[test]
@@ -1262,7 +1289,7 @@ fn unified_exec_interaction_cell_height_matches_wrapped_rendering() {
         .map(|cell| cell.symbol())
         .collect::<String>();
     assert!(
-        rendered.contains("CODEX · Tool Call") && rendered.contains("Interacted with"),
+        rendered.contains("CODEX · Tool Calls") && rendered.contains("Interacted with"),
         "expected the rendered cell to keep its tool label and header visible, got: {rendered:?}"
     );
 }
@@ -2153,7 +2180,7 @@ fn codex_tool_call_label_distinguishes_agent_exec_from_user_shell() {
     };
 
     let agent_lines = make_cell(ExecCommandSource::Agent).display_lines(/*width*/ 80);
-    assert_eq!(agent_lines[1].to_string(), "CODEX · Tool Call");
+    assert_eq!(agent_lines[1].to_string(), "CODEX · Tool Calls");
     assert_eq!(
         agent_lines[1].spans[0].style,
         crate::style::codex_label_style()
@@ -2163,7 +2190,7 @@ fn codex_tool_call_label_distinguishes_agent_exec_from_user_shell() {
     assert!(
         user_lines
             .iter()
-            .all(|line| line.to_string() != "CODEX · Tool Call")
+            .all(|line| line.to_string() != "CODEX · Tool Calls")
     );
     assert!(
         render_lines(&user_lines)
@@ -2185,13 +2212,13 @@ fn patch_history_cell_uses_codex_tool_call_label() {
     );
 
     let display_lines = cell.display_lines(/*width*/ 80);
-    assert_eq!(display_lines[1].to_string(), "CODEX · Tool Call");
+    assert_eq!(display_lines[1].to_string(), "CODEX · Tool Calls");
     assert!(
         render_lines(&display_lines)
             .join("\n")
             .contains("• Added README.md (+1 -0)")
     );
-    assert_eq!(cell.raw_lines()[1].to_string(), "CODEX · Tool Call");
+    assert_eq!(cell.raw_lines()[1].to_string(), "CODEX · Tool Calls");
 }
 
 #[test]

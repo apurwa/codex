@@ -202,7 +202,6 @@ impl HistoryCell for ExecCell {
                 }
             }
         }
-        let lines = prefix_lines(lines, "┊ ".dim(), "┊ ".dim());
         if self.calls.iter().all(|call| !call.is_user_shell_command()) {
             prepend_codex_tool_call_label(lines)
         } else {
@@ -269,6 +268,10 @@ impl HistoryCell for ExecCell {
 
     fn raw_lines(&self) -> Vec<Line<'static>> {
         plain_lines(self.transcript_lines(u16::MAX))
+    }
+
+    fn is_codex_tool_call(&self) -> bool {
+        self.calls.iter().all(|call| !call.is_user_shell_command())
     }
 }
 
@@ -1017,7 +1020,7 @@ mod tests {
 
         insta::assert_snapshot!(rendered, @"
 
-        CODEX · Tool Call
+        CODEX · Tool Calls
         ┊ • Exploring
         ┊   └ Read SKILL.md
         ");

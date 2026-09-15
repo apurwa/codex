@@ -93,6 +93,81 @@ impl HistoryCell for PrefixedWrappedHistoryCell {
         plain_lines(self.text.clone().lines)
     }
 }
+
+#[derive(Debug)]
+pub(crate) struct ToolCallContinuationCell {
+    inner: Box<dyn HistoryCell>,
+}
+
+impl ToolCallContinuationCell {
+    pub(crate) fn new(inner: Box<dyn HistoryCell>) -> Self {
+        Self { inner }
+    }
+
+    fn without_group_heading(mut lines: Vec<Line<'static>>) -> Vec<Line<'static>> {
+        if lines
+            .first()
+            .is_some_and(|line| line.to_string().is_empty())
+            && lines
+                .get(1)
+                .is_some_and(|line| line.to_string() == "CODEX · Tool Calls")
+        {
+            lines.drain(..2);
+        }
+        lines
+    }
+
+    fn without_hyperlink_group_heading(mut lines: Vec<HyperlinkLine>) -> Vec<HyperlinkLine> {
+        if lines
+            .first()
+            .is_some_and(|line| line.line.to_string().is_empty())
+            && lines
+                .get(1)
+                .is_some_and(|line| line.line.to_string() == "CODEX · Tool Calls")
+        {
+            lines.drain(..2);
+        }
+        lines
+    }
+}
+
+impl HistoryCell for ToolCallContinuationCell {
+    fn display_lines(&self, width: u16) -> Vec<Line<'static>> {
+        Self::without_group_heading(self.inner.display_lines(width))
+    }
+
+    fn transcript_lines(&self, width: u16) -> Vec<Line<'static>> {
+        Self::without_group_heading(self.inner.transcript_lines(width))
+    }
+
+    fn display_hyperlink_lines(&self, width: u16) -> Vec<HyperlinkLine> {
+        Self::without_hyperlink_group_heading(self.inner.display_hyperlink_lines(width))
+    }
+
+    fn transcript_hyperlink_lines(&self, width: u16) -> Vec<HyperlinkLine> {
+        Self::without_hyperlink_group_heading(self.inner.transcript_hyperlink_lines(width))
+    }
+
+    fn raw_lines(&self) -> Vec<Line<'static>> {
+        Self::without_group_heading(self.inner.raw_lines())
+    }
+
+    fn is_codex_tool_call(&self) -> bool {
+        true
+    }
+
+    fn is_stream_continuation(&self) -> bool {
+        true
+    }
+
+    fn has_stable_transcript_height(&self) -> bool {
+        self.inner.has_stable_transcript_height()
+    }
+
+    fn transcript_animation_tick(&self) -> Option<u64> {
+        self.inner.transcript_animation_tick()
+    }
+}
 #[derive(Debug)]
 pub(crate) struct CompositeHistoryCell {
     pub(super) parts: Vec<Box<dyn HistoryCell>>,

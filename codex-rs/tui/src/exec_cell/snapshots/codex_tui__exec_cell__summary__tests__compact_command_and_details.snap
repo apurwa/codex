@@ -6,7 +6,7 @@ expression: "format!(\"{}\\n\\n{full}\", summary[2])"
 ┊ ✓ printf 'first\nsecond' · 2.00s · 2 lines · Ctrl+T details
 
 
-CODEX · Tool Call
+CODEX · Tool Calls
 $ printf 'first\nsecond'
 first
 second

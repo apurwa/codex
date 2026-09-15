@@ -146,10 +146,11 @@ pub(crate) enum HistoryRenderMode {
 }
 
 pub(crate) fn prepend_codex_tool_call_label(mut lines: Vec<Line<'static>>) -> Vec<Line<'static>> {
+    lines = prefix_lines(lines, "┊ ".dim(), "┊ ".dim());
     let mut labeled = vec![
         Line::default(),
         Line::from(Span::styled(
-            "CODEX · Tool Call",
+            "CODEX · Tool Calls",
             crate::style::codex_label_style(),
         )),
     ];
@@ -206,6 +207,11 @@ pub(crate) trait HistoryCell: std::fmt::Debug + Send + Sync + Any {
     /// Optional full-cell background used by visually distinct transcript blocks.
     fn background_style(&self) -> Option<Style> {
         None
+    }
+
+    /// Whether this cell belongs to a consecutive Codex tool-activity group.
+    fn is_codex_tool_call(&self) -> bool {
+        false
     }
 
     /// Returns rich visible lines plus terminal hyperlink metadata.

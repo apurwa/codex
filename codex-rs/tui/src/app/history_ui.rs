@@ -21,13 +21,25 @@ pub(super) struct ThreadUsageStatusHistory {
 }
 
 impl App {
-    pub(super) fn insert_history_cell(&mut self, tui: &mut tui::Tui, cell: Box<dyn HistoryCell>) {
+    pub(super) fn insert_history_cell(
+        &mut self,
+        tui: &mut tui::Tui,
+        mut cell: Box<dyn HistoryCell>,
+    ) {
         if let Some(warnings) = cell
             .as_any()
             .downcast_ref::<history_cell::StartupWarningsCell>()
         {
             self.merge_startup_warnings(tui, warnings);
             return;
+        }
+        if cell.is_codex_tool_call()
+            && self
+                .transcript_cells
+                .last()
+                .is_some_and(|previous| previous.is_codex_tool_call())
+        {
+            cell = Box::new(history_cell::ToolCallContinuationCell::new(cell));
         }
         let is_session_header = cell.as_any().is::<history_cell::SessionInfoCell>();
         let cell: Arc<dyn HistoryCell> = cell.into();

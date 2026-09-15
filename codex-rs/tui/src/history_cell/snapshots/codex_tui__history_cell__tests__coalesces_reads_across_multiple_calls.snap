@@ -3,5 +3,5 @@ source: tui/src/history_cell/tests.rs
 expression: rendered
 ---
 
-CODEX · Tool Call
+CODEX · Tool Calls
 ┊ ✓ Explored · 3 commands · 3ms · 0 lines · Ctrl+T details

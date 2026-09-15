@@ -30,7 +30,7 @@ fn completed_commands_are_compact_without_losing_details() {
     for width in [4, 20, 80, 120] {
         let summary = cell.display_lines(width);
         assert_eq!(summary.len(), 3);
-        assert_eq!(summary[1].to_string(), "CODEX · Tool Call");
+        assert_eq!(summary[1].to_string(), "CODEX · Tool Calls");
         assert!(summary[2].width() <= usize::from(width));
         assert_eq!(cell.raw_lines(), raw);
     }
