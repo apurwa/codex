@@ -627,6 +627,8 @@ fn unified_exec_interaction_cell_renders_input() {
     let lines = render_lines(&cell.display_lines(/*width*/ 80));
     assert_eq!(lines, render_transcript(&cell));
     insta::assert_snapshot!(lines.join("\n"), @"
+
+    CODEX · Tool Call
     ↳ Interacted with background terminal · cat
       └ line 1
         line 2
@@ -651,7 +653,10 @@ fn unified_exec_interaction_cell_renders_input() {
 fn unified_exec_interaction_cell_renders_wait() {
     let cell = new_unified_exec_interaction(/*command_display*/ None, String::new());
     let lines = render_transcript(&cell);
-    assert_eq!(lines, vec!["• Waited for background terminal"]);
+    assert_eq!(
+        lines,
+        vec!["", "CODEX · Tool Call", "• Waited for background terminal"]
+    );
 }
 
 #[test]
@@ -1251,19 +1256,14 @@ fn unified_exec_interaction_cell_height_matches_wrapped_rendering() {
     let mut buf = ratatui::buffer::Buffer::empty(area);
     cell.render(area, &mut buf);
 
-    let first_row = (0..area.width)
-        .map(|x| {
-            let symbol = buf[(x, 0)].symbol();
-            if symbol.is_empty() {
-                ' '
-            } else {
-                symbol.chars().next().unwrap_or(' ')
-            }
-        })
+    let rendered = buf
+        .content()
+        .iter()
+        .map(|cell| cell.symbol())
         .collect::<String>();
     assert!(
-        first_row.contains("Interacted with"),
-        "expected first rendered row to keep the header visible, got: {first_row:?}"
+        rendered.contains("CODEX · Tool Call") && rendered.contains("Interacted with"),
+        "expected the rendered cell to keep its tool label and header visible, got: {rendered:?}"
     );
 }
 

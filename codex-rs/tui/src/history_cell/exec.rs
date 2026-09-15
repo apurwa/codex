@@ -44,7 +44,7 @@ impl HistoryCell for UnifiedExecInteractionCell {
         push_owned_lines(&header_wrapped, &mut out);
 
         if waited_only {
-            return out;
+            return prepend_codex_tool_call_label(out);
         }
 
         let input_lines: Vec<Line<'static>> = self
@@ -60,7 +60,7 @@ impl HistoryCell for UnifiedExecInteractionCell {
                 .subsequent_indent(Line::from("    ".dim())),
         );
         out.extend(input_wrapped);
-        out
+        prepend_codex_tool_call_label(out)
     }
 
     fn raw_lines(&self) -> Vec<Line<'static>> {
@@ -77,7 +77,7 @@ impl HistoryCell for UnifiedExecInteractionCell {
             } else {
                 out.push(Line::from("Waited for background terminal"));
             }
-            return out;
+            return plain_lines(prepend_codex_tool_call_label(out));
         }
 
         if let Some(command) = self
@@ -92,7 +92,7 @@ impl HistoryCell for UnifiedExecInteractionCell {
             out.push(Line::from("Interacted with background terminal"));
         }
         out.extend(raw_lines_from_source(&self.stdin));
-        out
+        plain_lines(prepend_codex_tool_call_label(out))
     }
 }
 

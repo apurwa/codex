@@ -17,6 +17,11 @@ pub(crate) fn codex_label_style() -> Style {
     Style::default().fg(Color::Rgb(128, 0, 0)).bold()
 }
 
+/// High-contrast success accent for glyphs shown on light transcript backgrounds.
+pub(crate) fn tool_success_style() -> Style {
+    Style::default().fg(Color::Rgb(0x2e, 0x7d, 0x32)).bold()
+}
+
 /// Shared selection/action colors, independent of remapped ANSI terminal palettes.
 pub(crate) fn selected_control_style() -> Style {
     Style::default()
