@@ -29,14 +29,15 @@ fn completed_commands_are_compact_without_losing_details() {
     let raw = cell.raw_lines();
     for width in [4, 20, 80, 120] {
         let summary = cell.display_lines(width);
-        assert_eq!(summary.len(), 1);
-        assert!(summary[0].width() <= usize::from(width));
+        assert_eq!(summary.len(), 3);
+        assert_eq!(summary[1].to_string(), "CODEX · Tool Call");
+        assert!(summary[2].width() <= usize::from(width));
         assert_eq!(cell.raw_lines(), raw);
     }
     let summary = cell.display_lines(100);
-    assert!(summary[0].to_string().contains("Ctrl+T details"));
+    assert!(summary[2].to_string().contains("Ctrl+T details"));
     assert!(
-        summary[0]
+        summary[2]
             .spans
             .iter()
             .all(|span| !span.style.add_modifier.contains(Modifier::DIM) || span.content == "┊ ")
@@ -50,7 +51,7 @@ fn completed_commands_are_compact_without_losing_details() {
     assert!(full.contains("first\nsecond"));
     insta::assert_snapshot!(
         "compact_command_and_details",
-        format!("{}\n\n{full}", summary[0])
+        format!("{}\n\n{full}", summary[2])
     );
 }
 
@@ -98,6 +99,6 @@ fn wide_character_commands_fit_narrow_summaries() {
         Duration::from_secs(1),
     );
     for width in [8, 25, 65, 100] {
-        assert!(cell.display_lines(width)[0].width() <= usize::from(width));
+        assert!(cell.display_lines(width)[2].width() <= usize::from(width));
     }
 }

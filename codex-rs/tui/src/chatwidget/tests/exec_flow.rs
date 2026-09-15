@@ -74,7 +74,7 @@ async fn replayed_command_completion_preserves_tracking_without_duplicate_starts
         .collect::<Vec<_>>();
     assert_eq!(
         history,
-        vec!["┊ ✓ cat replay · 0ms · 0 lines · Ctrl+T details\n".to_string()]
+        vec!["\nCODEX · Tool Call\n┊ ✓ cat replay · 0ms · 0 lines · Ctrl+T details\n".to_string()]
     );
 }
 
@@ -145,6 +145,8 @@ async fn failed_exploration_keeps_overlapping_commands_active_until_all_finish()
     assert_eq!(cells.len(), 1);
     let history = lines_to_single_string(&cells[0]);
     insta::assert_snapshot!(history, @"
+
+    CODEX · Tool Call
     ┊ • Explored
     ┊   └ List missing
     ┊     Read foo.txt, bar.txt
@@ -152,7 +154,11 @@ async fn failed_exploration_keeps_overlapping_commands_active_until_all_finish()
 
     let later = begin_exec(&mut chat, "call-after-failure", "cat later.txt");
     end_exec(&mut chat, later, "later\n", "", /*exit_code*/ 0);
-    insta::assert_snapshot!(active_blob(&chat), @"┊ ✓ Explored · 5ms · 1 lines · Ctrl+T details");
+    insta::assert_snapshot!(active_blob(&chat), @"
+
+    CODEX · Tool Call
+    ┊ ✓ Explored · 5ms · 1 lines · Ctrl+T details
+    ");
 }
 
 #[tokio::test]
@@ -227,22 +233,31 @@ async fn replayed_commands_preserve_individual_output_and_failure_status() {
         .map(|cell| lines_to_single_string(&cell.transcript_lines(/*width*/ 80)))
         .collect::<Vec<_>>()
         .join("\n");
-    insta::assert_snapshot!(transcript, @r"$ printf first
-first
-✓ • 5ms
+    insta::assert_snapshot!(transcript, @"
 
-$ printf second
-second
-✓ • 5ms
+    CODEX · Tool Call
+    $ printf first
+    first
+    ✓ • 5ms
 
-$ printf failure
-failure
-✗ (7) • 5ms
 
-$ printf declined
-declined
-✗ (1) • 5ms
-");
+    CODEX · Tool Call
+    $ printf second
+    second
+    ✓ • 5ms
+
+
+    CODEX · Tool Call
+    $ printf failure
+    failure
+    ✗ (7) • 5ms
+
+
+    CODEX · Tool Call
+    $ printf declined
+    declined
+    ✗ (1) • 5ms
+    ");
 }
 
 #[tokio::test]
@@ -798,7 +813,10 @@ async fn exec_history_shows_unified_exec_tool_calls() {
     end_exec(&mut chat, begin, "", "", /*exit_code*/ 0);
 
     let blob = active_blob(&chat);
-    assert_eq!(blob, "┊ ✓ Explored · 5ms · 0 lines · Ctrl+T details\n");
+    assert_eq!(
+        blob,
+        "\nCODEX · Tool Call\n┊ ✓ Explored · 5ms · 0 lines · Ctrl+T details\n"
+    );
 }
 
 #[tokio::test]
@@ -1714,6 +1732,8 @@ async fn apply_patch_events_emit_history_cells() {
     assert!(!cells.is_empty(), "expected apply block cell to be sent");
     let blob = lines_to_single_string(cells.last().unwrap());
     insta::assert_snapshot!(blob, @"
+
+    CODEX · Tool Call
     • Added foo.txt (+16 -0)
          1 +line 1
          2 +line 2

@@ -2,6 +2,8 @@
 source: tui/src/chatwidget/tests/exec_flow.rs
 expression: active_blob(&chat)
 ---
+
+CODEX · Tool Call
 ┊ • Exploring
 ┊   └ List ls -la
 ┊     Read foo.txt

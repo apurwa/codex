@@ -2,5 +2,7 @@
 source: tui/src/chatwidget/tests/review_mode.rs
 expression: exec_blob
 ---
+
+CODEX · Tool Call
 ┊ • Ran sleep 1
 ┊   └ (no output)

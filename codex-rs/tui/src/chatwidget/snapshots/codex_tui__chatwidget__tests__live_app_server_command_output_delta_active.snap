@@ -2,6 +2,8 @@
 source: tui/src/chatwidget/tests/app_server.rs
 expression: active
 ---
+
+CODEX · Tool Call
 ┊ • Running printf 'stdout\nstderr\n'
 ┊   └ stdout
 ┊     stderr

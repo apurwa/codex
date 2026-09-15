@@ -2,6 +2,8 @@
 source: tui/src/chatwidget/tests/completion_styling_tests.rs
 expression: normalize_completion_timestamps(text)
 ---
+
+CODEX · Tool Call
 ┊ ✓ echo ready · 5ms · 1 lines · Ctrl+T details
 
 

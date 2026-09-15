@@ -145,6 +145,18 @@ pub(crate) enum HistoryRenderMode {
     Raw,
 }
 
+pub(crate) fn prepend_codex_tool_call_label(mut lines: Vec<Line<'static>>) -> Vec<Line<'static>> {
+    let mut labeled = vec![
+        Line::default(),
+        Line::from(Span::styled(
+            "CODEX · Tool Call",
+            crate::style::codex_label_style(),
+        )),
+    ];
+    labeled.append(&mut lines);
+    labeled
+}
+
 pub(crate) fn raw_lines_from_source(source: &str) -> Vec<Line<'static>> {
     if source.is_empty() {
         return Vec::new();

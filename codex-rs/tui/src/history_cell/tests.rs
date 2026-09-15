@@ -27,6 +27,7 @@ use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
 use serde_json::json;
 use std::collections::HashMap;
+use std::path::Path;
 use std::path::PathBuf;
 
 use codex_app_server_protocol::CommandExecutionSource as ExecCommandSource;
@@ -2129,6 +2130,68 @@ fn single_line_command_compact_when_fits() {
     let lines = cell.display_lines(/*width*/ 80);
     let rendered = render_lines(&lines).join("\n");
     insta::assert_snapshot!(rendered);
+}
+
+#[test]
+fn codex_tool_call_label_distinguishes_agent_exec_from_user_shell() {
+    let make_cell = |source| {
+        let mut cell = ExecCell::new(
+            ExecCall {
+                call_id: "c1".to_string(),
+                command: vec!["git".into(), "status".into()],
+                parsed: Vec::new(),
+                output: None,
+                source,
+                start_time: Some(Instant::now()),
+                duration: None,
+                interaction_input: None,
+            },
+            /*animations_enabled*/ false,
+        );
+        cell.complete_call("c1", CommandOutput::default(), Duration::from_millis(1));
+        cell
+    };
+
+    let agent_lines = make_cell(ExecCommandSource::Agent).display_lines(/*width*/ 80);
+    assert_eq!(agent_lines[1].to_string(), "CODEX · Tool Call");
+    assert_eq!(
+        agent_lines[1].spans[0].style,
+        crate::style::codex_label_style()
+    );
+
+    let user_lines = make_cell(ExecCommandSource::UserShell).display_lines(/*width*/ 80);
+    assert!(
+        user_lines
+            .iter()
+            .all(|line| line.to_string() != "CODEX · Tool Call")
+    );
+    assert!(
+        render_lines(&user_lines)
+            .join("\n")
+            .contains("You ran git status")
+    );
+}
+
+#[test]
+fn patch_history_cell_uses_codex_tool_call_label() {
+    let cell = new_patch_event(
+        HashMap::from([(
+            PathBuf::from("README.md"),
+            FileChange::Add {
+                content: "hello\n".to_string(),
+            },
+        )]),
+        Path::new("/tmp/project"),
+    );
+
+    let display_lines = cell.display_lines(/*width*/ 80);
+    assert_eq!(display_lines[1].to_string(), "CODEX · Tool Call");
+    assert!(
+        render_lines(&display_lines)
+            .join("\n")
+            .contains("• Added README.md (+1 -0)")
+    );
+    assert_eq!(cell.raw_lines()[1].to_string(), "CODEX · Tool Call");
 }
 
 #[test]

@@ -1,9 +1,12 @@
 ---
 source: tui/src/exec_cell/summary_tests.rs
-expression: "format!(\"{}\\n\\n{full}\", summary[0])"
+assertion_line: 52
+expression: "format!(\"{}\\n\\n{full}\", summary[2])"
 ---
 ┊ ✓ printf 'first\nsecond' · 2.00s · 2 lines · Ctrl+T details
 
+
+CODEX · Tool Call
 $ printf 'first\nsecond'
 first
 second

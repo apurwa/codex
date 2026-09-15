@@ -2,4 +2,6 @@
 source: tui/src/chatwidget/tests/exec_flow.rs
 expression: active_blob(&chat)
 ---
+
+CODEX · Tool Call
 ┊ ✓ Explored · 2 commands · 10ms · 1 lines · Ctrl+T details

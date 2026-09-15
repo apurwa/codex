@@ -6,6 +6,7 @@ use super::model::ExecCell;
 use crate::exec_command::strip_bash_lc_and_escape;
 use crate::history_cell::HistoryCell;
 use crate::history_cell::plain_lines;
+use crate::history_cell::prepend_codex_tool_call_label;
 use crate::motion::MotionMode;
 use crate::motion::ReducedMotionIndicator;
 use crate::motion::activity_indicator;
@@ -201,7 +202,12 @@ impl HistoryCell for ExecCell {
                 }
             }
         }
-        prefix_lines(lines, "┊ ".dim(), "┊ ".dim())
+        let lines = prefix_lines(lines, "┊ ".dim(), "┊ ".dim());
+        if self.calls.iter().all(|call| !call.is_user_shell_command()) {
+            prepend_codex_tool_call_label(lines)
+        } else {
+            lines
+        }
     }
 
     fn transcript_lines(&self, width: u16) -> Vec<Line<'static>> {
@@ -254,7 +260,11 @@ impl HistoryCell for ExecCell {
                 }
             }
         }
-        lines
+        if self.calls.iter().all(|call| !call.is_user_shell_command()) {
+            prepend_codex_tool_call_label(lines)
+        } else {
+            lines
+        }
     }
 
     fn raw_lines(&self) -> Vec<Line<'static>> {
@@ -1006,6 +1016,8 @@ mod tests {
             .join("\n");
 
         insta::assert_snapshot!(rendered, @"
+
+        CODEX · Tool Call
         ┊ • Exploring
         ┊   └ Read SKILL.md
         ");

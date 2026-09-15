@@ -4,6 +4,8 @@ expression: "(preview, transcript)"
 ---
 (
     [
+        Line::default(),
+        Line::from(Span::from("CODEX · Tool Call").fg(Color::Rgb(128, 0, 0)).bold()),
         Line::from_iter([
             Span::from("┊ ").dim(),
             Span::from("•").not_dim(),
@@ -27,6 +29,8 @@ expression: "(preview, transcript)"
         ]),
     ],
     [
+        Line::default(),
+        Line::from(Span::from("CODEX · Tool Call").fg(Color::Rgb(128, 0, 0)).bold()),
         Line::from_iter([
             Span::from("$ ").magenta().not_dim(),
             Span::from("echo").fg(Color::Rgb(137, 180, 250)).not_dim(),

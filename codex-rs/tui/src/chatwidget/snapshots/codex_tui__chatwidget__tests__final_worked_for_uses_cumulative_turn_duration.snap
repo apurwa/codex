@@ -2,6 +2,8 @@
 source: tui/src/chatwidget/tests/exec_flow.rs
 expression: normalize_completion_timestamps(combined)
 ---
+
+CODEX · Tool Call
 ┊ ✓ echo preparing · 5ms · 1 lines · Ctrl+T details
 
 

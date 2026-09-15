@@ -2,4 +2,6 @@
 source: tui/src/history_cell/tests.rs
 expression: rendered
 ---
+
+CODEX · Tool Call
 ┊ ✓ a_very_lon… · Ctrl+T

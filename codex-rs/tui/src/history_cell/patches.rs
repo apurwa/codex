@@ -11,15 +11,19 @@ pub(crate) struct PatchHistoryCell {
 
 impl HistoryCell for PatchHistoryCell {
     fn display_lines(&self, width: u16) -> Vec<Line<'static>> {
-        create_diff_summary(&self.changes, &self.cwd, width as usize)
+        prepend_codex_tool_call_label(create_diff_summary(
+            &self.changes,
+            &self.cwd,
+            width as usize,
+        ))
     }
 
     fn raw_lines(&self) -> Vec<Line<'static>> {
-        plain_lines(create_diff_summary(
+        plain_lines(prepend_codex_tool_call_label(create_diff_summary(
             &self.changes,
             &self.cwd,
             RAW_DIFF_SUMMARY_WIDTH,
-        ))
+        )))
     }
 }
 /// Create a new `PendingPatch` cell that lists the file‑level summary of

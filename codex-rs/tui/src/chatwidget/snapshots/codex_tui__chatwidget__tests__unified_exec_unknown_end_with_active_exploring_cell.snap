@@ -3,8 +3,12 @@ source: tui/src/chatwidget/tests/exec_flow.rs
 expression: snapshot
 ---
 History:
+
+CODEX · Tool Call
 ┊ ✓ echo repro-marker · 5ms · 1 lines · Ctrl+T details
 
 Active:
+
+CODEX · Tool Call
 ┊ • Exploring
 ┊   └ Read null
