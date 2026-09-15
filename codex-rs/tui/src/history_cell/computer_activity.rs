@@ -97,6 +97,7 @@ impl HistoryCell for ComputerActivityCell {
         if width == 0 {
             return Vec::new();
         }
+        let width = width.saturating_sub(2);
         let active = self.calls.iter().rposition(|call| call.result.is_none());
         let failures = self
             .calls
@@ -191,14 +192,18 @@ impl HistoryCell for ComputerActivityCell {
             );
             lines.push(vec!["  └ ".dim(), summary.dim()].into());
         }
-        lines
+        prepend_codex_tool_call_label(lines)
     }
 
     fn transcript_lines(&self, width: u16) -> Vec<Line<'static>> {
-        self.calls
-            .iter()
-            .flat_map(|call| call.transcript_lines(width))
-            .collect()
+        prepend_codex_tool_call_label(
+            self.calls
+                .iter()
+                .flat_map(|call| {
+                    call.render_lines(width.saturating_sub(2), McpToolCallRenderMode::Transcript)
+                })
+                .collect(),
+        )
     }
 
     fn raw_lines(&self) -> Vec<Line<'static>> {
@@ -210,6 +215,10 @@ impl HistoryCell for ComputerActivityCell {
             .iter()
             .filter_map(HistoryCell::transcript_animation_tick)
             .max()
+    }
+
+    fn is_codex_tool_call(&self) -> bool {
+        true
     }
 }
 

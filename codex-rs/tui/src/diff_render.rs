@@ -357,6 +357,40 @@ pub(crate) fn create_diff_summary(
     render_changes_block(rows, wrap_cols, cwd)
 }
 
+/// Render the single-row patch summary used in normal conversation history. The complete diff
+/// remains available from the expanded transcript.
+pub(crate) fn create_compact_diff_summary(
+    changes: &HashMap<PathBuf, FileChange>,
+    cwd: &Path,
+) -> Vec<RtLine<'static>> {
+    let rows = collect_rows(changes);
+    let total_added: usize = rows.iter().map(|row| row.added).sum();
+    let total_removed: usize = rows.iter().map(|row| row.removed).sum();
+    let mut spans: Vec<RtSpan<'static>> = vec!["• ".dim()];
+
+    if let [row] = &rows[..] {
+        let verb = match row.change {
+            FileChange::Add { .. } => "Added",
+            FileChange::Delete { .. } => "Deleted",
+            FileChange::Update { .. } => "Edited",
+        };
+        spans.push(verb.bold());
+        spans.push(" ".into());
+        spans.push(display_path_for(row.path, cwd).into());
+        if let Some(move_path) = row.move_path {
+            spans.push(format!(" → {}", display_path_for(move_path, cwd)).into());
+        }
+    } else {
+        let noun = if rows.len() == 1 { "file" } else { "files" };
+        spans.push("Edited".bold());
+        spans.push(format!(" {} {noun}", rows.len()).into());
+    }
+    spans.push(" ".into());
+    spans.extend(render_line_count_summary(total_added, total_removed));
+    spans.push(" · Ctrl+T details".dim());
+    vec![RtLine::from(spans)]
+}
+
 // Shared row for per-file presentation
 struct Row<'a> {
     path: &'a Path,

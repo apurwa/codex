@@ -109,7 +109,7 @@ impl ChatWidget {
 
     pub(super) fn on_collab_event(&mut self, cell: PlainHistoryCell) {
         self.flush_answer_stream_with_separator();
-        self.add_to_history(cell);
+        self.add_to_history(history_cell::CodexToolCallHistoryCell::new(cell));
         self.request_redraw();
     }
 

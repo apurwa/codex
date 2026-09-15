@@ -1,5 +1,7 @@
 ---
-source: tui/src/history_cell.rs
+source: tui/src/history_cell/tests.rs
 expression: rendered
 ---
-• Searched the web
+
+CODEX · Tool Calls
+┊ • Searched the web

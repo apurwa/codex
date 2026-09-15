@@ -1,6 +1,8 @@
 ---
-source: tui/src/history_cell.rs
+source: tui/src/history_cell/tests.rs
 expression: rendered
 ---
-• Called search.find_docs({"query":"ratatui styling","limit":3})
-  └ Error: network timeout
+
+CODEX · Tool Calls
+┊ • Called search.find_docs({"query":"ratatui styling","limit":3})
+┊   └ Error: network timeout

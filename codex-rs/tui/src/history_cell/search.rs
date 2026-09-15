@@ -107,18 +107,27 @@ impl HistoryCell for WebSearchCell {
             let separator = if self.completed { " for " } else { " " };
             Line::from(vec![header.bold(), separator.into(), detail.into()]).into()
         };
-        PrefixedWrappedHistoryCell::new(text, vec![bullet, " ".into()], "  ").display_lines(width)
+        prepend_codex_tool_call_label(
+            PrefixedWrappedHistoryCell::new(text, vec![bullet, " ".into()], "  ")
+                .display_lines(width.saturating_sub(2)),
+        )
     }
 
     fn raw_lines(&self) -> Vec<Line<'static>> {
         let header = web_search_header(self.completed);
         let detail = web_search_detail(self.action.as_ref(), &self.query);
         if detail.is_empty() {
-            vec![Line::from(header)]
+            plain_lines(prepend_codex_tool_call_label(vec![Line::from(header)]))
         } else {
             let separator = if self.completed { " for " } else { " " };
-            vec![Line::from(format!("{header}{separator}{detail}"))]
+            plain_lines(prepend_codex_tool_call_label(vec![Line::from(format!(
+                "{header}{separator}{detail}"
+            ))]))
         }
+    }
+
+    fn is_codex_tool_call(&self) -> bool {
+        true
     }
 }
 

@@ -10,7 +10,11 @@ pub(crate) struct PatchHistoryCell {
 }
 
 impl HistoryCell for PatchHistoryCell {
-    fn display_lines(&self, width: u16) -> Vec<Line<'static>> {
+    fn display_lines(&self, _width: u16) -> Vec<Line<'static>> {
+        prepend_codex_tool_call_label(create_compact_diff_summary(&self.changes, &self.cwd))
+    }
+
+    fn transcript_lines(&self, width: u16) -> Vec<Line<'static>> {
         prepend_codex_tool_call_label(create_diff_summary(
             &self.changes,
             &self.cwd,
@@ -43,7 +47,7 @@ pub(crate) fn new_patch_event(
     }
 }
 
-pub(crate) fn new_patch_apply_failure(stderr: String) -> PlainHistoryCell {
+pub(crate) fn new_patch_apply_failure(stderr: String) -> CodexToolCallHistoryCell {
     let mut lines: Vec<Line<'static>> = Vec::new();
 
     // Failure title
@@ -62,10 +66,13 @@ pub(crate) fn new_patch_apply_failure(stderr: String) -> PlainHistoryCell {
         lines.extend(output.lines);
     }
 
-    PlainHistoryCell { lines }
+    CodexToolCallHistoryCell::new(PlainHistoryCell { lines })
 }
 
-pub(crate) fn new_view_image_tool_call(path: LegacyAppPathString, cwd: &Path) -> PlainHistoryCell {
+pub(crate) fn new_view_image_tool_call(
+    path: LegacyAppPathString,
+    cwd: &Path,
+) -> CodexToolCallHistoryCell {
     let display_path = path
         .to_inferred_path_uri()
         .and_then(|path| path.to_abs_path().ok())
@@ -77,7 +84,7 @@ pub(crate) fn new_view_image_tool_call(path: LegacyAppPathString, cwd: &Path) ->
         vec!["  └ ".dim(), display_path.dim()].into(),
     ];
 
-    PlainHistoryCell { lines }
+    CodexToolCallHistoryCell::new(PlainHistoryCell { lines })
 }
 
 pub(crate) fn new_image_generation_call(
@@ -85,7 +92,7 @@ pub(crate) fn new_image_generation_call(
     status: &str,
     revised_prompt: Option<String>,
     saved_path: Option<AbsolutePathBuf>,
-) -> PlainHistoryCell {
+) -> CodexToolCallHistoryCell {
     let detail = revised_prompt.unwrap_or(call_id);
     let heading = if status == "failed" {
         vec!["✗ ".red().bold(), "Image generation failed".bold()].into()
@@ -100,5 +107,5 @@ pub(crate) fn new_image_generation_call(
         lines.push(vec!["  └ ".dim(), "Saved to: ".dim(), saved_path.into()].into());
     }
 
-    PlainHistoryCell { lines }
+    CodexToolCallHistoryCell::new(PlainHistoryCell { lines })
 }

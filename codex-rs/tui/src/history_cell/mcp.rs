@@ -27,11 +27,17 @@ struct McpImageOutputCell;
 
 impl HistoryCell for McpImageOutputCell {
     fn display_lines(&self, _width: u16) -> Vec<Line<'static>> {
-        vec!["tool result (image output)".into()]
+        prepend_codex_tool_call_label(vec!["tool result (image output)".into()])
     }
 
     fn raw_lines(&self) -> Vec<Line<'static>> {
-        vec![Line::from("tool result (image output)")]
+        plain_lines(prepend_codex_tool_call_label(vec![Line::from(
+            "tool result (image output)",
+        )]))
+    }
+
+    fn is_codex_tool_call(&self) -> bool {
+        true
     }
 }
 fn mcp_auth_status_label(status: McpAuthStatus) -> &'static str {
@@ -317,11 +323,15 @@ impl McpToolCallCell {
 
 impl HistoryCell for McpToolCallCell {
     fn display_lines(&self, width: u16) -> Vec<Line<'static>> {
-        self.render_lines(width, McpToolCallRenderMode::Display)
+        prepend_codex_tool_call_label(
+            self.render_lines(width.saturating_sub(2), McpToolCallRenderMode::Display),
+        )
     }
 
     fn transcript_lines(&self, width: u16) -> Vec<Line<'static>> {
-        self.render_lines(width, McpToolCallRenderMode::Transcript)
+        prepend_codex_tool_call_label(
+            self.render_lines(width.saturating_sub(2), McpToolCallRenderMode::Transcript),
+        )
     }
 
     fn raw_lines(&self) -> Vec<Line<'static>> {
@@ -347,7 +357,11 @@ impl HistoryCell for McpToolCallCell {
             }
         }
 
-        lines
+        plain_lines(prepend_codex_tool_call_label(lines))
+    }
+
+    fn is_codex_tool_call(&self) -> bool {
+        true
     }
 
     fn transcript_animation_tick(&self) -> Option<u64> {

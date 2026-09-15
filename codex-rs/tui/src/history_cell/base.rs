@@ -23,6 +23,60 @@ impl HistoryCell for PlainHistoryCell {
     }
 }
 
+/// Marks any completed history cell as Codex-initiated tool activity while preserving its
+/// specialized rendering (including terminal hyperlinks).
+#[derive(Debug)]
+pub(crate) struct CodexToolCallHistoryCell {
+    inner: Box<dyn HistoryCell>,
+}
+
+impl CodexToolCallHistoryCell {
+    pub(crate) fn new(inner: impl HistoryCell + 'static) -> Self {
+        Self {
+            inner: Box::new(inner),
+        }
+    }
+}
+
+impl HistoryCell for CodexToolCallHistoryCell {
+    fn display_lines(&self, width: u16) -> Vec<Line<'static>> {
+        prepend_codex_tool_call_label(self.inner.display_lines(width.saturating_sub(2)))
+    }
+
+    fn transcript_lines(&self, width: u16) -> Vec<Line<'static>> {
+        prepend_codex_tool_call_label(self.inner.transcript_lines(width.saturating_sub(2)))
+    }
+
+    fn display_hyperlink_lines(&self, width: u16) -> Vec<HyperlinkLine> {
+        prepend_codex_tool_call_hyperlink_label(
+            self.inner.display_hyperlink_lines(width.saturating_sub(2)),
+        )
+    }
+
+    fn transcript_hyperlink_lines(&self, width: u16) -> Vec<HyperlinkLine> {
+        prepend_codex_tool_call_hyperlink_label(
+            self.inner
+                .transcript_hyperlink_lines(width.saturating_sub(2)),
+        )
+    }
+
+    fn raw_lines(&self) -> Vec<Line<'static>> {
+        plain_lines(prepend_codex_tool_call_label(self.inner.raw_lines()))
+    }
+
+    fn is_codex_tool_call(&self) -> bool {
+        true
+    }
+
+    fn has_stable_transcript_height(&self) -> bool {
+        self.inner.has_stable_transcript_height()
+    }
+
+    fn transcript_animation_tick(&self) -> Option<u64> {
+        self.inner.transcript_animation_tick()
+    }
+}
+
 #[derive(Debug)]
 pub(crate) struct WebHyperlinkHistoryCell {
     lines: Vec<HyperlinkLine>,

@@ -505,8 +505,10 @@ fn structured_tool_cell_renders_raw_plain_text_without_prefix_or_style() {
 
     let lines = cell.raw_lines();
     let rendered = render_lines(&lines);
-    assert!(rendered[0].starts_with("Called search.find_docs("));
-    assert_eq!(rendered[1..], ["alpha".to_string(), "beta".to_string()]);
+    assert_eq!(rendered[0], "");
+    assert_eq!(rendered[1], "CODEX · Tool Calls");
+    assert!(rendered[2].starts_with("┊ Called search.find_docs("));
+    assert_eq!(rendered[3..], ["┊ alpha".to_string(), "┊ beta".to_string()]);
     assert_unstyled_lines(&lines);
 }
 
@@ -588,9 +590,11 @@ fn image_generation_call_renders_saved_path() {
     assert_eq!(
         render_lines(&cell.display_lines(/*width*/ 80)),
         vec![
-            "• Generated Image:".to_string(),
-            "  └ A tiny blue square".to_string(),
-            expected_saved_path,
+            "".to_string(),
+            "CODEX · Tool Calls".to_string(),
+            "┊ • Generated Image:".to_string(),
+            "┊   └ A tiny blue square".to_string(),
+            format!("┊ {expected_saved_path}"),
         ],
     );
 }
@@ -1372,8 +1376,10 @@ fn web_search_history_cell_wraps_with_indented_continuation() {
     assert_eq!(
         rendered,
         vec![
-            "• Searched the web for example search query with several generic".to_string(),
-            "  words to exercise wrapping".to_string(),
+            "".to_string(),
+            "CODEX · Tool Calls".to_string(),
+            "┊ • Searched the web for example search query with several".to_string(),
+            "┊   generic words to exercise wrapping".to_string(),
         ]
     );
 }
@@ -1393,7 +1399,11 @@ fn web_search_history_cell_short_query_does_not_wrap() {
 
     assert_eq!(
         rendered,
-        vec!["• Searched the web for short query".to_string()]
+        vec![
+            "".to_string(),
+            "CODEX · Tool Calls".to_string(),
+            "┊ • Searched the web for short query".to_string(),
+        ]
     );
 }
 
@@ -1468,16 +1478,20 @@ fn code_mode_tool_call_uses_title_and_preserves_full_transcript() {
     let transcript = render_lines(&cell.transcript_lines(/*width*/ 180)).join("\n");
     insta::assert_snapshot!(format!("history:\n{history}\n\ntranscript:\n{transcript}"), @r#"
     history:
-    ✓ node_repl.js · 0ms · Ctrl+T details
+
+    CODEX · Tool Calls
+    ┊ ✓ node_repl.js · 0ms · Ctrl+T details
 
     transcript:
-    • Called node_repl.js({"title":"Inspect Spotify workspace","code":"await tools.exec_command({ cmd: 'git status' })"})
-      └ Script completed
-        Wall time 0.1 seconds
-        Output:
-        {"chunk_id":"chunk-
-            1","output":"012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678
-            90123456789012345678901234567890123456789 transcript tail","exit_code":0}
+
+    CODEX · Tool Calls
+    ┊ • Called node_repl.js({"title":"Inspect Spotify workspace","code":"await tools.exec_command({ cmd: 'git status' })"})
+    ┊   └ Script completed
+    ┊     Wall time 0.1 seconds
+    ┊     Output:
+    ┊     {"chunk_id":"chunk-
+    ┊         1","output":"0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456
+    ┊         7890123456789012345678901234567890123456789 transcript tail","exit_code":0}
     "#);
 }
 
@@ -1506,16 +1520,20 @@ fn code_mode_tool_call_preserves_failure_details() {
     let transcript = render_lines(&cell.transcript_lines(/*width*/ 120)).join("\n");
     insta::assert_snapshot!(format!("history:\n{history}\n\ntranscript:\n{transcript}"), @r#"
     history:
-    • Called Inspect workspace
-      └ Script failed
-        Output:
-        permission denied
+
+    CODEX · Tool Calls
+    ┊ • Called Inspect workspace
+    ┊   └ Script failed
+    ┊     Output:
+    ┊     permission denied
 
     transcript:
-    • Called node_repl.js({"title":"Inspect workspace","code":"throw Error('denied')"})
-      └ Script failed
-        Output:
-        permission denied
+
+    CODEX · Tool Calls
+    ┊ • Called node_repl.js({"title":"Inspect workspace","code":"throw Error('denied')"})
+    ┊   └ Script failed
+    ┊     Output:
+    ┊     permission denied
     "#);
 }
 
@@ -1608,7 +1626,10 @@ fn completed_mcp_tool_call_image_after_text_returns_extra_cell() {
         .expect("expected image cell");
 
     let rendered = render_lines(&extra_cell.display_lines(/*width*/ 80));
-    assert_eq!(rendered, vec!["tool result (image output)"]);
+    assert_eq!(
+        rendered,
+        vec!["", "CODEX · Tool Calls", "┊ tool result (image output)"]
+    );
 }
 
 #[test]
@@ -1639,7 +1660,10 @@ fn completed_mcp_tool_call_accepts_data_url_image_blocks() {
         .expect("expected image cell");
 
     let rendered = render_lines(&extra_cell.display_lines(/*width*/ 80));
-    assert_eq!(rendered, vec!["tool result (image output)"]);
+    assert_eq!(
+        rendered,
+        vec!["", "CODEX · Tool Calls", "┊ tool result (image output)"]
+    );
 }
 
 #[test]
@@ -1669,7 +1693,10 @@ fn completed_mcp_tool_call_skips_invalid_image_blocks() {
         .expect("expected image cell");
 
     let rendered = render_lines(&extra_cell.display_lines(/*width*/ 80));
-    assert_eq!(rendered, vec!["tool result (image output)"]);
+    assert_eq!(
+        rendered,
+        vec!["", "CODEX · Tool Calls", "┊ tool result (image output)"]
+    );
 }
 
 #[test]
@@ -2216,7 +2243,12 @@ fn patch_history_cell_uses_codex_tool_call_label() {
     assert!(
         render_lines(&display_lines)
             .join("\n")
-            .contains("• Added README.md (+1 -0)")
+            .contains("• Added README.md (+1 -0) · Ctrl+T details")
+    );
+    assert_eq!(display_lines.len(), 3, "patch display should stay compact");
+    assert!(
+        cell.transcript_lines(/*width*/ 80).len() > display_lines.len(),
+        "expanded transcript should retain the full patch"
     );
     assert_eq!(cell.raw_lines()[1].to_string(), "CODEX · Tool Calls");
 }

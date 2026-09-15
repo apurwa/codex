@@ -11,6 +11,7 @@
 //! rendered transcript output can change.
 
 use crate::diff_model::FileChange;
+use crate::diff_render::create_compact_diff_summary;
 use crate::diff_render::create_diff_summary;
 use crate::diff_render::display_path_for;
 use crate::exec_cell::CommandOutput;
@@ -153,6 +154,21 @@ pub(crate) fn prepend_codex_tool_call_label(mut lines: Vec<Line<'static>>) -> Ve
             "CODEX · Tool Calls",
             crate::style::codex_label_style(),
         )),
+    ];
+    labeled.append(&mut lines);
+    labeled
+}
+
+pub(crate) fn prepend_codex_tool_call_hyperlink_label(
+    mut lines: Vec<HyperlinkLine>,
+) -> Vec<HyperlinkLine> {
+    lines = prefix_hyperlink_lines(lines, "┊ ".dim(), "┊ ".dim());
+    let mut labeled = vec![
+        HyperlinkLine::from(""),
+        HyperlinkLine::new(Line::from(Span::styled(
+            "CODEX · Tool Calls",
+            crate::style::codex_label_style(),
+        ))),
     ];
     labeled.append(&mut lines);
     labeled

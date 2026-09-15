@@ -2,6 +2,8 @@
 source: tui/src/history_cell/computer_activity_tests.rs
 expression: "render(&cell, 80)"
 ---
-• Used computer · 2 actions · 1 failed
-  ├ Opened Chrome
-  └ Failed: Load the terminal — interrupted
+
+CODEX · Tool Calls
+┊ • Used computer · 2 actions · 1 failed
+┊   ├ Opened Chrome
+┊   └ Failed: Load the terminal — interrupted

@@ -20,7 +20,9 @@ CODEX
 
   copy me
 
-✓ workspace.insp… · 5ms · Ctrl+T details
+
+CODEX · Tool Calls
+┊ ✓ workspace.in… · 5ms · Ctrl+T details
 
 raw on:
 Please format this
@@ -35,9 +37,11 @@ for copying
 ```text
 copy me
 ```
-Called workspace.inspect({"path":"README.md"})
-structured output
-second line
+
+CODEX · Tool Calls
+┊ Called workspace.inspect({"path":"README.md"})
+┊ structured output
+┊ second line
 
 rich after:
 ───────────────────────────────────────
@@ -57,4 +61,6 @@ CODEX
 
   copy me
 
-✓ workspace.insp… · 5ms · Ctrl+T details
+
+CODEX · Tool Calls
+┊ ✓ workspace.in… · 5ms · Ctrl+T details

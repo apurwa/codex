@@ -1733,24 +1733,8 @@ async fn apply_patch_events_emit_history_cells() {
     let blob = lines_to_single_string(cells.last().unwrap());
     insta::assert_snapshot!(blob, @"
 
-    CODEX · Tool Call
-    • Added foo.txt (+16 -0)
-         1 +line 1
-         2 +line 2
-         3 +line 3
-         4 +line 4
-         5 +line 5
-         6 +line 6
-         7 +line 7
-         8 +line 8
-         9 +line 9
-        10 +line 10
-        11 +line 11
-        12 +line 12
-        13 +line 13
-        14 +line 14
-        15 +line 15
-        16 +line 16
+    CODEX · Tool Calls
+    ┊ • Added foo.txt (+16 -0) · Ctrl+T details
     ");
 
     // 3) End apply success -> success cell

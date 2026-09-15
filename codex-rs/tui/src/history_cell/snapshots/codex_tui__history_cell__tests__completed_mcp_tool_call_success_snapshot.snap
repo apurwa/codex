@@ -2,4 +2,6 @@
 source: tui/src/history_cell/tests.rs
 expression: rendered
 ---
-✓ search.find_docs · 1.42s · Ctrl+T details
+
+CODEX · Tool Calls
+┊ ✓ search.find_docs · 1.42s · Ctrl+T details
