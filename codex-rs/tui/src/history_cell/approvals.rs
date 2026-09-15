@@ -2,6 +2,58 @@
 
 use super::*;
 
+#[derive(Debug)]
+struct UserApprovalDecisionHistoryCell {
+    decision: PrefixedWrappedHistoryCell,
+}
+
+impl UserApprovalDecisionHistoryCell {
+    fn new(summary: Line<'static>, symbol: Span<'static>) -> Self {
+        Self {
+            decision: PrefixedWrappedHistoryCell::new(summary, symbol, "  "),
+        }
+    }
+}
+
+impl HistoryCell for UserApprovalDecisionHistoryCell {
+    fn display_lines(&self, width: u16) -> Vec<Line<'static>> {
+        if width == 0 {
+            return Vec::new();
+        }
+
+        let style = transcript_user_message_style();
+        let accent_style = style.patch(crate::style::accent_style());
+        let rule = Line::from(Span::styled(
+            "─".repeat(usize::from(width.saturating_sub(1))),
+            Style::default().dim(),
+        ));
+        let mut lines = vec![
+            rule.clone(),
+            Line::from(Span::styled("YOU", accent_style)).style(style),
+        ];
+        lines.extend(
+            self.decision
+                .display_lines(width.saturating_sub(2).max(1))
+                .into_iter()
+                .map(|mut line| {
+                    line.spans.insert(0, Span::styled("│ ", accent_style));
+                    line.style = line.style.patch(style);
+                    line
+                }),
+        );
+        lines.push(rule);
+        lines
+    }
+
+    fn raw_lines(&self) -> Vec<Line<'static>> {
+        self.decision.raw_lines()
+    }
+
+    fn background_style(&self) -> Option<Style> {
+        Some(transcript_user_message_style())
+    }
+}
+
 fn truncate_exec_snippet(full_cmd: &str) -> String {
     let mut snippet = match full_cmd.split_once('\n') {
         Some((first, _)) => format!("{first} ..."),
@@ -256,11 +308,12 @@ pub fn new_approval_decision_cell(
         },
     };
 
-    Box::new(PrefixedWrappedHistoryCell::new(
-        Line::from(summary),
-        symbol,
-        "  ",
-    ))
+    let summary = Line::from(summary);
+    if actor == ApprovalDecisionActor::User {
+        Box::new(UserApprovalDecisionHistoryCell::new(summary, symbol))
+    } else {
+        Box::new(PrefixedWrappedHistoryCell::new(summary, symbol, "  "))
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -346,5 +399,58 @@ pub fn new_guardian_timed_out_action_request(summary: String) -> Box<dyn History
 pub(crate) fn new_review_status_line(message: String) -> PlainHistoryCell {
     PlainHistoryCell {
         lines: vec![Line::from(message.cyan())],
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn approved_command(actor: ApprovalDecisionActor) -> Box<dyn HistoryCell> {
+        new_approval_decision_cell(
+            ApprovalDecisionSubject::Command(vec!["echo".into(), "hello".into()]),
+            ReviewDecision::Approved,
+            actor,
+        )
+    }
+
+    #[test]
+    fn user_approval_uses_user_message_band_and_heading() {
+        let cell = approved_command(ApprovalDecisionActor::User);
+        let rendered = cell
+            .display_lines(/*width*/ 36)
+            .into_iter()
+            .map(|line| line.to_string())
+            .collect::<Vec<_>>();
+
+        assert_eq!(
+            rendered.first().map(String::as_str),
+            Some("───────────────────────────────────")
+        );
+        assert_eq!(rendered.get(1).map(String::as_str), Some("YOU"));
+        assert!(
+            rendered
+                .iter()
+                .any(|line| line.starts_with("│ ✔ You approved"))
+        );
+        assert_eq!(rendered.last(), rendered.first());
+        assert_eq!(
+            cell.background_style(),
+            Some(transcript_user_message_style())
+        );
+    }
+
+    #[test]
+    fn guardian_approval_remains_a_compact_system_notice() {
+        let cell = approved_command(ApprovalDecisionActor::Guardian);
+        let rendered = cell
+            .display_lines(/*width*/ 80)
+            .into_iter()
+            .map(|line| line.to_string())
+            .collect::<Vec<_>>();
+
+        assert_eq!(rendered.len(), 1);
+        assert!(rendered[0].starts_with("✔ Auto-reviewer approved"));
+        assert_eq!(cell.background_style(), None);
     }
 }
