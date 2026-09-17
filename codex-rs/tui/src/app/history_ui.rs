@@ -33,11 +33,15 @@ impl App {
             self.merge_startup_warnings(tui, warnings);
             return;
         }
+        let width = self
+            .chat_widget
+            .history_wrap_width(tui.terminal.last_known_screen_size.width);
         if cell.is_codex_tool_call()
-            && self
-                .transcript_cells
-                .last()
-                .is_some_and(|previous| previous.is_codex_tool_call())
+            && last_visible_cell_is_tool_call(
+                &self.transcript_cells,
+                width,
+                self.chat_widget.history_render_mode(),
+            )
         {
             cell = Box::new(history_cell::ToolCallContinuationCell::new(cell));
         }
@@ -49,9 +53,6 @@ impl App {
         }
         self.transcript_cells.push(cell.clone());
         self.owned_screen_push_cell(cell.clone());
-        let width = self
-            .chat_widget
-            .history_wrap_width(tui.terminal.last_known_screen_size.width);
         let lines =
             cell.display_hyperlink_lines_for_mode(width, self.chat_widget.history_render_mode());
         if cell.as_any().is::<history_cell::CompositeHistoryCell>()
@@ -378,6 +379,56 @@ impl App {
         self.backtrack = BacktrackState::default();
         self.backtrack_render_pending = false;
         self.skill_load_warnings.clear();
+    }
+}
+
+fn last_visible_cell_is_tool_call(
+    cells: &[Arc<dyn HistoryCell>],
+    width: u16,
+    render_mode: history_cell::HistoryRenderMode,
+) -> bool {
+    cells
+        .iter()
+        .rev()
+        .find(|cell| !cell.display_lines_for_mode(width, render_mode).is_empty())
+        .is_some_and(|cell| cell.is_codex_tool_call())
+}
+
+#[cfg(test)]
+mod tool_call_grouping_tests {
+    use super::*;
+    use ratatui::text::Line;
+
+    #[test]
+    fn invisible_cells_do_not_split_a_tool_call_group() {
+        let tool: Arc<dyn HistoryCell> = Arc::new(history_cell::CodexToolCallHistoryCell::new(
+            history_cell::PlainHistoryCell::new(vec![Line::from("first tool")]),
+        ));
+        let invisible: Arc<dyn HistoryCell> =
+            Arc::new(history_cell::PlainHistoryCell::new(Vec::new()));
+
+        assert!(last_visible_cell_is_tool_call(
+            &[tool, invisible],
+            /* width */ 80,
+            history_cell::HistoryRenderMode::Rich,
+        ));
+    }
+
+    #[test]
+    fn visible_narrative_cell_splits_a_tool_call_group() {
+        let tool: Arc<dyn HistoryCell> = Arc::new(history_cell::CodexToolCallHistoryCell::new(
+            history_cell::PlainHistoryCell::new(vec![Line::from("first tool")]),
+        ));
+        let update: Arc<dyn HistoryCell> =
+            Arc::new(history_cell::PlainHistoryCell::new(vec![Line::from(
+                "visible update",
+            )]));
+
+        assert!(!last_visible_cell_is_tool_call(
+            &[tool, update],
+            /* width */ 80,
+            history_cell::HistoryRenderMode::Rich,
+        ));
     }
 }
 
