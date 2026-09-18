@@ -50,4 +50,4 @@ CODEX
     "path": "C:\\Program Files\\App",
     "regex": "^foo.*(bar)?$"
   }
-  done [completion time]
+  [completion time]

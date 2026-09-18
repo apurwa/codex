@@ -1,8 +1,8 @@
 ---
 source: tui/src/history_cell/tests.rs
+assertion_line: 1309
 expression: rendered
 ---
 
 CODEX · Tool Calls
-┊ • Searched the web for example search query with several
-┊   generic words to exercise wrapping
+┊ • Searched the web for example search query with several gene…

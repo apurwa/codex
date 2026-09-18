@@ -1,5 +1,6 @@
 ---
 source: tui/src/app/agents_overview_tests.rs
+assertion_line: 169
 expression: "render_bottom_popup(&app.chat_widget, 12)"
 ---
   Service
@@ -15,14 +16,14 @@ expression: "render_bottom_popup(&app.chat_widget, 12)"
 
 
 
-
-
   New task
 ────────────
 › Describe
 ────────────
   n new
   task
+  w new
+  worktree
   f search
   ctrl+c
   quit
