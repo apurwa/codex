@@ -1,0 +1,23 @@
+---
+source: tui/src/history_cell/search_tests.rs
+assertion_line: 38
+expression: rendered
+---
+
+CODEX · Tool Calls
+┊ • Opened https://example.com/docs
+
+CODEX · Tool Calls
+┊ • Opened page
+
+CODEX · Tool Calls
+┊ • Searched for 'needle' in https://example.com/docs
+
+CODEX · Tool Calls
+┊ • Searched for 'needle'
+
+CODEX · Tool Calls
+┊ • Searched page https://example.com/docs
+
+CODEX · Tool Calls
+┊ • Searched page

@@ -1,0 +1,114 @@
+diff a/codex-rs/tui/src/history_cell/tests.rs b/codex-rs/tui/src/history_cell/tests.rs	(rejected hunks)
+@@ -1344,8 +1376,10 @@ fn web_search_history_cell_wraps_with_indented_continuation() {
+     assert_eq!(
+         rendered,
+         vec![
+-            "• Searched the web for example search query with several generic".to_string(),
+-            "  words to exercise wrapping".to_string(),
++            "".to_string(),
++            "CODEX · Tool Calls".to_string(),
++            "┊ • Searched the web for example search query with several".to_string(),
++            "┊   generic words to exercise wrapping".to_string(),
+         ]
+     );
+ }
+@@ -1440,22 +1478,20 @@ fn code_mode_tool_call_uses_title_and_preserves_full_transcript() {
+     let transcript = render_lines(&cell.transcript_lines(/*width*/ 180)).join("\n");
+     insta::assert_snapshot!(format!("history:\n{history}\n\ntranscript:\n{transcript}"), @r#"
+     history:
+-    • Called Inspect Spotify workspace
+-      └ 012345678901234567890123456789012345
+-            67890123456789012345678901234567
+-            89012345678901234567890123456789
+-            01234567890123456789012345678901
+-            23456789012345678901234567890123
+-            45678901...
++
++    CODEX · Tool Calls
++    ┊ ✓ node_repl.js · 0ms · Ctrl+T details
+ 
+     transcript:
+-    • Called node_repl.js({"title":"Inspect Spotify workspace","code":"await tools.exec_command({ cmd: 'git status' })"})
+-      └ Script completed
+-        Wall time 0.1 seconds
+-        Output:
+-        {"chunk_id":"chunk-
+-            1","output":"012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678
+-            90123456789012345678901234567890123456789 transcript tail","exit_code":0}
++
++    CODEX · Tool Calls
++    ┊ • Called node_repl.js({"title":"Inspect Spotify workspace","code":"await tools.exec_command({ cmd: 'git status' })"})
++    ┊   └ Script completed
++    ┊     Wall time 0.1 seconds
++    ┊     Output:
++    ┊     {"chunk_id":"chunk-
++    ┊         1","output":"0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456
++    ┊         7890123456789012345678901234567890123456789 transcript tail","exit_code":0}
+     "#);
+ }
+ 
+@@ -1484,16 +1520,20 @@ fn code_mode_tool_call_preserves_failure_details() {
+     let transcript = render_lines(&cell.transcript_lines(/*width*/ 120)).join("\n");
+     insta::assert_snapshot!(format!("history:\n{history}\n\ntranscript:\n{transcript}"), @r#"
+     history:
+-    • Called Inspect workspace
+-      └ Script failed
+-        Output:
+-        permission denied
++
++    CODEX · Tool Calls
++    ┊ • Called Inspect workspace
++    ┊   └ Script failed
++    ┊     Output:
++    ┊     permission denied
+ 
+     transcript:
+-    • Called node_repl.js({"title":"Inspect workspace","code":"throw Error('denied')"})
+-      └ Script failed
+-        Output:
+-        permission denied
++
++    CODEX · Tool Calls
++    ┊ • Called node_repl.js({"title":"Inspect workspace","code":"throw Error('denied')"})
++    ┊   └ Script failed
++    ┊     Output:
++    ┊     permission denied
+     "#);
+ }
+ 
+@@ -1586,7 +1626,10 @@ fn completed_mcp_tool_call_image_after_text_returns_extra_cell() {
+         .expect("expected image cell");
+ 
+     let rendered = render_lines(&extra_cell.display_lines(/*width*/ 80));
+-    assert_eq!(rendered, vec!["tool result (image output)"]);
++    assert_eq!(
++        rendered,
++        vec!["", "CODEX · Tool Calls", "┊ tool result (image output)"]
++    );
+ }
+ 
+ #[test]
+@@ -1617,7 +1660,10 @@ fn completed_mcp_tool_call_accepts_data_url_image_blocks() {
+         .expect("expected image cell");
+ 
+     let rendered = render_lines(&extra_cell.display_lines(/*width*/ 80));
+-    assert_eq!(rendered, vec!["tool result (image output)"]);
++    assert_eq!(
++        rendered,
++        vec!["", "CODEX · Tool Calls", "┊ tool result (image output)"]
++    );
+ }
+ 
+ #[test]
+@@ -1647,7 +1693,10 @@ fn completed_mcp_tool_call_skips_invalid_image_blocks() {
+         .expect("expected image cell");
+ 
+     let rendered = render_lines(&extra_cell.display_lines(/*width*/ 80));
+-    assert_eq!(rendered, vec!["tool result (image output)"]);
++    assert_eq!(
++        rendered,
++        vec!["", "CODEX · Tool Calls", "┊ tool result (image output)"]
++    );
+ }
+ 
+ #[test]

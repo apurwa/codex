@@ -167,6 +167,7 @@ async fn replayed_commands_preserve_individual_output_and_failure_status() {
     let cwd = chat.config.cwd.clone();
     let replayed_command =
         |id: &str, output: &str, source: ExecCommandSource| AppServerThreadItem::CommandExecution {
+            model_context: None,
             id: id.to_string(),
             command: format!("printf {output}"),
             cwd: cwd.clone().into(),
@@ -624,6 +625,7 @@ async fn exec_end_without_begin_uses_event_command() {
     handle_exec_end(
         &mut chat,
         AppServerThreadItem::CommandExecution {
+            model_context: None,
             id: "call-orphan".to_string(),
             command: codex_shell_command::parse_command::shlex_join(&command),
             cwd: cwd.into(),
@@ -901,15 +903,12 @@ async fn unified_exec_wait_after_final_agent_message_snapshot() {
     complete_assistant_message(&mut chat, "msg-1", "Final response.", /*phase*/ None);
     handle_turn_completed(&mut chat, "turn-1", /*duration_ms*/ None);
 
-    let cells = drain_insert_history(&mut rx);
+    let cells = drain_insert_history_normalized(&mut rx);
     let combined = cells
         .iter()
         .map(|lines| lines_to_single_string(lines))
         .collect::<String>();
-    assert_chatwidget_snapshot!(
-        "unified_exec_wait_after_final_agent_message",
-        normalize_completion_timestamps(combined)
-    );
+    assert_chatwidget_snapshot!("unified_exec_wait_after_final_agent_message", combined);
 }
 
 #[tokio::test]
@@ -928,15 +927,12 @@ async fn unified_exec_wait_before_streamed_agent_message_snapshot() {
     handle_agent_message_delta(&mut chat, "Streaming response.");
     handle_turn_completed(&mut chat, "turn-wait-1", /*duration_ms*/ None);
 
-    let cells = drain_insert_history(&mut rx);
+    let cells = drain_insert_history_normalized(&mut rx);
     let combined = cells
         .iter()
         .map(|lines| lines_to_single_string(lines))
         .collect::<String>();
-    assert_chatwidget_snapshot!(
-        "unified_exec_wait_before_streamed_agent_message",
-        normalize_completion_timestamps(combined)
-    );
+    assert_chatwidget_snapshot!("unified_exec_wait_before_streamed_agent_message", combined);
 }
 
 #[tokio::test]
@@ -967,19 +963,21 @@ async fn final_worked_for_uses_cumulative_turn_duration_snapshot() {
         );
         handle_turn_completed(&mut chat, "turn-1", duration_ms);
 
-        let cells = drain_insert_history(&mut rx);
+        let cells = drain_insert_history_with(&mut rx, |cell| {
+            let rendered = lines_to_single_string(&cell.display_lines(/*width*/ 80));
+            if cell.as_any().is::<history_cell::FinalMessageSeparator>() {
+                assert!(rendered.contains("Worked for 2m 5s"), "{rendered}");
+            }
+            normalize_completion_timestamps(cell, rendered)
+                .lines()
+                .map(|line| Line::from(line.to_owned()))
+                .collect()
+        });
         let combined = cells
             .iter()
             .map(|lines| lines_to_single_string(lines))
             .collect::<String>();
-        assert!(
-            combined.contains("Worked for 2m 5s"),
-            "expected final separator to use cumulative turn duration, got:\n{combined}"
-        );
-        assert_chatwidget_snapshot!(
-            "final_worked_for_uses_cumulative_turn_duration",
-            normalize_completion_timestamps(combined)
-        );
+        assert_chatwidget_snapshot!("final_worked_for_uses_cumulative_turn_duration", combined);
     }
 }
 
@@ -1046,15 +1044,12 @@ async fn unified_exec_waiting_multiple_empty_snapshots() {
 
     handle_turn_completed(&mut chat, "turn-wait-3", /*duration_ms*/ None);
 
-    let cells = drain_insert_history(&mut rx);
+    let cells = drain_insert_history_normalized(&mut rx);
     let combined = cells
         .iter()
         .map(|lines| lines_to_single_string(lines))
         .collect::<String>();
-    assert_chatwidget_snapshot!(
-        "unified_exec_waiting_multiple_empty_after",
-        normalize_completion_timestamps(combined)
-    );
+    assert_chatwidget_snapshot!("unified_exec_waiting_multiple_empty_after", combined);
 }
 
 #[tokio::test]
@@ -1121,7 +1116,7 @@ async fn unified_exec_non_empty_then_empty_snapshots() {
 
     handle_turn_completed(&mut chat, "turn-1", /*duration_ms*/ None);
 
-    let post_cells = drain_insert_history(&mut rx);
+    let post_cells = drain_insert_history_normalized(&mut rx);
     let mut combined = pre_cells
         .iter()
         .map(|lines| lines_to_single_string(lines))
@@ -1134,10 +1129,7 @@ async fn unified_exec_non_empty_then_empty_snapshots() {
         combined.push('\n');
     }
     combined.push_str(&post);
-    assert_chatwidget_snapshot!(
-        "unified_exec_non_empty_then_empty_after",
-        normalize_completion_timestamps(combined)
-    );
+    assert_chatwidget_snapshot!("unified_exec_non_empty_then_empty_after", combined);
 }
 
 #[tokio::test]
@@ -1312,6 +1304,7 @@ async fn bang_shell_enter_while_task_running_submits_run_user_shell_command() {
     let thread_id = ThreadId::new();
     let rollout_file = NamedTempFile::new().unwrap();
     let configured = crate::session_state::ThreadSessionState {
+        windows_sandbox_host: crate::app::WindowsSandboxHost::Local,
         thread_id,
         forked_from_id: None,
         fork_parent_title: None,

@@ -1,7 +1,12 @@
 //! Patch summaries and image-tool transcript helpers.
 
 use super::*;
+use crate::line_truncation::truncate_line_with_ellipsis_if_overflow;
 use codex_utils_path_uri::LegacyAppPathString;
+
+#[cfg(test)]
+#[path = "patches_tests.rs"]
+mod tests;
 
 #[derive(Debug)]
 pub(crate) struct PatchHistoryCell {
@@ -69,22 +74,58 @@ pub(crate) fn new_patch_apply_failure(stderr: String) -> CodexToolCallHistoryCel
     CodexToolCallHistoryCell::new(PlainHistoryCell { lines })
 }
 
-pub(crate) fn new_view_image_tool_call(
-    path: LegacyAppPathString,
-    cwd: &Path,
-) -> CodexToolCallHistoryCell {
-    let display_path = path
+#[derive(Debug)]
+pub(crate) struct ViewImageHistoryCell {
+    filename: String,
+    path_label: String,
+}
+
+impl HistoryCell for ViewImageHistoryCell {
+    fn display_lines(&self, width: u16) -> Vec<Line<'static>> {
+        let line = vec![
+            "• ".dim(),
+            "Viewed image ".bold(),
+            self.filename.replace(['\n', '\r', '\t'], " ").dim(),
+        ]
+        .into();
+        prepend_codex_tool_call_label(vec![truncate_line_with_ellipsis_if_overflow(
+            line,
+            width.saturating_sub(2) as usize,
+        )])
+    }
+
+    fn transcript_lines(&self, width: u16) -> Vec<Line<'static>> {
+        prepend_codex_tool_call_label(
+            PrefixedWrappedHistoryCell::new(
+                Line::from(vec!["Viewed image ".bold(), self.path_label.clone().dim()]),
+                vec!["• ".dim()],
+                "  ",
+            )
+            .display_lines(width.saturating_sub(2)),
+        )
+    }
+
+    fn raw_lines(&self) -> Vec<Line<'static>> {
+        plain_lines(prepend_codex_tool_call_label(vec![Line::from(format!(
+            "Viewed image {}",
+            self.path_label
+        ))]))
+    }
+
+    fn is_codex_tool_call(&self) -> bool {
+        true
+    }
+}
+
+pub(crate) fn new_view_image_tool_call(path: LegacyAppPathString) -> ViewImageHistoryCell {
+    let filename = path
         .to_inferred_path_uri()
-        .and_then(|path| path.to_abs_path().ok())
-        .map(|path| display_path_for(path.as_path(), cwd))
-        .unwrap_or_else(|| path.into_string());
-
-    let lines: Vec<Line<'static>> = vec![
-        vec!["• ".dim(), "Viewed Image".bold()].into(),
-        vec!["  └ ".dim(), display_path.dim()].into(),
-    ];
-
-    CodexToolCallHistoryCell::new(PlainHistoryCell { lines })
+        .and_then(|path| path.basename())
+        .unwrap_or_else(|| path.render_for_ui());
+    ViewImageHistoryCell {
+        filename,
+        path_label: path.into_string(),
+    }
 }
 
 pub(crate) fn new_image_generation_call(

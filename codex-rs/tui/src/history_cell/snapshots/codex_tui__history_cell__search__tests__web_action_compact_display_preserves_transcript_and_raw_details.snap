@@ -1,0 +1,8 @@
+---
+source: tui/src/history_cell/search_tests.rs
+assertion_line: 55
+expression: "display.iter().map(ToString::to_string).collect::<Vec<_>>().join(\"\\n\")"
+---
+
+CODEX · Tool Calls
+┊ • Searched for '日本語 🦀 nee…

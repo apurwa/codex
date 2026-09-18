@@ -8,4 +8,4 @@ expression: normalize_completion_timestamps(combined)
 CODEX
   Streaming response.
 
-  done [completion time]
+  [completion time]
