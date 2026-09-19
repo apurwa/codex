@@ -142,7 +142,7 @@ impl McpToolCallCell {
                 codex_utils_elapsed::format_duration(duration)
             );
             let title_width = usize::from(width).saturating_sub(2 + hint.chars().count());
-            let mut line = Line::from("✓ ".green().bold());
+            let mut line = Line::from(Span::styled("✓ ", crate::style::tool_success_style()));
             line.extend(
                 crate::line_truncation::truncate_line_with_ellipsis_if_overflow(
                     title.bold().into(),
@@ -161,7 +161,7 @@ impl McpToolCallCell {
         let node_repl = self.result_kind() == McpResultKind::NodeRepl;
         let compact = node_repl && mode == McpToolCallRenderMode::Display;
         let bullet = match status {
-            Some(true) => "•".green().bold(),
+            Some(true) => Span::styled("•", crate::style::tool_success_style()),
             Some(false) => "•".red().bold(),
             None => activity_indicator(
                 Some(self.start_time),
