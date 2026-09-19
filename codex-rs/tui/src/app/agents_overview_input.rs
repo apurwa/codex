@@ -4,14 +4,55 @@ use super::*;
 use crate::bottom_pane::InputResult;
 use crate::chatwidget::UserMessage;
 use crate::clipboard_paste::paste_image_to_temp_png;
+use codex_utils_absolute_path::AbsolutePathBuf;
 use crossterm::event::KeyEventKind;
 use crossterm::event::KeyModifiers;
 
 impl AgentsOverviewView {
     pub(super) fn handle_composer_key(&mut self, key: KeyEvent) {
         let mut state = self.state();
+        if state.editing_project_directory {
+            match key.code {
+                KeyCode::Esc => {
+                    state.input.clear();
+                    state.editing_project_directory = false;
+                    state.key_chord_hint = None;
+                }
+                KeyCode::Enter => {
+                    let path = PathBuf::from(state.input.trim());
+                    if path.is_dir() {
+                        state.project_directory = path;
+                        state.input.clear();
+                        state.editing_project_directory = false;
+                        state.key_chord_hint = None;
+                    } else {
+                        state.key_chord_hint = Some(vec![("invalid".into(), "directory".into())]);
+                    }
+                }
+                KeyCode::Backspace => {
+                    state.input.pop();
+                }
+                KeyCode::Char(character) if key.modifiers.is_empty() => {
+                    state.input.push(character);
+                }
+                _ => {}
+            }
+            return;
+        }
+        if key.kind == KeyEventKind::Press
+            && key.modifiers.is_empty()
+            && key.code == KeyCode::Char('d')
+            && state.composer.as_ref().is_some_and(ChatComposer::is_empty)
+        {
+            state.input = state.project_directory.display().to_string();
+            state.editing_project_directory = true;
+            state.key_chord_hint = Some(vec![
+                ("enter".into(), "use directory".into()),
+                ("esc".into(), "cancel".into()),
+            ]);
+            return;
+        }
         let offline = state.connection_notice.is_some();
-        let grouping = state.grouping;
         if key.code == KeyCode::Esc && !state.composer_owns_escape() {
             state.focus = AgentsOverviewFocus::List;
             return;
@@ -61,12 +102,11 @@ impl AgentsOverviewView {
         } else {
             None
         };
+        let project_directory = AbsolutePathBuf::try_from(state.project_directory.clone()).ok();
         drop(state);
         if let Some(prompt) = prompt {
             self.app_event_tx.send(AppEvent::NewAgentsOverviewSession {
-                cwd: (grouping == AgentsOverviewGrouping::Project)
-                    .then(|| self.selected_row().map(|row| row.thread.cwd.clone()))
-                    .flatten(),
+                cwd: project_directory,
                 prompt: Some(prompt),
             });
         }
