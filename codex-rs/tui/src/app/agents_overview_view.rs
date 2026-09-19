@@ -141,6 +141,8 @@ pub(super) struct AgentsOverviewViewState {
     pub(super) composer: Option<ChatComposer>,
     pub(super) key_chord_hint: Option<Vec<(String, String)>>,
     pub(super) focus: AgentsOverviewFocus,
+    pub(super) project_directory: PathBuf,
+    pub(super) editing_project_directory: bool,
     pub(super) creating_worktree: bool,
     pub(super) refresh_failed: bool,
     pub(super) connection_notice: Option<&'static str>,
@@ -153,6 +155,7 @@ pub(super) struct AgentsOverviewViewState {
     pub(super) completion: Option<ViewCompletion>,
     row_hitboxes: Vec<(Rect, usize)>,
     composer_hitbox: Option<Rect>,
+    project_directory_hitbox: Option<Rect>,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -171,11 +174,14 @@ impl AgentsOverviewViewState {
     }
 
     pub(super) fn editing_metadata(&self) -> bool {
-        self.searching || self.renaming
+        self.searching || self.renaming || self.editing_project_directory
     }
 
     fn composing(&self) -> bool {
-        self.focus == AgentsOverviewFocus::Composer && !self.searching && !self.renaming
+        self.focus == AgentsOverviewFocus::Composer
+            && !self.searching
+            && !self.renaming
+            && !self.editing_project_directory
     }
 
     fn composer_owns_escape(&self) -> bool {
@@ -718,7 +724,13 @@ impl BottomPaneView for AgentsOverviewView {
             return;
         }
         if self.agents_keymap.new_task.is_pressed(key) {
+            let selected_project_directory = (self.state().grouping == AgentsOverviewGrouping::Project)
+                .then(|| self.selected_row().map(|row| row.thread.cwd.to_path_buf()))
+                .flatten();
             let mut state = self.state();
+            if let Some(directory) = selected_project_directory {
+                state.project_directory = directory;
+            }
             state.search.clear();
             state.searching = false;
             state.renaming = false;
@@ -855,6 +867,19 @@ impl BottomPaneView for AgentsOverviewView {
         });
         if composer_clicked {
             self.state().focus_composer();
+            return true;
+        }
+        let directory_clicked = self.state().project_directory_hitbox.is_some_and(|area| {
+            area.contains(ratatui::layout::Position::new(
+                mouse_event.column,
+                mouse_event.row,
+            ))
+        });
+        if directory_clicked {
+            let mut state = self.state();
+            state.input = state.project_directory.display().to_string();
+            state.editing_project_directory = true;
+            state.focus = AgentsOverviewFocus::Composer;
             return true;
         }
         let selected = self.state().row_hitboxes.iter().find_map(|(area, index)| {

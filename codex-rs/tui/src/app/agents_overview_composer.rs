@@ -38,6 +38,9 @@ impl App {
             composer.resume_text_entry();
         }
         composer.set_keymap_bindings(&self.keymap);
+        if state.project_directory.as_os_str().is_empty() {
+            state.project_directory = self.chat_widget.config_ref().cwd.to_path_buf();
+        }
     }
 
     pub(super) fn restore_agents_overview_prompt(&mut self, prompt: UserMessage) {

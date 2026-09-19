@@ -237,10 +237,12 @@ impl Renderable for AgentsOverviewView {
         if !state.editing_metadata() {
             return None;
         }
-        let (label, input) = if state.searching {
-            ("  Search › ", &state.search)
+        let (label, input) = if state.editing_project_directory {
+            ("Directory › ", state.input.clone())
+        } else if state.searching {
+            ("  Search › ", state.search.clone())
         } else {
-            ("  Rename › ", &state.input)
+            ("  Rename › ", state.input.clone())
         };
         let x = area
             .x
@@ -340,8 +342,17 @@ impl Renderable for AgentsOverviewView {
             ])
             .render(inset(prompt), buf);
         } else {
-            Line::from("New task".dim()).render(inset(title), buf);
+            let directory = state.project_directory.display().to_string();
+            Line::from(vec![
+                "New task".dim(),
+                "  ".into(),
+                "Directory: ".dim(),
+                directory.into(),
+                "  (d to change)".dim(),
+            ])
+            .render(inset(title), buf);
             state.composer_hitbox = Some(prompt);
+            state.project_directory_hitbox = Some(title);
             if let Some(composer) = &state.composer {
                 composer.render(prompt, buf);
             }
