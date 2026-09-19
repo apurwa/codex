@@ -14,6 +14,7 @@ use codex_protocol::ThreadId;
 const STATUS_LINE_SEPARATOR: &str = " · ";
 const STATUS_LINE_COLOR_SATURATION_PERCENT: u16 = 85;
 const STATUS_LINE_COLOR_BRIGHTNESS_PERCENT: u16 = 100;
+const STATUS_LINE_PRIMARY_BLUE: Color = Color::Rgb(0, 95, 135);
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum StatusLineAccent {
@@ -115,6 +116,12 @@ where
             spans.push(STATUS_LINE_SEPARATOR.dim());
         }
         let style = if use_theme_colors
+            && !matches!(
+                item,
+                StatusLineItem::ThreadName | StatusLineItem::ThreadTitle
+            ) {
+            Style::default().fg(STATUS_LINE_PRIMARY_BLUE).bold()
+        } else if use_theme_colors
             && matches!(
                 item,
                 StatusLineItem::ThreadName | StatusLineItem::ThreadTitle
@@ -222,11 +229,11 @@ mod tests {
         .expect("status line");
 
         assert_eq!(line_text(&line), "gpt-5 · /repo · main");
-        assert_eq!(line.spans[0].style.fg, Some(Color::Cyan));
+        assert_eq!(line.spans[0].style.fg, Some(STATUS_LINE_PRIMARY_BLUE));
         assert!(!line.spans[0].style.add_modifier.contains(Modifier::DIM));
-        assert_eq!(line.spans[2].style.fg, Some(Color::Green));
+        assert_eq!(line.spans[2].style.fg, Some(STATUS_LINE_PRIMARY_BLUE));
         assert!(!line.spans[2].style.add_modifier.contains(Modifier::DIM));
-        assert_eq!(line.spans[4].style.fg, Some(Color::Magenta));
+        assert_eq!(line.spans[4].style.fg, Some(STATUS_LINE_PRIMARY_BLUE));
         assert!(!line.spans[4].style.add_modifier.contains(Modifier::DIM));
     }
 
@@ -246,10 +253,10 @@ mod tests {
         )
         .expect("status line");
 
-        assert_eq!(line.spans[0].style.fg, Some(Color::Red));
+        assert_eq!(line.spans[0].style.fg, Some(STATUS_LINE_PRIMARY_BLUE));
         assert!(!line.spans[0].style.add_modifier.contains(Modifier::DIM));
         assert!(line.spans[1].style.add_modifier.contains(Modifier::DIM));
-        assert_eq!(line.spans[2].style.fg, Some(Color::Green));
+        assert_eq!(line.spans[2].style.fg, Some(STATUS_LINE_PRIMARY_BLUE));
         assert!(!line.spans[2].style.add_modifier.contains(Modifier::DIM));
     }
 
@@ -282,7 +289,7 @@ mod tests {
         )
         .expect("status line");
 
-        assert_eq!(line.spans[0].style.fg, Some(Color::Rgb(228, 11, 11)));
+        assert_eq!(line.spans[0].style.fg, Some(STATUS_LINE_PRIMARY_BLUE));
         assert!(!line.spans[0].style.add_modifier.contains(Modifier::DIM));
     }
 
