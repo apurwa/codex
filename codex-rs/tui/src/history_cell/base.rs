@@ -187,19 +187,29 @@ impl ToolCallContinuationCell {
 
 impl HistoryCell for ToolCallContinuationCell {
     fn display_lines(&self, width: u16) -> Vec<Line<'static>> {
-        Self::without_group_heading(self.inner.display_lines(width))
+        let mut lines = Self::without_group_heading(self.inner.display_lines(width));
+        lines.insert(0, Line::default());
+        lines
     }
 
     fn transcript_lines(&self, width: u16) -> Vec<Line<'static>> {
-        Self::without_group_heading(self.inner.transcript_lines(width))
+        let mut lines = Self::without_group_heading(self.inner.transcript_lines(width));
+        lines.insert(0, Line::default());
+        lines
     }
 
     fn display_hyperlink_lines(&self, width: u16) -> Vec<HyperlinkLine> {
-        Self::without_hyperlink_group_heading(self.inner.display_hyperlink_lines(width))
+        let mut lines =
+            Self::without_hyperlink_group_heading(self.inner.display_hyperlink_lines(width));
+        lines.insert(0, HyperlinkLine::from(""));
+        lines
     }
 
     fn transcript_hyperlink_lines(&self, width: u16) -> Vec<HyperlinkLine> {
-        Self::without_hyperlink_group_heading(self.inner.transcript_hyperlink_lines(width))
+        let mut lines =
+            Self::without_hyperlink_group_heading(self.inner.transcript_hyperlink_lines(width));
+        lines.insert(0, HyperlinkLine::from(""));
+        lines
     }
 
     fn raw_lines(&self) -> Vec<Line<'static>> {
