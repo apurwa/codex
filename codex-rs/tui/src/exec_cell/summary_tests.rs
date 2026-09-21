@@ -7,6 +7,33 @@ use pretty_assertions::assert_eq;
 use std::time::Duration;
 
 #[test]
+fn upstream_completed_exec_uses_the_uncompacted_surface() {
+    let mut cell = new_active_exec_command(
+        "test".into(),
+        vec!["echo".into(), "hello".into()],
+        Vec::new(),
+        CommandExecutionSource::Agent,
+        None,
+        false,
+    );
+    cell.complete_call(
+        "test",
+        CommandOutput::new(0, "hello".into()),
+        Duration::from_secs(1),
+    );
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::Upstream, || {
+        assert!(cell.completed_summary(80).is_none());
+        let rendered = cell
+            .display_lines(80)
+            .into_iter()
+            .map(|line| line.to_string())
+            .collect::<Vec<_>>();
+        assert!(!rendered.iter().any(|line| line.contains("CODEX")));
+        assert!(!rendered.iter().any(|line| line.contains("Ctrl+T details")));
+    });
+}
+
+#[test]
 fn completed_commands_are_compact_without_losing_details() {
     let mut cell = new_active_exec_command(
         "test".into(),

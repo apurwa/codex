@@ -186,6 +186,16 @@ fn activity_marker(start_time: Option<Instant>, animations_enabled: bool) -> Spa
 
 impl HistoryCell for ExecCell {
     fn display_lines(&self, width: u16) -> Vec<Line<'static>> {
+        if matches!(
+            crate::ui_profile::ui_profile(),
+            crate::ui_profile::UiProfile::Upstream
+        ) {
+            return if self.is_exploring_cell() {
+                self.exploring_display_lines(width)
+            } else {
+                self.command_display_lines(width)
+            };
+        }
         let content_width = width.saturating_sub(2).max(1);
         let mut lines = if let Some(summary) = self.completed_summary(content_width) {
             summary

@@ -8,6 +8,12 @@ use ratatui::prelude::*;
 
 impl ExecCell {
     pub(super) fn completed_summary(&self, width: u16) -> Option<Vec<Line<'static>>> {
+        if matches!(
+            crate::ui_profile::ui_profile(),
+            crate::ui_profile::UiProfile::Upstream
+        ) {
+            return None;
+        }
         if self.calls.is_empty()
             || self.calls.iter().any(|call| {
                 call.is_user_shell_command()
@@ -52,7 +58,10 @@ impl ExecCell {
             " · Ctrl+T".to_string()
         };
         let title_width = usize::from(width).saturating_sub(2 + details.chars().count());
-        let mut line = Line::from(vec![crate::style::success_marker("✓ ")]);
+        let mut line = Line::from(vec![crate::style::success_marker_with_upstream(
+            "✓ ",
+            "✓ ".green().bold(),
+        )]);
         line.extend(
             truncate_line_with_ellipsis_if_overflow(Line::from(title).bold(), title_width).spans,
         );
