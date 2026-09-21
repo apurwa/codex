@@ -1076,7 +1076,7 @@ impl WidgetRef for AuthModeWidget {
             }
             SignInState::BedrockConfigured => {
                 Paragraph::new(Line::from(vec![
-                    crate::style::success_marker("✓ "),
+                    crate::style::success_marker_with_upstream("✓ ", "✓ ".green()),
                     "Amazon Bedrock configured".into(),
                 ]))
                 .wrap(Wrap { trim: false })

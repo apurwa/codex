@@ -386,7 +386,10 @@ impl AgentsOverviewView {
             AgentsOverviewGroup::NeedsYou => ("Needs input", "●".red()),
             AgentsOverviewGroup::Working => ("Working", "●".green()),
             AgentsOverviewGroup::Ready => ("Ready", "○".cyan()),
-            AgentsOverviewGroup::Finished => ("Finished", crate::style::success_marker("✓")),
+            AgentsOverviewGroup::Finished => (
+                "Finished",
+                crate::style::success_marker_with_upstream("✓", "✓".dim()),
+            ),
         }
     }
 

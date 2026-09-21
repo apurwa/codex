@@ -127,10 +127,13 @@ pub fn new_approval_decision_cell(
                         " this time".bold(),
                     ]
                 };
-                (crate::style::success_marker("✔ "), summary)
+                (
+                    crate::style::success_marker_with_upstream("✔ ", "✔ ".green()),
+                    summary,
+                )
             }
             ApprovalDecisionSubject::NetworkAccess { target } => (
-                crate::style::success_marker("✔ "),
+                crate::style::success_marker_with_upstream("✔ ", "✔ ".green()),
                 vec![
                     actor.subject().into(),
                     "approved".bold(),
@@ -145,7 +148,7 @@ pub fn new_approval_decision_cell(
         } => {
             let snippet = Span::from(exec_snippet(&proposed_execpolicy_amendment.command)).dim();
             (
-                crate::style::success_marker("✔ "),
+                crate::style::success_marker_with_upstream("✔ ", "✔ ".green()),
                 vec![
                     actor.subject().into(),
                     "approved".bold(),
@@ -172,10 +175,13 @@ pub fn new_approval_decision_cell(
                         " every time this session".bold(),
                     ]
                 };
-                (crate::style::success_marker("✔ "), summary)
+                (
+                    crate::style::success_marker_with_upstream("✔ ", "✔ ".green()),
+                    summary,
+                )
             }
             ApprovalDecisionSubject::NetworkAccess { target } => (
-                crate::style::success_marker("✔ "),
+                crate::style::success_marker_with_upstream("✔ ", "✔ ".green()),
                 vec![
                     actor.subject().into(),
                     "approved".bold(),
@@ -194,7 +200,7 @@ pub fn new_approval_decision_cell(
             };
             match network_policy_amendment.action {
                 NetworkPolicyRuleAction::Allow => (
-                    crate::style::success_marker("✔ "),
+                    crate::style::success_marker_with_upstream("✔ ", "✔ ".green()),
                     vec![
                         actor.subject().into(),
                         "persisted".bold(),

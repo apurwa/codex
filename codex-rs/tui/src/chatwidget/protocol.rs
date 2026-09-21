@@ -220,7 +220,7 @@ impl ChatWidget {
             ServerNotification::AuthRecoveryCompleted(notification) => {
                 self.add_plain_history_lines(vec![
                     vec![
-                        crate::style::success_marker("✓ "),
+                        crate::style::success_marker_with_upstream("✓ ", "✓ ".green()),
                         notification.message.into(),
                     ]
                     .into(),
