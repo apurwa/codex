@@ -335,6 +335,39 @@ mod tests {
     use pretty_assertions::assert_eq;
 
     #[test]
+    fn activity_indicator_style_is_profile_specific() {
+        let (tx, _rx) = unbounded_channel::<AppEvent>();
+        let row = StatusIndicatorWidget::new(
+            AppEventSender::new(tx),
+            crate::tui::FrameRequester::test_dummy(),
+            true,
+        );
+        let timer = StatusTimer::default();
+        let upstream =
+            crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::Upstream, || {
+                StatusIndicator {
+                    row: &row,
+                    timer: &timer,
+                }
+                .lines(80)
+            });
+        let codex =
+            crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
+                StatusIndicator {
+                    row: &row,
+                    timer: &timer,
+                }
+                .lines(80)
+            });
+        let upstream_style = upstream[0].spans[0].style;
+        assert_eq!(upstream_style.fg, None);
+        assert_eq!(
+            codex[0].spans[0].style.fg,
+            Some(ratatui::style::Color::Rgb(0, 95, 135))
+        );
+    }
+
+    #[test]
     fn changed_summary_restarts_shimmer_but_repeated_summary_keeps_phase() {
         let (tx, _rx) = unbounded_channel();
         let mut row = StatusIndicatorWidget::new(

@@ -8,6 +8,35 @@ use serde_json::json;
 const PNG: &str = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/iZk9HQAAAABJRU5ErkJggg==";
 
 #[test]
+fn mcp_error_style_is_profile_specific_in_transcript() {
+    let mut cell = new_active_mcp_tool_call(
+        "call-id".to_string(),
+        McpInvocation {
+            server: "server".to_string(),
+            tool: "tool".to_string(),
+            arguments: None,
+        },
+        false,
+    );
+    cell.complete(Duration::ZERO, Err("boom".to_string()));
+    let error_style = |profile| {
+        let lines = crate::ui_profile::with_test_ui_profile(profile, || cell.transcript_lines(80));
+        lines
+            .iter()
+            .find(|line| line.to_string().contains("Error: boom"))
+            .expect("error line")
+            .spans
+            .iter()
+            .map(|span| span.style)
+            .collect::<Vec<_>>()
+    };
+    let upstream = error_style(crate::ui_profile::UiProfile::Upstream);
+    let codex = error_style(crate::ui_profile::UiProfile::CodexDev);
+    assert!(upstream.iter().all(|style| style.fg != Some(Color::Red)));
+    assert!(codex.iter().any(|style| style.fg == Some(Color::Red)));
+}
+
+#[test]
 fn mcp_inventory_connection_states() {
     use McpServerConnectionStatus as Status;
 

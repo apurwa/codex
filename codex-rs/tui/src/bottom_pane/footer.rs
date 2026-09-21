@@ -1359,6 +1359,32 @@ mod tests {
     use crate::test_backend::VT100Backend;
     use insta::assert_snapshot;
     use pretty_assertions::assert_eq;
+
+    #[test]
+    fn passive_footer_draft_running_matches_each_profile() {
+        let props = FooterProps {
+            mode: FooterMode::ComposerHasDraft,
+            esc_backtrack_hint: false,
+            use_shift_enter_hint: false,
+            is_task_running: true,
+            queue_submissions: false,
+            collaboration_modes_enabled: false,
+            is_wsl: false,
+            quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
+            status_line_values: Vec::new(),
+            status_line_enabled: false,
+            key_hints: FooterKeyHints::default_bindings(),
+            active_agent_label: None,
+        };
+        assert!(!crate::ui_profile::with_test_ui_profile(
+            crate::ui_profile::UiProfile::Upstream,
+            || shows_passive_footer_line(&props)
+        ));
+        assert!(crate::ui_profile::with_test_ui_profile(
+            crate::ui_profile::UiProfile::CodexDev,
+            || shows_passive_footer_line(&props)
+        ));
+    }
     use ratatui::Terminal;
     use ratatui::backend::Backend;
     use ratatui::backend::TestBackend;

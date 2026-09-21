@@ -755,6 +755,41 @@ mod tests {
     use codex_app_server_protocol::CommandExecutionSource as ExecCommandSource;
     use pretty_assertions::assert_eq;
 
+    #[test]
+    fn transcript_duration_dim_is_preserved_upstream() {
+        let call = ExecCall {
+            call_id: "call-id".to_string(),
+            command: vec!["bash".into(), "-lc".into(), "echo ok".into()],
+            parsed: Vec::new(),
+            output: Some(CommandOutput::new(0, "ok".to_string())),
+            source: ExecCommandSource::Agent,
+            start_time: None,
+            duration: Some(std::time::Duration::from_millis(10)),
+            interaction_input: None,
+        };
+        let cell = ExecCell::new(call, false);
+        let duration_style = |profile| {
+            let lines =
+                crate::ui_profile::with_test_ui_profile(profile, || cell.transcript_lines(80));
+            lines
+                .iter()
+                .flat_map(|line| line.spans.iter())
+                .find(|span| span.content.contains("• 10ms"))
+                .expect("duration span")
+                .style
+        };
+        assert!(
+            duration_style(crate::ui_profile::UiProfile::Upstream)
+                .add_modifier
+                .contains(ratatui::style::Modifier::DIM)
+        );
+        assert!(
+            !duration_style(crate::ui_profile::UiProfile::CodexDev)
+                .add_modifier
+                .contains(ratatui::style::Modifier::DIM)
+        );
+    }
+
     fn render_line_text(line: &Line<'static>) -> String {
         line.spans
             .iter()
