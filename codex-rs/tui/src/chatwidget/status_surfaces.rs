@@ -216,6 +216,10 @@ impl ChatWidget {
         }
 
         let use_theme_colors = self.local_settings.tui.status_line_use_colors;
+        let codex_dev_profile = matches!(
+            crate::ui_profile::ui_profile(),
+            crate::ui_profile::UiProfile::CodexDev
+        );
         let thread_id = self.thread_id;
         let mut rows = Vec::new();
         for items in &selections.status_line_rows {
@@ -228,7 +232,7 @@ impl ChatWidget {
                 .collect::<Vec<_>>();
             // Standalone multi-row footers use the same one-column Nerd Font glyphs as
             // the local Claude/Ghostty setup. Compact single-row configurations stay icon-free.
-            let icon = if selections.status_line_rows.len() > 1 {
+            let icon = if codex_dev_profile && selections.status_line_rows.len() > 1 {
                 segments.first().and_then(|(item, _)| match item {
                     StatusLineItem::CurrentDir | StatusLineItem::ProjectRoot => Some("\u{f07b}"),
                     StatusLineItem::GitBranch
@@ -250,15 +254,17 @@ impl ChatWidget {
             };
             if let Some(mut row) = status_line_from_segments(segments, use_theme_colors, thread_id)
             {
-                row.style = row
-                    .style
-                    .bold()
-                    .remove_modifier(ratatui::style::Modifier::DIM);
-                for span in &mut row.spans {
-                    span.style = span
+                if codex_dev_profile {
+                    row.style = row
                         .style
                         .bold()
                         .remove_modifier(ratatui::style::Modifier::DIM);
+                    for span in &mut row.spans {
+                        span.style = span
+                            .style
+                            .bold()
+                            .remove_modifier(ratatui::style::Modifier::DIM);
+                    }
                 }
                 if let Some(icon) = icon {
                     let style = row
