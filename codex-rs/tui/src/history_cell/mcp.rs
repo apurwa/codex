@@ -357,15 +357,27 @@ impl McpToolCallCell {
 
 impl HistoryCell for McpToolCallCell {
     fn display_lines(&self, width: u16) -> Vec<Line<'static>> {
-        prepend_codex_tool_call_label(
-            self.render_lines(width.saturating_sub(2), McpToolCallRenderMode::Display),
-        )
+        let width = if matches!(
+            crate::ui_profile::ui_profile(),
+            crate::ui_profile::UiProfile::Upstream
+        ) {
+            width
+        } else {
+            width.saturating_sub(2)
+        };
+        prepend_codex_tool_call_label(self.render_lines(width, McpToolCallRenderMode::Display))
     }
 
     fn transcript_lines(&self, width: u16) -> Vec<Line<'static>> {
-        prepend_codex_tool_call_label(
-            self.render_lines(width.saturating_sub(2), McpToolCallRenderMode::Transcript),
-        )
+        let width = if matches!(
+            crate::ui_profile::ui_profile(),
+            crate::ui_profile::UiProfile::Upstream
+        ) {
+            width
+        } else {
+            width.saturating_sub(2)
+        };
+        prepend_codex_tool_call_label(self.render_lines(width, McpToolCallRenderMode::Transcript))
     }
 
     fn raw_lines(&self) -> Vec<Line<'static>> {
@@ -395,7 +407,10 @@ impl HistoryCell for McpToolCallCell {
     }
 
     fn is_codex_tool_call(&self) -> bool {
-        true
+        matches!(
+            crate::ui_profile::ui_profile(),
+            crate::ui_profile::UiProfile::CodexDev
+        )
     }
 
     fn transcript_animation_tick(&self) -> Option<u64> {

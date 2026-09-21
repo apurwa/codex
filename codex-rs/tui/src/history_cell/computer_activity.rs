@@ -95,7 +95,14 @@ impl HistoryCell for ComputerActivityCell {
         if width == 0 {
             return Vec::new();
         }
-        let width = width.saturating_sub(2);
+        let width = if matches!(
+            crate::ui_profile::ui_profile(),
+            crate::ui_profile::UiProfile::Upstream
+        ) {
+            width
+        } else {
+            width.saturating_sub(2)
+        };
         let active = self.calls.iter().rposition(|call| call.result.is_none());
         let failures = self
             .calls
@@ -194,6 +201,16 @@ impl HistoryCell for ComputerActivityCell {
     }
 
     fn transcript_lines(&self, width: u16) -> Vec<Line<'static>> {
+        if matches!(
+            crate::ui_profile::ui_profile(),
+            crate::ui_profile::UiProfile::Upstream
+        ) {
+            return self
+                .calls
+                .iter()
+                .flat_map(|call| call.transcript_lines(width))
+                .collect();
+        }
         prepend_codex_tool_call_label(
             self.calls
                 .iter()
@@ -216,7 +233,10 @@ impl HistoryCell for ComputerActivityCell {
     }
 
     fn is_codex_tool_call(&self) -> bool {
-        true
+        matches!(
+            crate::ui_profile::ui_profile(),
+            crate::ui_profile::UiProfile::CodexDev
+        )
     }
 }
 

@@ -122,6 +122,15 @@ impl WebSearchCell {
 
 impl HistoryCell for WebSearchCell {
     fn display_lines(&self, width: u16) -> Vec<Line<'static>> {
+        if matches!(
+            crate::ui_profile::ui_profile(),
+            crate::ui_profile::UiProfile::Upstream
+        ) {
+            return vec![truncate_line_with_ellipsis_if_overflow(
+                self.summary(),
+                width as usize,
+            )];
+        }
         let bullet = if self.completed {
             "•".dim()
         } else {
@@ -145,6 +154,13 @@ impl HistoryCell for WebSearchCell {
     }
 
     fn transcript_lines(&self, width: u16) -> Vec<Line<'static>> {
+        if matches!(
+            crate::ui_profile::ui_profile(),
+            crate::ui_profile::UiProfile::Upstream
+        ) {
+            return PrefixedWrappedHistoryCell::new(self.summary(), vec!["• ".dim()], "  ")
+                .display_lines(width);
+        }
         prepend_codex_tool_call_label(
             PrefixedWrappedHistoryCell::new(self.summary(), vec!["• ".dim()], "  ")
                 .display_lines(width.saturating_sub(2)),
@@ -152,11 +168,21 @@ impl HistoryCell for WebSearchCell {
     }
 
     fn raw_lines(&self) -> Vec<Line<'static>> {
-        plain_lines(prepend_codex_tool_call_label(vec![self.summary()]))
+        if matches!(
+            crate::ui_profile::ui_profile(),
+            crate::ui_profile::UiProfile::Upstream
+        ) {
+            plain_lines(vec![self.summary()])
+        } else {
+            plain_lines(prepend_codex_tool_call_label(vec![self.summary()]))
+        }
     }
 
     fn is_codex_tool_call(&self) -> bool {
-        true
+        matches!(
+            crate::ui_profile::ui_profile(),
+            crate::ui_profile::UiProfile::CodexDev
+        )
     }
 }
 

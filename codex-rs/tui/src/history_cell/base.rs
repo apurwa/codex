@@ -60,7 +60,8 @@ impl HistoryCell for CodexToolCallHistoryCell {
 
     fn display_hyperlink_lines(&self, width: u16) -> Vec<HyperlinkLine> {
         prepend_codex_tool_call_hyperlink_label(
-            self.inner.display_hyperlink_lines(Self::render_width(width)),
+            self.inner
+                .display_hyperlink_lines(Self::render_width(width)),
         )
     }
 
@@ -342,10 +343,10 @@ mod tests {
         let cell = ToolCallContinuationCell::new(inner);
 
         with_test_ui_profile(UiProfile::Upstream, || {
-            assert_eq!(cell.display_lines(80), vec![
-                Line::from("CODEX · Tool Calls"),
-                Line::from("tool output"),
-            ]);
+            assert_eq!(
+                cell.display_lines(80),
+                vec![Line::from("CODEX · Tool Calls"), Line::from("tool output"),]
+            );
             assert!(!cell.is_codex_tool_call());
         });
     }

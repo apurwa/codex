@@ -15,11 +15,23 @@ pub(crate) struct PatchHistoryCell {
 }
 
 impl HistoryCell for PatchHistoryCell {
-    fn display_lines(&self, _width: u16) -> Vec<Line<'static>> {
+    fn display_lines(&self, width: u16) -> Vec<Line<'static>> {
+        if matches!(
+            crate::ui_profile::ui_profile(),
+            crate::ui_profile::UiProfile::Upstream
+        ) {
+            return create_diff_summary(&self.changes, &self.cwd, width as usize);
+        }
         prepend_codex_tool_call_label(create_compact_diff_summary(&self.changes, &self.cwd))
     }
 
     fn transcript_lines(&self, width: u16) -> Vec<Line<'static>> {
+        if matches!(
+            crate::ui_profile::ui_profile(),
+            crate::ui_profile::UiProfile::Upstream
+        ) {
+            return self.display_lines(width);
+        }
         prepend_codex_tool_call_label(create_diff_summary(
             &self.changes,
             &self.cwd,
@@ -28,6 +40,16 @@ impl HistoryCell for PatchHistoryCell {
     }
 
     fn raw_lines(&self) -> Vec<Line<'static>> {
+        if matches!(
+            crate::ui_profile::ui_profile(),
+            crate::ui_profile::UiProfile::Upstream
+        ) {
+            return plain_lines(create_diff_summary(
+                &self.changes,
+                &self.cwd,
+                RAW_DIFF_SUMMARY_WIDTH,
+            ));
+        }
         plain_lines(prepend_codex_tool_call_label(create_diff_summary(
             &self.changes,
             &self.cwd,
@@ -36,7 +58,10 @@ impl HistoryCell for PatchHistoryCell {
     }
 
     fn is_codex_tool_call(&self) -> bool {
-        true
+        matches!(
+            crate::ui_profile::ui_profile(),
+            crate::ui_profile::UiProfile::CodexDev
+        )
     }
 }
 /// Create a new `PendingPatch` cell that lists the file‑level summary of
@@ -88,13 +113,29 @@ impl HistoryCell for ViewImageHistoryCell {
             self.filename.replace(['\n', '\r', '\t'], " ").dim(),
         ]
         .into();
-        prepend_codex_tool_call_label(vec![truncate_line_with_ellipsis_if_overflow(
+        let lines = vec![truncate_line_with_ellipsis_if_overflow(
             line,
-            width.saturating_sub(2) as usize,
-        )])
+            if matches!(
+                crate::ui_profile::ui_profile(),
+                crate::ui_profile::UiProfile::Upstream
+            ) {
+                width as usize
+            } else {
+                width.saturating_sub(2) as usize
+            },
+        )];
+        prepend_codex_tool_call_label(lines)
     }
 
     fn transcript_lines(&self, width: u16) -> Vec<Line<'static>> {
+        let width = if matches!(
+            crate::ui_profile::ui_profile(),
+            crate::ui_profile::UiProfile::Upstream
+        ) {
+            width
+        } else {
+            width.saturating_sub(2)
+        };
         prepend_codex_tool_call_label(
             PrefixedWrappedHistoryCell::new(
                 Line::from(vec!["Viewed image ".bold(), self.path_label.clone().dim()]),
@@ -113,7 +154,10 @@ impl HistoryCell for ViewImageHistoryCell {
     }
 
     fn is_codex_tool_call(&self) -> bool {
-        true
+        matches!(
+            crate::ui_profile::ui_profile(),
+            crate::ui_profile::UiProfile::CodexDev
+        )
     }
 }
 
