@@ -3,7 +3,7 @@
 //! Only brightness changes: the moving band uses the terminal foreground, while
 //! the remaining text blends halfway into the background. The wave spans at
 //! least six terminal columns so short labels do not flash one letter at a time.
-//! Unknown palettes use static dim text instead of a stepped animation.
+//! Unknown palettes use static blue text instead of a stepped animation.
 
 use std::time::Duration;
 
@@ -14,11 +14,9 @@ use unicode_width::UnicodeWidthStr;
 
 use crate::color::blend;
 use crate::motion::MotionMode;
-use crate::terminal_palette::StdoutColorLevel;
+use crate::style::COMPOSER_BLUE_RGB;
+use crate::style::composer_blue_style;
 use crate::terminal_palette::default_bg;
-use crate::terminal_palette::default_fg;
-use crate::terminal_palette::effective_stdout_color_level;
-use crate::terminal_palette::rgb_color;
 
 pub(crate) fn summary_shimmer(
     text: &str,
@@ -26,12 +24,10 @@ pub(crate) fn summary_shimmer(
     motion: MotionMode,
 ) -> Vec<Span<'static>> {
     if motion == MotionMode::Reduced {
-        return vec![text.to_owned().into()];
+        return vec![Span::styled(text.to_owned(), composer_blue_style())];
     }
-    let (StdoutColorLevel::TrueColor, Some(fg), Some(bg)) =
-        (effective_stdout_color_level(), default_fg(), default_bg())
-    else {
-        return vec![Span::styled(text.to_owned(), Style::default().dim())];
+    let Some(bg) = default_bg() else {
+        return vec![Span::styled(text.to_owned(), composer_blue_style().dim())];
     };
     let width = text.width() as f64;
     let half_width = (width * 0.1).max(/*other*/ 3.0);
@@ -45,7 +41,8 @@ pub(crate) fn summary_shimmer(
             let distance = ((center - position).abs() / half_width).min(/*other*/ 1.0);
             let intensity = 0.5 * (1.0 + (std::f64::consts::PI * distance).cos());
             let alpha = (0.5 + 0.5 * intensity) as f32;
-            let style = Style::default().fg(rgb_color(blend(fg, bg, alpha)));
+            let (red, green, blue) = blend(COMPOSER_BLUE_RGB, bg, alpha);
+            let style = Style::default().fg(ratatui::style::Color::Rgb(red, green, blue));
             Span::styled(grapheme.to_owned(), style)
         })
         .collect()

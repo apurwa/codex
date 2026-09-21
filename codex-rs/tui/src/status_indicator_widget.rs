@@ -12,6 +12,7 @@ use std::time::Instant;
 use crossterm::event::KeyCode;
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
+use ratatui::style::Styled;
 use ratatui::style::Stylize;
 use ratatui::text::Line;
 use ratatui::text::Span;
@@ -29,6 +30,7 @@ use crate::motion::MotionMode;
 use crate::motion::ReducedMotionIndicator;
 use crate::motion::activity_indicator;
 use crate::render::renderable::Renderable;
+use crate::style::composer_blue_style;
 use crate::text_formatting::capitalize_first;
 use crate::tui::FrameRequester;
 use crate::width::display_width;
@@ -232,7 +234,7 @@ impl StatusIndicator<'_> {
             motion_mode,
             ReducedMotionIndicator::Hidden,
         ) {
-            spans.push(indicator);
+            spans.push(indicator.set_style(composer_blue_style()));
             spans.push(" ".into());
         }
         spans.extend(summary_shimmer(
@@ -247,18 +249,21 @@ impl StatusIndicator<'_> {
             && let Some(interrupt_binding) = row.interrupt_binding
         {
             spans.extend(vec![
-                format!("({pretty_elapsed} • ").dim(),
-                interrupt_binding.into(),
-                " to interrupt)".dim(),
+                Span::styled(format!("({pretty_elapsed} • "), composer_blue_style().dim()),
+                Span::from(interrupt_binding).set_style(composer_blue_style()),
+                Span::styled(" to interrupt)", composer_blue_style().dim()),
             ]);
         } else {
-            spans.push(format!("({pretty_elapsed})").dim());
+            spans.push(Span::styled(
+                format!("({pretty_elapsed})"),
+                composer_blue_style().dim(),
+            ));
         }
         if let Some(message) = &row.inline_message {
             // Keep optional context after elapsed/interrupt text so that core
             // interrupt affordances stay in a fixed visual location.
-            spans.push(" · ".dim());
-            spans.push(message.clone().dim());
+            spans.push(Span::styled(" · ", composer_blue_style().dim()));
+            spans.push(Span::styled(message.clone(), composer_blue_style().dim()));
         }
 
         let mut header = Line::from(spans);

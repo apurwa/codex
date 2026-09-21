@@ -9,13 +9,44 @@ use crate::terminal_palette::rgb_color;
 use crate::terminal_palette::stdout_color_level;
 use ratatui::style::Color;
 use ratatui::style::Style;
+use ratatui::text::Line;
 use ratatui::text::Span;
 
 const LIGHT_BG_ACCENT_RGB: (u8, u8, u8) = (0, 95, 135);
+pub(crate) const COMPOSER_BLUE_RGB: (u8, u8, u8) = (0, 95, 135);
 
-/// Maroon speaker label, independent of terminal ANSI palette remapping.
+/// Speaker label using the shared Codex response accent.
 pub(crate) fn codex_label_style() -> Style {
-    Style::default().fg(Color::Rgb(128, 0, 0)).bold()
+    codex_response_border_style().bold()
+}
+
+/// Cool assistant-response accent shared by Codex cards and the working shimmer.
+pub(crate) fn composer_blue_style() -> Style {
+    Style::default().fg(Color::Rgb(
+        COMPOSER_BLUE_RGB.0,
+        COMPOSER_BLUE_RGB.1,
+        COMPOSER_BLUE_RGB.2,
+    ))
+}
+
+/// Border style for Codex response cards.
+pub(crate) fn codex_response_border_style() -> Style {
+    composer_blue_style().bold()
+}
+
+/// Pale cool background that distinguishes Codex responses from user messages.
+pub(crate) fn codex_response_background_style() -> Style {
+    match default_bg() {
+        Some(bg) => Style::default().bg(best_color(codex_response_bg_rgb(bg))),
+        None => Style::default(),
+    }
+}
+
+pub(crate) fn codex_response_rule(width: u16) -> Line<'static> {
+    Line::from(Span::styled(
+        "─".repeat(usize::from(width.saturating_sub(1))),
+        codex_response_border_style(),
+    ))
 }
 
 /// High-contrast success accent for glyphs shown on light transcript backgrounds.
@@ -133,6 +164,11 @@ pub(crate) fn accent_style_for(terminal_bg: Option<(u8, u8, u8)>) -> Style {
     } else {
         Style::default().fg(Color::Cyan).bold()
     }
+}
+
+fn codex_response_bg_rgb(terminal_bg: (u8, u8, u8)) -> (u8, u8, u8) {
+    let alpha = if is_light(terminal_bg) { 0.08 } else { 0.24 };
+    blend(COMPOSER_BLUE_RGB, terminal_bg, alpha)
 }
 
 fn table_separator_style_for(
