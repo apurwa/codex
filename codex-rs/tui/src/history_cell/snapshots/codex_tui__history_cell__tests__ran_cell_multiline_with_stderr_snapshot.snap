@@ -4,6 +4,7 @@ expression: rendered
 ---
 
 CODEX · Tool Calls
+
 ┊ • Ran echo
 ┊   │ this_is_a_very_long_
 ┊   │ single_token_that_wi

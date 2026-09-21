@@ -5,6 +5,7 @@ expression: transcript
 ---
 
 CODEX · Tool Calls
+
 ┊ • Called cua_repl.js({"title":"Open browser","code":"await cua.getState()"})
 ┊   └ Error: No browser is available
 ┊         ## Computer Use

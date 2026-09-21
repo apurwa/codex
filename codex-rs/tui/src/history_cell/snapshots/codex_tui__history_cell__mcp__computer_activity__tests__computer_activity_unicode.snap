@@ -4,6 +4,7 @@ expression: "render(&cell, 24)"
 ---
 
 CODEX · Tool Calls
+
 ┊ • Used computer · 1
 ┊   action · 1 failed
 ┊   └ Failed: diagnosti…

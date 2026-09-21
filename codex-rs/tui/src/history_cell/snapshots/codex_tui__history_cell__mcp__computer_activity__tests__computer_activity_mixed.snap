@@ -4,6 +4,7 @@ expression: "render(&cell, 90)"
 ---
 
 CODEX · Tool Calls
+
 ┊ • Used computer · 5 actions · 1 failed
 ┊   ├ Failed: Open browser — No browser is available
 ┊   ├ Captured screenshot · Capture the reproduced bug

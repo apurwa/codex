@@ -5,6 +5,7 @@ expression: "lines.iter().map(ToString::to_string).collect::<Vec<_>>().join(\"\\
 ---
 
 CODEX · Tool Calls
+
 ┊ • Inspect a very long screens…
 ┊   └ Screenshot partially
 ┊         failed

@@ -4,5 +4,6 @@ expression: rendered
 ---
 
 CODEX · Tool Calls
+
 ┊ • Called search.find_docs({"query":"ratatui styling","limit":3})
 ┊   └ Error: network timeout

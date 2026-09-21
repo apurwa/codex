@@ -4,6 +4,7 @@ expression: "render(&cell, 80)"
 ---
 
 CODEX · Tool Calls
+
 ┊ • Used computer · 2 actions
 ┊   ├ Inspect page
 ┊   └ Reload page
