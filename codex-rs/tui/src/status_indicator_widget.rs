@@ -359,12 +359,17 @@ mod tests {
                 }
                 .lines(80)
             });
-        let upstream_style = upstream[0].spans[0].style;
-        assert_eq!(upstream_style.fg, None);
-        assert_eq!(
-            codex[0].spans[0].style.fg,
-            Some(ratatui::style::Color::Rgb(0, 95, 135))
-        );
+        // The upstream activity indicator's own foreground is intentionally
+        // color-environment dependent (a shimmer span under truecolor, a plain
+        // bullet otherwise), so the profile invariant is that Upstream does not
+        // apply the codex-dev blue while CodexDev does.
+        let codex_dev_blue = Some(ratatui::style::Color::Rgb(
+            crate::style::COMPOSER_BLUE_RGB.0,
+            crate::style::COMPOSER_BLUE_RGB.1,
+            crate::style::COMPOSER_BLUE_RGB.2,
+        ));
+        assert_ne!(upstream[0].spans[0].style.fg, codex_dev_blue);
+        assert_eq!(codex[0].spans[0].style.fg, codex_dev_blue);
     }
 
     #[test]
