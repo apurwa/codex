@@ -386,7 +386,10 @@ impl AgentsOverviewView {
             AgentsOverviewGroup::NeedsYou => ("Needs input", "●".red()),
             AgentsOverviewGroup::Working => ("Working", "●".green()),
             AgentsOverviewGroup::Ready => ("Ready", "○".cyan()),
-            AgentsOverviewGroup::Finished => ("Finished", "✓".dim()),
+            AgentsOverviewGroup::Finished => (
+                "Finished",
+                Span::styled("✓", crate::style::tool_success_style()),
+            ),
         }
     }
 
@@ -724,7 +727,8 @@ impl BottomPaneView for AgentsOverviewView {
             return;
         }
         if self.agents_keymap.new_task.is_pressed(key) {
-            let selected_project_directory = (self.state().grouping == AgentsOverviewGrouping::Project)
+            let selected_project_directory = (self.state().grouping
+                == AgentsOverviewGrouping::Project)
                 .then(|| self.selected_row().map(|row| row.thread.cwd.to_path_buf()))
                 .flatten();
             let mut state = self.state();

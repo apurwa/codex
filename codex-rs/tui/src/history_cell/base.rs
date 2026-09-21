@@ -166,7 +166,12 @@ impl ToolCallContinuationCell {
                 .get(1)
                 .is_some_and(|line| line.to_string() == "CODEX · Tool Calls")
         {
-            lines.drain(..2);
+            let heading_end = if lines.get(2).is_some_and(|line| line.to_string().is_empty()) {
+                3
+            } else {
+                2
+            };
+            lines.drain(..heading_end);
         }
         lines
     }
@@ -179,7 +184,15 @@ impl ToolCallContinuationCell {
                 .get(1)
                 .is_some_and(|line| line.line.to_string() == "CODEX · Tool Calls")
         {
-            lines.drain(..2);
+            let heading_end = if lines
+                .get(2)
+                .is_some_and(|line| line.line.to_string().is_empty())
+            {
+                3
+            } else {
+                2
+            };
+            lines.drain(..heading_end);
         }
         lines
     }
