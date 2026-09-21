@@ -2,6 +2,58 @@ use super::*;
 use crate::history_cell::markdown_render_cache::MarkdownRenderCacheKey;
 use assert_matches::assert_matches;
 use pretty_assertions::assert_eq;
+use ratatui::style::Style;
+
+#[test]
+fn transcript_structure_respects_ui_profile() {
+    let user = UserHistoryCell {
+        spoken: false,
+        message: "hello".into(),
+        text_elements: Vec::new(),
+        local_image_paths: Vec::new(),
+        remote_image_urls: Vec::new(),
+    };
+
+    let upstream = crate::ui_profile::with_test_ui_profile(
+        crate::ui_profile::UiProfile::Upstream,
+        || {
+            (
+                user.display_lines(32),
+                AgentMarkdownCell::new("answer".into(), Path::new("/tmp"))
+                    .with_phase(Some(codex_protocol::models::MessagePhase::FinalAnswer))
+                    .display_lines(32),
+                user.background_style(),
+                AgentMarkdownCell::new("answer".into(), Path::new("/tmp"))
+                    .with_phase(Some(codex_protocol::models::MessagePhase::FinalAnswer))
+                    .background_style(),
+            )
+        },
+    );
+    assert!(!upstream.0.iter().any(|line| line.to_string() == "YOU"));
+    assert!(!upstream.1.iter().any(|line| line.to_string().contains("CODEX")));
+    assert_eq!(upstream.2, Some(Style::default()));
+    assert_eq!(upstream.3, None);
+
+    let codex_dev = crate::ui_profile::with_test_ui_profile(
+        crate::ui_profile::UiProfile::CodexDev,
+        || {
+            (
+                user.display_lines(32),
+                AgentMarkdownCell::new("answer".into(), Path::new("/tmp"))
+                    .with_phase(Some(codex_protocol::models::MessagePhase::FinalAnswer))
+                    .display_lines(32),
+                user.background_style(),
+                AgentMarkdownCell::new("answer".into(), Path::new("/tmp"))
+                    .with_phase(Some(codex_protocol::models::MessagePhase::FinalAnswer))
+                    .background_style(),
+            )
+        },
+    );
+    assert!(codex_dev.0.iter().any(|line| line.to_string() == "YOU"));
+    assert!(codex_dev.1.iter().any(|line| line.to_string().contains("CODEX")));
+    assert!(codex_dev.2.is_some());
+    assert!(codex_dev.3.is_some());
+}
 
 #[test]
 fn user_message_has_matching_rules_without_changing_raw_text() {
