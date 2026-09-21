@@ -19,7 +19,9 @@ pub(crate) fn codex_label_style() -> Style {
 
 /// High-contrast success accent for glyphs shown on light transcript backgrounds.
 pub(crate) fn tool_success_style() -> Style {
-    Style::default().fg(Color::Rgb(0x0b, 0x66, 0x23)).bold()
+    // Use a saturated green on the light transcript background; the previous
+    // forest green read as olive/muted in the pale terminal theme.
+    Style::default().fg(Color::Rgb(0x00, 0x9f, 0x3d)).bold()
 }
 
 /// Shared selection/action colors, independent of remapped ANSI terminal palettes.
