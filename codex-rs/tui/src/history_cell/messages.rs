@@ -261,6 +261,36 @@ impl HistoryCell for UserHistoryCell {
             return Vec::new();
         }
 
+        if matches!(
+            crate::ui_profile::ui_profile(),
+            crate::ui_profile::UiProfile::Upstream
+        ) {
+            let mut lines = vec![HyperlinkLine::new(Line::from("").style(style))];
+            if let Some(wrapped_remote_images) = wrapped_remote_images {
+                lines.extend(prefix_hyperlink_lines(
+                    wrapped_remote_images,
+                    "  ".into(),
+                    "  ".into(),
+                ));
+                if wrapped_message.is_some() {
+                    lines.push(HyperlinkLine::new(Line::from("").style(style)));
+                }
+            }
+            if let Some(wrapped_message) = wrapped_message {
+                lines.extend(prefix_hyperlink_lines(
+                    wrapped_message,
+                    if self.spoken {
+                        "› ".red().bold()
+                    } else {
+                        "› ".bold().dim()
+                    },
+                    "  ".into(),
+                ));
+            }
+            lines.push(HyperlinkLine::new(Line::from("").style(style)));
+            return lines;
+        }
+
         let background_width = usize::from(width.saturating_sub(1));
         let mut lines = vec![
             HyperlinkLine::new(Line::from(Span::styled(
@@ -433,7 +463,12 @@ impl HistoryCell for AgentMessageCell {
         if self.lines.is_empty() {
             return wrapped;
         }
-        if self.is_first_line {
+        if self.is_first_line
+            && matches!(
+                crate::ui_profile::ui_profile(),
+                crate::ui_profile::UiProfile::CodexDev
+            )
+        {
             wrapped.push(HyperlinkLine::new(Line::default()));
             wrapped.push(HyperlinkLine::new(Line::from(Span::styled(
                 "CODEX",
@@ -469,7 +504,11 @@ impl HistoryCell for AgentMessageCell {
     }
 
     fn background_style(&self) -> Option<Style> {
-        Some(crate::style::codex_response_background_style())
+        matches!(
+            crate::ui_profile::ui_profile(),
+            crate::ui_profile::UiProfile::CodexDev
+        )
+        .then(crate::style::codex_response_background_style)
     }
 }
 
@@ -610,11 +649,28 @@ impl HistoryCell for AgentMarkdownCell {
             } else {
                 "  ".into()
             };
-            let body = normalize_whitespace_only_hyperlink_lines(prefix_hyperlink_lines(
-                lines,
-                gutter.clone(),
-                gutter,
-            ));
+            let body = if matches!(
+                crate::ui_profile::ui_profile(),
+                crate::ui_profile::UiProfile::Upstream
+            ) {
+                normalize_whitespace_only_hyperlink_lines(prefix_hyperlink_lines(
+                    lines,
+                    "• ".dim(),
+                    "  ".into(),
+                ))
+            } else {
+                normalize_whitespace_only_hyperlink_lines(prefix_hyperlink_lines(
+                    lines,
+                    gutter.clone(),
+                    gutter,
+                ))
+            };
+            if matches!(
+                crate::ui_profile::ui_profile(),
+                crate::ui_profile::UiProfile::Upstream
+            ) {
+                return body;
+            }
             let mut labeled = vec![
                 HyperlinkLine::new(crate::style::codex_response_rule(width)),
                 HyperlinkLine::new(Line::from(Span::styled(
@@ -648,7 +704,11 @@ impl HistoryCell for AgentMarkdownCell {
     }
 
     fn background_style(&self) -> Option<Style> {
-        Some(crate::style::codex_response_background_style())
+        matches!(
+            crate::ui_profile::ui_profile(),
+            crate::ui_profile::UiProfile::CodexDev
+        )
+        .then(crate::style::codex_response_background_style)
     }
 
     fn has_stable_transcript_height(&self) -> bool {

@@ -22,6 +22,12 @@ impl HistoryCell for UserApprovalDecisionHistoryCell {
         }
 
         let style = transcript_user_message_style();
+        if matches!(
+            crate::ui_profile::ui_profile(),
+            crate::ui_profile::UiProfile::Upstream
+        ) {
+            return self.decision.display_lines(width);
+        }
         let accent_style = style.patch(crate::style::accent_style());
         let rule = Line::from(Span::styled(
             "─".repeat(usize::from(width.saturating_sub(1))),

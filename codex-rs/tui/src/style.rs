@@ -17,16 +17,22 @@ pub(crate) const COMPOSER_BLUE_RGB: (u8, u8, u8) = (0, 95, 135);
 
 /// Speaker label using the shared Codex response accent.
 pub(crate) fn codex_label_style() -> Style {
-    codex_response_border_style().bold()
+    match crate::ui_profile::ui_profile() {
+        crate::ui_profile::UiProfile::CodexDev => codex_response_border_style().bold(),
+        crate::ui_profile::UiProfile::Upstream => Style::default(),
+    }
 }
 
 /// Cool assistant-response accent shared by Codex cards and the working shimmer.
 pub(crate) fn composer_blue_style() -> Style {
-    Style::default().fg(Color::Rgb(
-        COMPOSER_BLUE_RGB.0,
-        COMPOSER_BLUE_RGB.1,
-        COMPOSER_BLUE_RGB.2,
-    ))
+    match crate::ui_profile::ui_profile() {
+        crate::ui_profile::UiProfile::CodexDev => Style::default().fg(Color::Rgb(
+            COMPOSER_BLUE_RGB.0,
+            COMPOSER_BLUE_RGB.1,
+            COMPOSER_BLUE_RGB.2,
+        )),
+        crate::ui_profile::UiProfile::Upstream => Style::default(),
+    }
 }
 
 /// Border style for Codex response cards.
@@ -36,24 +42,35 @@ pub(crate) fn codex_response_border_style() -> Style {
 
 /// Pale cool background that distinguishes Codex responses from user messages.
 pub(crate) fn codex_response_background_style() -> Style {
-    match default_bg() {
-        Some(bg) => Style::default().bg(best_color(codex_response_bg_rgb(bg))),
-        None => Style::default(),
+    match crate::ui_profile::ui_profile() {
+        crate::ui_profile::UiProfile::CodexDev => match default_bg() {
+            Some(bg) => Style::default().bg(best_color(codex_response_bg_rgb(bg))),
+            None => Style::default(),
+        },
+        crate::ui_profile::UiProfile::Upstream => Style::default(),
     }
 }
 
 pub(crate) fn codex_response_rule(width: u16) -> Line<'static> {
-    Line::from(Span::styled(
-        "─".repeat(usize::from(width.saturating_sub(1))),
-        codex_response_border_style(),
-    ))
+    match crate::ui_profile::ui_profile() {
+        crate::ui_profile::UiProfile::CodexDev => Line::from(Span::styled(
+            "─".repeat(usize::from(width.saturating_sub(1))),
+            codex_response_border_style(),
+        )),
+        crate::ui_profile::UiProfile::Upstream => Line::default(),
+    }
 }
 
 /// High-contrast success accent for glyphs shown on light transcript backgrounds.
 pub(crate) fn tool_success_style() -> Style {
-    // Use a vivid green on the light transcript background; the previous
-    // forest green read as olive/muted in the pale terminal theme.
-    Style::default().fg(Color::Rgb(0x00, 0xc8, 0x53)).bold()
+    match crate::ui_profile::ui_profile() {
+        crate::ui_profile::UiProfile::CodexDev => {
+            // Use a vivid green on the light transcript background; the previous
+            // forest green read as olive/muted in the pale terminal theme.
+            Style::default().fg(Color::Rgb(0x00, 0xc8, 0x53)).bold()
+        }
+        crate::ui_profile::UiProfile::Upstream => Style::default(),
+    }
 }
 
 /// Render a success marker consistently across transcript, approval, and status surfaces.
@@ -106,9 +123,12 @@ pub fn user_message_style() -> Style {
 
 /// Returns the stronger background used specifically for user-authored transcript cells.
 pub(crate) fn transcript_user_message_style() -> Style {
-    match default_bg() {
-        Some(bg) => Style::default().bg(best_color(transcript_user_message_bg_rgb(bg))),
-        None => Style::default(),
+    match crate::ui_profile::ui_profile() {
+        crate::ui_profile::UiProfile::CodexDev => match default_bg() {
+            Some(bg) => Style::default().bg(best_color(transcript_user_message_bg_rgb(bg))),
+            None => Style::default(),
+        },
+        crate::ui_profile::UiProfile::Upstream => Style::default(),
     }
 }
 
