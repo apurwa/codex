@@ -36,27 +36,38 @@ impl CodexToolCallHistoryCell {
             inner: Box::new(inner),
         }
     }
+
+    fn render_width(width: u16) -> u16 {
+        if matches!(
+            crate::ui_profile::ui_profile(),
+            crate::ui_profile::UiProfile::Upstream
+        ) {
+            width
+        } else {
+            width.saturating_sub(2)
+        }
+    }
 }
 
 impl HistoryCell for CodexToolCallHistoryCell {
     fn display_lines(&self, width: u16) -> Vec<Line<'static>> {
-        prepend_codex_tool_call_label(self.inner.display_lines(width.saturating_sub(2)))
+        prepend_codex_tool_call_label(self.inner.display_lines(Self::render_width(width)))
     }
 
     fn transcript_lines(&self, width: u16) -> Vec<Line<'static>> {
-        prepend_codex_tool_call_label(self.inner.transcript_lines(width.saturating_sub(2)))
+        prepend_codex_tool_call_label(self.inner.transcript_lines(Self::render_width(width)))
     }
 
     fn display_hyperlink_lines(&self, width: u16) -> Vec<HyperlinkLine> {
         prepend_codex_tool_call_hyperlink_label(
-            self.inner.display_hyperlink_lines(width.saturating_sub(2)),
+            self.inner.display_hyperlink_lines(Self::render_width(width)),
         )
     }
 
     fn transcript_hyperlink_lines(&self, width: u16) -> Vec<HyperlinkLine> {
         prepend_codex_tool_call_hyperlink_label(
             self.inner
-                .transcript_hyperlink_lines(width.saturating_sub(2)),
+                .transcript_hyperlink_lines(Self::render_width(width)),
         )
     }
 
@@ -65,7 +76,10 @@ impl HistoryCell for CodexToolCallHistoryCell {
     }
 
     fn is_codex_tool_call(&self) -> bool {
-        true
+        matches!(
+            crate::ui_profile::ui_profile(),
+            crate::ui_profile::UiProfile::CodexDev
+        )
     }
 
     fn has_stable_transcript_height(&self) -> bool {
@@ -200,18 +214,36 @@ impl ToolCallContinuationCell {
 
 impl HistoryCell for ToolCallContinuationCell {
     fn display_lines(&self, width: u16) -> Vec<Line<'static>> {
+        if matches!(
+            crate::ui_profile::ui_profile(),
+            crate::ui_profile::UiProfile::Upstream
+        ) {
+            return self.inner.display_lines(width);
+        }
         let mut lines = Self::without_group_heading(self.inner.display_lines(width));
         lines.insert(0, Line::default());
         lines
     }
 
     fn transcript_lines(&self, width: u16) -> Vec<Line<'static>> {
+        if matches!(
+            crate::ui_profile::ui_profile(),
+            crate::ui_profile::UiProfile::Upstream
+        ) {
+            return self.inner.transcript_lines(width);
+        }
         let mut lines = Self::without_group_heading(self.inner.transcript_lines(width));
         lines.insert(0, Line::default());
         lines
     }
 
     fn display_hyperlink_lines(&self, width: u16) -> Vec<HyperlinkLine> {
+        if matches!(
+            crate::ui_profile::ui_profile(),
+            crate::ui_profile::UiProfile::Upstream
+        ) {
+            return self.inner.display_hyperlink_lines(width);
+        }
         let mut lines =
             Self::without_hyperlink_group_heading(self.inner.display_hyperlink_lines(width));
         lines.insert(0, HyperlinkLine::from(""));
@@ -219,6 +251,12 @@ impl HistoryCell for ToolCallContinuationCell {
     }
 
     fn transcript_hyperlink_lines(&self, width: u16) -> Vec<HyperlinkLine> {
+        if matches!(
+            crate::ui_profile::ui_profile(),
+            crate::ui_profile::UiProfile::Upstream
+        ) {
+            return self.inner.transcript_hyperlink_lines(width);
+        }
         let mut lines =
             Self::without_hyperlink_group_heading(self.inner.transcript_hyperlink_lines(width));
         lines.insert(0, HyperlinkLine::from(""));
@@ -226,11 +264,21 @@ impl HistoryCell for ToolCallContinuationCell {
     }
 
     fn raw_lines(&self) -> Vec<Line<'static>> {
-        Self::without_group_heading(self.inner.raw_lines())
+        if matches!(
+            crate::ui_profile::ui_profile(),
+            crate::ui_profile::UiProfile::Upstream
+        ) {
+            self.inner.raw_lines()
+        } else {
+            Self::without_group_heading(self.inner.raw_lines())
+        }
     }
 
     fn is_codex_tool_call(&self) -> bool {
-        true
+        matches!(
+            crate::ui_profile::ui_profile(),
+            crate::ui_profile::UiProfile::CodexDev
+        )
     }
 
     fn is_stream_continuation(&self) -> bool {
@@ -243,6 +291,63 @@ impl HistoryCell for ToolCallContinuationCell {
 
     fn transcript_animation_tick(&self) -> Option<u64> {
         self.inner.transcript_animation_tick()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::ui_profile::{UiProfile, with_test_ui_profile};
+    use std::sync::{Arc, Mutex};
+
+    #[derive(Debug)]
+    struct WidthProbeCell {
+        seen: Arc<Mutex<Vec<u16>>>,
+    }
+
+    impl HistoryCell for WidthProbeCell {
+        fn display_lines(&self, width: u16) -> Vec<Line<'static>> {
+            self.seen.lock().unwrap().push(width);
+            vec![Line::from("probe")]
+        }
+
+        fn raw_lines(&self) -> Vec<Line<'static>> {
+            vec![Line::from("probe")]
+        }
+    }
+
+    #[test]
+    fn tool_call_wrapper_preserves_upstream_width_and_applies_dev_gutter() {
+        let seen = Arc::new(Mutex::new(Vec::new()));
+        let cell = CodexToolCallHistoryCell::new(WidthProbeCell { seen: seen.clone() });
+
+        with_test_ui_profile(UiProfile::Upstream, || {
+            assert_eq!(cell.display_lines(20), vec![Line::from("probe")]);
+            assert!(!cell.is_codex_tool_call());
+        });
+        with_test_ui_profile(UiProfile::CodexDev, || {
+            assert_eq!(cell.display_lines(20).len(), 4);
+            assert!(cell.is_codex_tool_call());
+        });
+
+        assert_eq!(*seen.lock().unwrap(), vec![20, 18]);
+    }
+
+    #[test]
+    fn continuation_cell_is_neutral_under_upstream_profile() {
+        let inner = Box::new(PlainHistoryCell::new(vec![
+            Line::from("CODEX · Tool Calls"),
+            Line::from("tool output"),
+        ]));
+        let cell = ToolCallContinuationCell::new(inner);
+
+        with_test_ui_profile(UiProfile::Upstream, || {
+            assert_eq!(cell.display_lines(80), vec![
+                Line::from("CODEX · Tool Calls"),
+                Line::from("tool output"),
+            ]);
+            assert!(!cell.is_codex_tool_call());
+        });
     }
 }
 #[derive(Debug)]

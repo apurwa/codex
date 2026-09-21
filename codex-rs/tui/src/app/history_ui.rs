@@ -36,7 +36,10 @@ impl App {
         let width = self
             .chat_widget
             .history_wrap_width(tui.terminal.last_known_screen_size.width);
-        if cell.is_codex_tool_call()
+        if matches!(
+            crate::ui_profile::ui_profile(),
+            crate::ui_profile::UiProfile::CodexDev
+        ) && cell.is_codex_tool_call()
             && last_visible_cell_is_tool_call(
                 &self.transcript_cells,
                 width,
