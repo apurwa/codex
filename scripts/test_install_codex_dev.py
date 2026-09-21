@@ -26,7 +26,12 @@ class InstallCodexDevTests(unittest.TestCase):
         self.git("config", "user.name", "Installer Test")
         self.git("config", "user.email", "installer@example.invalid")
         (self.repo / "source").write_text("verified source\n")
-        self.git("add", "source")
+        scripts = self.repo / "scripts"
+        scripts.mkdir()
+        launcher = scripts / "codex-dev"
+        launcher.write_text("#!/bin/sh\nexec \"$HOME/.local/libexec/codex-dev-bin\" \"$@\"\n")
+        launcher.chmod(0o755)
+        self.git("add", "source", "scripts/codex-dev")
         self.git("commit", "-qm", "Test integration")
         integration = self.repo / ".worktrees/integration"
         self.git("worktree", "add", "-qb", "integration/codex-dev", str(integration))

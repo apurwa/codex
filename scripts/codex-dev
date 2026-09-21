@@ -1,0 +1,38 @@
+#!/bin/sh
+set -eu
+
+launcher_version=1
+install_root=${CODEX_DEV_INSTALL_ROOT:-"$HOME/.local"}
+libexec="$install_root/libexec"
+binary="$libexec/codex-dev-bin"
+previous="$libexec/codex-dev-bin.previous"
+receipt="$libexec/codex-dev-install.txt"
+
+if [ "${1:-}" = "--rollback" ]; then
+  if [ ! -f "$previous" ]; then
+    echo "No previous codex-dev binary is available." >&2
+    exit 1
+  fi
+  stage=$(mktemp "$libexec/codex-dev-bin.rollback.XXXXXX")
+  trap 'rm -f "$stage"' EXIT
+  install -m 755 "$previous" "$stage"
+  mv -f "$stage" "$binary"
+  printf '%s\n' "Rolled back codex-dev to the previous installed binary."
+  exit 0
+fi
+
+if [ "${1:-}" = "--version" ] && [ "$#" -eq 1 ]; then
+  if [ -x "$binary" ]; then
+    version=$($binary --version)
+    printf '%s\n' "$version"
+    printf 'codex-dev launcher %s\n' "$launcher_version"
+    if [ -f "$receipt" ]; then
+      sed -n 's/^integration_commit=//p; s/^binary_sha256=//p' "$receipt"
+    fi
+    exit 0
+  fi
+fi
+
+exec "$binary" \
+  -c 'tui.status_lines=[["current-dir"],["git-branch","pull-request-number","branch-changes"],["five-hour-limit","weekly-limit","context-remaining"],["model-with-reasoning","run-state","estimated-thread-cost"]]' \
+  "$@"

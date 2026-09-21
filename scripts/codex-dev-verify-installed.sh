@@ -23,8 +23,13 @@ test -f "$receipt" || {
   exit 1
 }
 
-installed_commit=$(sed -n '1p' "$receipt")
-expected_hash=$(sed -n '2s/[[:space:]].*$//p' "$receipt")
+installed_commit=$(sed -n 's/^integration_commit=//p' "$receipt")
+expected_hash=$(sed -n 's/^binary_sha256=//p' "$receipt")
+if [ -z "$installed_commit" ] || [ -z "$expected_hash" ]; then
+  # Accept receipts written by the pre-provenance installer.
+  installed_commit=$(sed -n '1p' "$receipt")
+  expected_hash=$(sed -n '2s/[[:space:]].*$//p' "$receipt")
+fi
 if ! git -C "$repo" rev-parse --verify "$installed_commit^{commit}" >/dev/null 2>&1; then
   echo "Receipt does not identify a Git commit: $installed_commit" >&2
   exit 1
