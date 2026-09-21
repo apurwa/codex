@@ -2,7 +2,6 @@ use super::*;
 use crate::history_cell::markdown_render_cache::MarkdownRenderCacheKey;
 use assert_matches::assert_matches;
 use pretty_assertions::assert_eq;
-use ratatui::style::Style;
 
 #[test]
 fn transcript_structure_respects_ui_profile() {
@@ -31,7 +30,7 @@ fn transcript_structure_respects_ui_profile() {
     );
     assert!(!upstream.0.iter().any(|line| line.to_string() == "YOU"));
     assert!(!upstream.1.iter().any(|line| line.to_string().contains("CODEX")));
-    assert_eq!(upstream.2, Some(Style::default()));
+    assert_eq!(upstream.2, None);
     assert_eq!(upstream.3, None);
 
     let codex_dev = crate::ui_profile::with_test_ui_profile(
