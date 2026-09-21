@@ -11,6 +11,9 @@
 - Keep the official `codex` unchanged. The only user-facing command for this custom build is `codex-dev agents`.
 - Preserve existing local launcher settings when integrating features. Do not replace another session's unfinished work or silently discard it.
 - Before handoff, report the worktree, branch, commit, validation results, and whether the combined version was actually installed.
+- Before editing, register file ownership with `scripts/codex-dev-session.sh claim <session-id> <path>...`; use `status` to inspect other sessions.
+- Finish feature work with `scripts/codex-dev-session.sh finish <session-id> <commit> <validation>`, then release the claim only after the handoff is complete.
+- Acquire the integration lease with `scripts/codex-dev-session.sh integration acquire <session-id>` before merging, building, or installing; release it immediately after the validation window.
 
 # Rust/codex-rs
 
