@@ -134,6 +134,10 @@ impl McpToolCallCell {
         let status = self.success();
         if mode == McpToolCallRenderMode::Display
             && status == Some(true)
+            && matches!(
+                crate::ui_profile::ui_profile(),
+                crate::ui_profile::UiProfile::CodexDev
+            )
             && let Some(duration) = self.duration
         {
             let title = format!("{}.{}", self.invocation.server, self.invocation.tool);
