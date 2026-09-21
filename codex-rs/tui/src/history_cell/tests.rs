@@ -657,6 +657,7 @@ fn unified_exec_interaction_cell_renders_wait() {
         vec![
             "",
             "CODEX · Tool Calls",
+            "",
             "┊ • Waited for background terminal"
         ]
     );
@@ -675,12 +676,13 @@ fn consecutive_tool_call_cell_reuses_group_heading() {
         vec![
             "",
             "CODEX · Tool Calls",
+            "",
             "┊ • Waited for background terminal"
         ]
     );
     assert_eq!(
         render_lines(&continuation.display_lines(/*width*/ 80)),
-        vec!["┊ • Waited for background terminal · cargo test"]
+        vec!["", "┊ • Waited for background terminal · cargo test"]
     );
     assert!(continuation.is_codex_tool_call());
 }
