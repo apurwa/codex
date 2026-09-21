@@ -2190,6 +2190,12 @@ impl Renderable for ChatComposerDecoratedRenderable<'_> {
         let Some(session_title) = self.session_title else {
             return;
         };
+        if !matches!(
+            crate::ui_profile::ui_profile(),
+            crate::ui_profile::UiProfile::CodexDev
+        ) {
+            return;
+        }
         let title_area = area.inner(ratatui::layout::Margin::new(
             /*horizontal*/ 2, /*vertical*/ 0,
         ));

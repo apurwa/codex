@@ -20,7 +20,10 @@ impl App {
                 "Describe a new task".to_string(),
                 self.config.disable_paste_burst,
                 ChatComposerConfig {
-                    borders_enabled: true,
+                    borders_enabled: matches!(
+                        crate::ui_profile::ui_profile(),
+                        crate::ui_profile::UiProfile::CodexDev
+                    ),
                     trim_submission: false,
                     image_paste_enabled: true,
                     ..ChatComposerConfig::plain_text()

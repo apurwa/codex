@@ -4956,14 +4956,22 @@ impl ChatComposer {
             }
         }
         let style = user_message_style();
+        let codex_dev_profile = matches!(
+            crate::ui_profile::ui_profile(),
+            crate::ui_profile::UiProfile::CodexDev
+        );
         Block::default()
             .style(style)
-            .borders(if self.config.borders_enabled {
+            .borders(if codex_dev_profile && self.config.borders_enabled {
                 ratatui::widgets::Borders::TOP | ratatui::widgets::Borders::BOTTOM
             } else {
                 ratatui::widgets::Borders::NONE
             })
-            .border_style(Style::default().fg(ratatui::style::Color::Rgb(0, 95, 135)))
+            .border_style(if codex_dev_profile {
+                Style::default().fg(ratatui::style::Color::Rgb(0, 95, 135))
+            } else {
+                Style::default()
+            })
             .render(composer_rect, buf);
         if !remote_images_rect.is_empty() {
             Paragraph::new(self.attachments.remote_image_lines())
