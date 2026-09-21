@@ -138,6 +138,7 @@ Add one row for every installed custom release.
 | Date | Custom tag | Integration commit | Upstream commit | Official stable observed | Tests | Ghostty smoke test |
 | --- | --- | --- | --- | --- | --- | --- |
 | 2026-09-15 | pending | `b50c7d1360` | `a505c71490` base | `rust-v0.154.0` | Existing baseline | Existing baseline |
+| 2026-09-21 | `codex-dev-baseline-20260921` | `805bcb2a0e` | `e269f2164c` merge-base | `0.155.1` observed locally | Rust 1.95 `cargo build -p codex-cli --bin codex` passed; one existing dead-code warning | Installed hash `894d47c5…8fa833`; agents view launch passed; full mouse/selection/click/resize pass pending |
 
 ## Decision for the current update
 
