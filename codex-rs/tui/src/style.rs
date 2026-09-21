@@ -69,7 +69,7 @@ pub(crate) fn tool_success_style() -> Style {
             // forest green read as olive/muted in the pale terminal theme.
             Style::default().fg(Color::Rgb(0x00, 0xc8, 0x53)).bold()
         }
-        crate::ui_profile::UiProfile::Upstream => Style::default(),
+        crate::ui_profile::UiProfile::Upstream => Style::default().fg(Color::Green).bold(),
     }
 }
 
@@ -354,33 +354,29 @@ mod tests {
 
     #[test]
     fn profile_gates_codex_identity_helpers() {
-        let upstream = crate::ui_profile::with_test_ui_profile(
-            crate::ui_profile::UiProfile::Upstream,
-            || {
+        let upstream =
+            crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::Upstream, || {
                 (
                     codex_label_style(),
                     tool_success_style(),
                     transcript_user_message_style(),
                     codex_response_rule(8),
                 )
-            },
-        );
+            });
         assert_eq!(upstream.0, Style::default());
-        assert_eq!(upstream.1, Style::default());
+        assert_eq!(upstream.1, Style::default().fg(Color::Green).bold());
         assert_eq!(upstream.2, Style::default());
         assert!(upstream.3.to_string().is_empty());
 
-        let codex_dev = crate::ui_profile::with_test_ui_profile(
-            crate::ui_profile::UiProfile::CodexDev,
-            || {
+        let codex_dev =
+            crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
                 (
                     codex_label_style(),
                     tool_success_style(),
                     transcript_user_message_style(),
                     codex_response_rule(8),
                 )
-            },
-        );
+            });
         assert!(codex_dev.0.add_modifier.contains(Modifier::BOLD));
         assert_eq!(codex_dev.1.fg, Some(Color::Rgb(0, 200, 83)));
         assert_eq!(codex_dev.3.to_string(), "───────");

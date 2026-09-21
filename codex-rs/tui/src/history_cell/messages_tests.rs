@@ -13,9 +13,8 @@ fn transcript_structure_respects_ui_profile() {
         remote_image_urls: Vec::new(),
     };
 
-    let upstream = crate::ui_profile::with_test_ui_profile(
-        crate::ui_profile::UiProfile::Upstream,
-        || {
+    let upstream =
+        crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::Upstream, || {
             (
                 user.display_lines(32),
                 AgentMarkdownCell::new("answer".into(), Path::new("/tmp"))
@@ -26,16 +25,19 @@ fn transcript_structure_respects_ui_profile() {
                     .with_phase(Some(codex_protocol::models::MessagePhase::FinalAnswer))
                     .background_style(),
             )
-        },
-    );
+        });
     assert!(!upstream.0.iter().any(|line| line.to_string() == "YOU"));
-    assert!(!upstream.1.iter().any(|line| line.to_string().contains("CODEX")));
+    assert!(
+        !upstream
+            .1
+            .iter()
+            .any(|line| line.to_string().contains("CODEX"))
+    );
     assert_eq!(upstream.2, None);
     assert_eq!(upstream.3, None);
 
-    let codex_dev = crate::ui_profile::with_test_ui_profile(
-        crate::ui_profile::UiProfile::CodexDev,
-        || {
+    let codex_dev =
+        crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
             (
                 user.display_lines(32),
                 AgentMarkdownCell::new("answer".into(), Path::new("/tmp"))
@@ -46,10 +48,14 @@ fn transcript_structure_respects_ui_profile() {
                     .with_phase(Some(codex_protocol::models::MessagePhase::FinalAnswer))
                     .background_style(),
             )
-        },
-    );
+        });
     assert!(codex_dev.0.iter().any(|line| line.to_string() == "YOU"));
-    assert!(codex_dev.1.iter().any(|line| line.to_string().contains("CODEX")));
+    assert!(
+        codex_dev
+            .1
+            .iter()
+            .any(|line| line.to_string().contains("CODEX"))
+    );
     assert!(codex_dev.2.is_some());
     assert!(codex_dev.3.is_some());
 }

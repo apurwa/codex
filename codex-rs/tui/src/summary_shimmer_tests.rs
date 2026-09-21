@@ -6,118 +6,124 @@ use crate::terminal_probe::DefaultColors;
 
 #[test]
 fn short_and_long_labels_sweep_smoothly_in_both_themes() {
-    let mut frames = Vec::new();
-    for (theme, colors) in [
-        (
-            "dark",
-            DefaultColors {
-                fg: (240, 240, 240),
-                bg: (16, 16, 16),
-            },
-        ),
-        (
-            "light",
-            DefaultColors {
-                fg: (16, 16, 16),
-                bg: (240, 240, 240),
-            },
-        ),
-    ] {
-        with_test_default_colors(colors, || {
-            for text in ["Working", "Preparing bootstrap diagnostics", "界e\u{301}界"] {
-                for ms in [0, 500, 1000, 1500, 2000] {
-                    let spans =
-                        summary_shimmer(text, Duration::from_millis(ms), MotionMode::Animated);
-                    let levels = spans
-                        .iter()
-                        .map(|span| match span.style.fg {
-                            Some(ratatui::style::Color::Rgb(level, _, _)) => level,
-                            color => panic!("expected interpolated RGB, got {color:?}"),
-                        })
-                        .collect::<Vec<_>>();
-                    frames.push(format!("{theme} {text} {ms}ms: {levels:?}"));
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
+        let mut frames = Vec::new();
+        for (theme, colors) in [
+            (
+                "dark",
+                DefaultColors {
+                    fg: (240, 240, 240),
+                    bg: (16, 16, 16),
+                },
+            ),
+            (
+                "light",
+                DefaultColors {
+                    fg: (16, 16, 16),
+                    bg: (240, 240, 240),
+                },
+            ),
+        ] {
+            with_test_default_colors(colors, || {
+                for text in ["Working", "Preparing bootstrap diagnostics", "界e\u{301}界"] {
+                    for ms in [0, 500, 1000, 1500, 2000] {
+                        let spans =
+                            summary_shimmer(text, Duration::from_millis(ms), MotionMode::Animated);
+                        let levels = spans
+                            .iter()
+                            .map(|span| match span.style.fg {
+                                Some(ratatui::style::Color::Rgb(level, _, _)) => level,
+                                color => panic!("expected interpolated RGB, got {color:?}"),
+                            })
+                            .collect::<Vec<_>>();
+                        frames.push(format!("{theme} {text} {ms}ms: {levels:?}"));
+                    }
                 }
-            }
-        });
-    }
-    insta::assert_snapshot!(frames.join("\n"));
+            });
+        }
+        insta::assert_snapshot!(frames.join("\n"));
+    });
 }
 
 #[test]
 fn working_has_overlapping_highlights_without_frame_to_frame_flashes() {
-    with_test_default_colors(
-        DefaultColors {
-            fg: (240, 240, 240),
-            bg: (16, 16, 16),
-        },
-        || {
-            let mut previous = Vec::new();
-            for ms in (0..=2000).step_by(/*step*/ 16) {
-                let spans =
-                    summary_shimmer("Working", Duration::from_millis(ms), MotionMode::Animated);
-                let brightness = spans
-                    .iter()
-                    .map(|span| match span.style.fg {
-                        Some(ratatui::style::Color::Rgb(r, _, _)) => r,
-                        color => panic!("expected interpolated RGB, got {color:?}"),
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
+        with_test_default_colors(
+            DefaultColors {
+                fg: (240, 240, 240),
+                bg: (16, 16, 16),
+            },
+            || {
+                let mut previous = Vec::new();
+                for ms in (0..=2000).step_by(/*step*/ 16) {
+                    let spans =
+                        summary_shimmer("Working", Duration::from_millis(ms), MotionMode::Animated);
+                    let brightness = spans
+                        .iter()
+                        .map(|span| match span.style.fg {
+                            Some(ratatui::style::Color::Rgb(r, _, _)) => r,
+                            color => panic!("expected interpolated RGB, got {color:?}"),
+                        })
+                        .collect::<Vec<_>>();
+                    if brightness.iter().any(|value| *value > 220) {
+                        assert!(brightness.iter().filter(|value| **value > 160).count() >= 2);
+                    }
+                    for (current, previous) in brightness.iter().zip(&previous) {
+                        assert!(u8::abs_diff(*current, *previous) <= 7);
+                    }
+                    previous = brightness;
+                }
+                let midpoint = summary_shimmer(
+                    "Working",
+                    Duration::from_secs(/*secs*/ 1),
+                    MotionMode::Animated,
+                );
+                let expected = "Working"
+                    .chars()
+                    .zip([0.5, 0.625, 0.875, 1.0, 0.875, 0.625, 0.5])
+                    .map(|(ch, alpha)| {
+                        Span::styled(
+                            ch.to_string(),
+                            Style::default().fg(crate::terminal_palette::best_color(
+                                crate::color::blend(
+                                    crate::style::COMPOSER_BLUE_RGB,
+                                    (16, 16, 16),
+                                    alpha,
+                                ),
+                            )),
+                        )
                     })
                     .collect::<Vec<_>>();
-                if brightness.iter().any(|value| *value > 220) {
-                    assert!(brightness.iter().filter(|value| **value > 160).count() >= 2);
-                }
-                for (current, previous) in brightness.iter().zip(&previous) {
-                    assert!(u8::abs_diff(*current, *previous) <= 7);
-                }
-                previous = brightness;
-            }
-            let midpoint = summary_shimmer(
-                "Working",
-                Duration::from_secs(/*secs*/ 1),
-                MotionMode::Animated,
-            );
-            let expected = "Working"
-                .chars()
-                .zip([0.5, 0.625, 0.875, 1.0, 0.875, 0.625, 0.5])
-                .map(|(ch, alpha)| {
-                    Span::styled(
-                        ch.to_string(),
-                        Style::default().fg(crate::terminal_palette::best_color(
-                            crate::color::blend(
-                                crate::style::COMPOSER_BLUE_RGB,
-                                (16, 16, 16),
-                                alpha,
-                            ),
-                        )),
-                    )
-                })
-                .collect::<Vec<_>>();
-            assert_eq!(midpoint, expected);
-        },
-    );
+                assert_eq!(midpoint, expected);
+            },
+        )
+    });
 }
 
 #[test]
 fn sweep_preserves_combining_characters_and_emoji_clusters() {
-    let text = "e\u{301}👨‍👩‍👧‍👦界";
-    let spans = with_test_default_colors(
-        DefaultColors {
-            fg: (240, 240, 240),
-            bg: (16, 16, 16),
-        },
-        || summary_shimmer(text, Duration::ZERO, MotionMode::Animated),
-    );
-    assert_eq!(
-        spans
-            .iter()
-            .map(|span| span.content.as_ref())
-            .collect::<Vec<_>>(),
-        vec!["e\u{301}", "👨‍👩‍👧‍👦", "界"]
-    );
-    assert_eq!(
-        summary_shimmer(text, Duration::from_secs(/*secs*/ 1), MotionMode::Reduced),
-        vec![Span::styled(
-            text.to_owned(),
-            crate::style::composer_blue_style(),
-        )]
-    );
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
+        let text = "e\u{301}👨‍👩‍👧‍👦界";
+        let spans = with_test_default_colors(
+            DefaultColors {
+                fg: (240, 240, 240),
+                bg: (16, 16, 16),
+            },
+            || summary_shimmer(text, Duration::ZERO, MotionMode::Animated),
+        );
+        assert_eq!(
+            spans
+                .iter()
+                .map(|span| span.content.as_ref())
+                .collect::<Vec<_>>(),
+            vec!["e\u{301}", "👨‍👩‍👧‍👦", "界"]
+        );
+        assert_eq!(
+            summary_shimmer(text, Duration::from_secs(/*secs*/ 1), MotionMode::Reduced),
+            vec![Span::styled(
+                text.to_owned(),
+                crate::style::composer_blue_style(),
+            )]
+        );
+    });
 }

@@ -186,7 +186,10 @@ impl HistoryCell for UserHistoryCell {
             )
             .max(1);
 
-        let style = transcript_user_message_style();
+        let style = match crate::ui_profile::ui_profile() {
+            crate::ui_profile::UiProfile::CodexDev => transcript_user_message_style(),
+            crate::ui_profile::UiProfile::Upstream => crate::style::user_message_style(),
+        };
         let accent_style = style.patch(crate::style::accent_style());
         let element_style = style.fg(Color::Cyan);
 
@@ -492,8 +495,7 @@ impl HistoryCell for AgentMessageCell {
                 && matches!(
                     crate::ui_profile::ui_profile(),
                     crate::ui_profile::UiProfile::Upstream
-                )
-            {
+                ) {
                 "• ".dim().into()
             } else {
                 "  ".into()
