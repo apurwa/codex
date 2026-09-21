@@ -3,6 +3,10 @@
 This is the canonical playbook for keeping our customized Codex CLI current
 without losing UX changes or destabilizing the installed `codex-dev` command.
 
+The companion [`codex-dev-customization-manifest.md`](codex-dev-customization-manifest.md)
+is the source of truth for which behavior is intentionally downstream and
+which behavior should move to upstream configuration or plugins.
+
 ## Command and branch contract
 
 - Keep the official OpenAI CLI available as `codex`.
@@ -39,6 +43,14 @@ git fetch upstream main --tags
 ```
 
 If `upstream` already exists, verify it with `git remote -v`, then fetch it.
+
+Enable Git's recorded conflict-resolution support once on the development
+machine. It reduces repeated manual work during rebases, but every reused
+resolution still requires a diff review and tests:
+
+```sh
+git config rerere.enabled true
+```
 
 ## Routine update check
 

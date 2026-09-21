@@ -2466,8 +2466,10 @@ impl App {
                 self.apply_agents_overview_thread_refresh(app_server, request_id, result);
             }
             AppEvent::SelectAgentsOverviewThread { thread_id } => {
-                match self
-                    .select_agents_overview_thread(tui, app_server, thread_id)
+                // Session attachment performs folder-trust and config RPCs. Keep the
+                // whole selection future off the event-dispatch stack while those
+                // nested async operations are constructed.
+                match Box::pin(self.select_agents_overview_thread(tui, app_server, thread_id))
                     .await?
                 {
                     AppRunControl::Continue

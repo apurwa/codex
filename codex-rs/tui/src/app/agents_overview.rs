@@ -569,6 +569,29 @@ impl App {
                         }
                     }
                     Err(error) => {
+                        if error.to_string().contains("no rollout found for thread id") {
+                            // A daemon can retain a live overview row after its rollout
+                            // disappears (for example, an interrupted task creation). Do
+                            // not offer the orphaned row again during this TUI session.
+                            self.agents_overview.hidden_threads.insert(root_thread_id);
+                            self.agents_overview.threads.remove(&root_thread_id);
+                            self.agents_overview.blank_sessions.remove(&root_thread_id);
+                            self.agents_overview.input_states.remove(&root_thread_id);
+                            self.agents_overview
+                                .dispatched_requests
+                                .remove(&root_thread_id);
+                            self.agents_overview.last_messages.remove(&root_thread_id);
+                            self.agents_overview.activity.remove(&root_thread_id);
+                            self.agents_overview.usage.remove(&root_thread_id);
+                            self.agents_overview
+                                .refresh_thread_ids
+                                .remove(&root_thread_id);
+                            self.add_agents_overview_error(
+                                "This task is no longer available because its transcript is missing."
+                                    .to_string(),
+                            );
+                            return Ok(AppRunControl::Continue);
+                        }
                         self.add_agents_overview_error(format!(
                             "Failed to attach to task: {error}"
                         ));

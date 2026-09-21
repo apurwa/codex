@@ -153,6 +153,7 @@ pub(crate) fn prepend_codex_tool_call_label(mut lines: Vec<Line<'static>>) -> Ve
             "CODEX · Tool Calls",
             crate::style::codex_label_style(),
         )),
+        Line::default(),
     ];
     labeled.append(&mut lines);
     labeled
@@ -168,6 +169,7 @@ pub(crate) fn prepend_codex_tool_call_hyperlink_label(
             "CODEX · Tool Calls",
             crate::style::codex_label_style(),
         ))),
+        HyperlinkLine::from(""),
     ];
     labeled.append(&mut lines);
     labeled
