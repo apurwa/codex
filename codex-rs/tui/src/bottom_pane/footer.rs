@@ -860,7 +860,16 @@ pub(crate) fn passive_footer_status_line(props: &FooterProps) -> Option<Line<'st
 pub(crate) fn shows_passive_footer_line(props: &FooterProps) -> bool {
     match props.mode {
         FooterMode::ComposerEmpty => true,
-        FooterMode::ComposerHasDraft => true,
+        FooterMode::ComposerHasDraft => {
+            if matches!(
+                crate::ui_profile::ui_profile(),
+                crate::ui_profile::UiProfile::Upstream
+            ) {
+                !props.is_task_running
+            } else {
+                true
+            }
+        }
         FooterMode::HistorySearch
         | FooterMode::QuitShortcutReminder
         | FooterMode::ShortcutOverlay

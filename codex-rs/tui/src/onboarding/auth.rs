@@ -1075,12 +1075,20 @@ impl WidgetRef for AuthModeWidget {
                 state.render(area, buf, self.error_message());
             }
             SignInState::BedrockConfigured => {
-                Paragraph::new(Line::from(vec![
-                    crate::style::success_marker_with_upstream("✓ ", "✓ ".green()),
-                    "Amazon Bedrock configured".into(),
-                ]))
-                .wrap(Wrap { trim: false })
-                .render(area, buf);
+                let line = if matches!(
+                    crate::ui_profile::ui_profile(),
+                    crate::ui_profile::UiProfile::Upstream
+                ) {
+                    Line::from("✓ Amazon Bedrock configured".green())
+                } else {
+                    Line::from(vec![
+                        crate::style::success_marker_with_upstream("✓ ", "✓ ".green()),
+                        "Amazon Bedrock configured".into(),
+                    ])
+                };
+                Paragraph::new(line)
+                    .wrap(Wrap { trim: false })
+                    .render(area, buf);
             }
         }
     }

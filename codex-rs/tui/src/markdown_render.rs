@@ -122,9 +122,30 @@ impl MarkdownStyles {
             h1: Style::new().bold().underlined(),
             h2: Style::new().bold(),
             h3: Style::new().bold().italic(),
-            h4: Style::new().bold().italic(),
-            h5: Style::new().bold().italic(),
-            h6: Style::new().bold().italic(),
+            h4: if matches!(
+                crate::ui_profile::ui_profile(),
+                crate::ui_profile::UiProfile::Upstream
+            ) {
+                Style::new().italic()
+            } else {
+                Style::new().bold().italic()
+            },
+            h5: if matches!(
+                crate::ui_profile::ui_profile(),
+                crate::ui_profile::UiProfile::Upstream
+            ) {
+                Style::new().italic()
+            } else {
+                Style::new().bold().italic()
+            },
+            h6: if matches!(
+                crate::ui_profile::ui_profile(),
+                crate::ui_profile::UiProfile::Upstream
+            ) {
+                Style::new().italic()
+            } else {
+                Style::new().bold().italic()
+            },
             code: foreground_style_for_scopes_with_theme(
                 theme,
                 &[
@@ -1985,7 +2006,11 @@ where
 
     fn flush_current_line(&mut self) {
         if let Some(mut line) = self.current_line_content.take() {
-            let style = if self.current_line_in_code_block {
+            let style = if self.current_line_in_code_block
+                && matches!(
+                    crate::ui_profile::ui_profile(),
+                    crate::ui_profile::UiProfile::CodexDev
+                ) {
                 crate::style::user_message_style().patch(self.current_line_style)
             } else {
                 self.current_line_style

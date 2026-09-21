@@ -162,7 +162,12 @@ impl McpToolCallCell {
             ];
         }
         let node_repl = self.result_kind() == McpResultKind::NodeRepl;
-        let compact = node_repl && mode == McpToolCallRenderMode::Display;
+        let compact = node_repl
+            && mode == McpToolCallRenderMode::Display
+            && matches!(
+                crate::ui_profile::ui_profile(),
+                crate::ui_profile::UiProfile::CodexDev
+            );
         let bullet = match status {
             Some(true) => crate::style::success_marker_with_upstream("•", "•".green().bold()),
             Some(false) => "•".red().bold(),
@@ -291,7 +296,14 @@ impl McpToolCallCell {
                                 block.render(detail_wrap_width)
                             };
                             for segment in text.split('\n') {
-                                let line = Line::from(segment.to_string());
+                                let line = if matches!(
+                                    crate::ui_profile::ui_profile(),
+                                    crate::ui_profile::UiProfile::Upstream
+                                ) {
+                                    Line::from(segment.to_string().dim())
+                                } else {
+                                    Line::from(segment.to_string())
+                                };
                                 let wrapped = adaptive_wrap_line(
                                     &line,
                                     RtOptions::new(detail_wrap_width)
@@ -314,7 +326,14 @@ impl McpToolCallCell {
                             width as usize,
                         )
                     };
-                    let err_line = Line::from(err_text.red());
+                    let err_line = if matches!(
+                        crate::ui_profile::ui_profile(),
+                        crate::ui_profile::UiProfile::Upstream
+                    ) {
+                        Line::from(err_text.dim())
+                    } else {
+                        Line::from(err_text.red())
+                    };
                     let wrapped = adaptive_wrap_line(
                         &err_line,
                         RtOptions::new(detail_wrap_width)

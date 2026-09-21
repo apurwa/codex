@@ -265,10 +265,15 @@ impl HistoryCell for ExecCell {
                 }
             }
         }
-        for line in &mut lines {
-            for span in &mut line.spans {
-                if span.style.fg != Some(Color::Red) {
-                    span.style = span.style.remove_modifier(ratatui::style::Modifier::DIM);
+        if matches!(
+            crate::ui_profile::ui_profile(),
+            crate::ui_profile::UiProfile::CodexDev
+        ) {
+            for line in &mut lines {
+                for span in &mut line.spans {
+                    if span.style.fg != Some(Color::Red) {
+                        span.style = span.style.remove_modifier(ratatui::style::Modifier::DIM);
+                    }
                 }
             }
         }

@@ -197,7 +197,13 @@ impl SplitFlapTranscriptCell {
                         }
                         text
                     } else {
-                        if matches!(grapheme, "›" | "│") {
+                        if grapheme == "›"
+                            || (grapheme == "│"
+                                && matches!(
+                                    crate::ui_profile::ui_profile(),
+                                    crate::ui_profile::UiProfile::CodexDev
+                                ))
+                        {
                             style = style.fg(span.style.fg.unwrap_or(Color::Cyan));
                         } else if grapheme == "•" {
                             style = style.fg(Color::Magenta);

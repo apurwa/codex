@@ -234,7 +234,16 @@ impl StatusIndicator<'_> {
             motion_mode,
             ReducedMotionIndicator::Hidden,
         ) {
-            spans.push(indicator.set_style(composer_blue_style()));
+            spans.push(
+                if matches!(
+                    crate::ui_profile::ui_profile(),
+                    crate::ui_profile::UiProfile::Upstream
+                ) {
+                    indicator
+                } else {
+                    indicator.set_style(composer_blue_style())
+                },
+            );
             spans.push(" ".into());
         }
         spans.extend(summary_shimmer(
