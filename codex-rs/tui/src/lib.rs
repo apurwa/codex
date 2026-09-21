@@ -225,6 +225,9 @@ mod transcript_reflow;
 mod tui;
 mod ui_consts;
 mod ui_profile;
+#[cfg(test)]
+#[path = "ui_profile_baseline_tests.rs"]
+mod ui_profile_baseline_tests;
 mod unarchive_prompt;
 pub(crate) mod update_action;
 mod worktree_startup;
