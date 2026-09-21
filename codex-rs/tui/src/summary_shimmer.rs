@@ -23,6 +23,12 @@ pub(crate) fn summary_shimmer(
     elapsed: Duration,
     motion: MotionMode,
 ) -> Vec<Span<'static>> {
+    if matches!(
+        crate::ui_profile::ui_profile(),
+        crate::ui_profile::UiProfile::Upstream
+    ) {
+        return vec![Span::raw(text.to_owned())];
+    }
     if motion == MotionMode::Reduced {
         return vec![Span::styled(text.to_owned(), composer_blue_style())];
     }

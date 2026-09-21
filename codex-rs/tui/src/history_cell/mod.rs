@@ -146,13 +146,13 @@ pub(crate) enum HistoryRenderMode {
 }
 
 pub(crate) fn prepend_codex_tool_call_label(mut lines: Vec<Line<'static>>) -> Vec<Line<'static>> {
-    lines = prefix_lines(lines, "┊ ".dim(), "┊ ".dim());
     if matches!(
         crate::ui_profile::ui_profile(),
         crate::ui_profile::UiProfile::Upstream
     ) {
         return lines;
     }
+    lines = prefix_lines(lines, "┊ ".dim(), "┊ ".dim());
     let mut labeled = vec![
         Line::default(),
         Line::from(Span::styled(
@@ -168,13 +168,13 @@ pub(crate) fn prepend_codex_tool_call_label(mut lines: Vec<Line<'static>>) -> Ve
 pub(crate) fn prepend_codex_tool_call_hyperlink_label(
     mut lines: Vec<HyperlinkLine>,
 ) -> Vec<HyperlinkLine> {
-    lines = prefix_hyperlink_lines(lines, "┊ ".dim(), "┊ ".dim());
     if matches!(
         crate::ui_profile::ui_profile(),
         crate::ui_profile::UiProfile::Upstream
     ) {
         return lines;
     }
+    lines = prefix_hyperlink_lines(lines, "┊ ".dim(), "┊ ".dim());
     let mut labeled = vec![
         HyperlinkLine::from(""),
         HyperlinkLine::new(Line::from(Span::styled(

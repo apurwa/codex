@@ -79,10 +79,6 @@ pub(crate) fn ui_profile() -> UiProfile {
     if let Some(profile) = TEST_UI_PROFILE.with(std::cell::Cell::get) {
         return profile;
     }
-    #[cfg(test)]
-    if let Ok(value) = std::env::var(CODEX_UI_PROFILE_ENV_VAR) {
-        return UiProfile::from_env_value(&value);
-    }
     UI_PROFILE.get().copied().unwrap_or_default()
 }
 

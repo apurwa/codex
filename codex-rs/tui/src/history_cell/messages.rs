@@ -336,7 +336,11 @@ impl HistoryCell for UserHistoryCell {
     }
 
     fn background_style(&self) -> Option<Style> {
-        Some(transcript_user_message_style())
+        matches!(
+            crate::ui_profile::ui_profile(),
+            crate::ui_profile::UiProfile::CodexDev
+        )
+        .then(transcript_user_message_style)
     }
 
     fn transcript_hyperlink_lines(&self, width: u16) -> Vec<HyperlinkLine> {
@@ -399,12 +403,19 @@ impl ReasoningSummaryCell {
             })
             .collect::<Vec<_>>();
 
-        adaptive_wrap_lines(
-            &summary_lines,
+        let wrap_options = if matches!(
+            crate::ui_profile::ui_profile(),
+            crate::ui_profile::UiProfile::Upstream
+        ) {
+            RtOptions::new(width as usize)
+                .initial_indent("• ".dim().into())
+                .subsequent_indent("  ".into())
+        } else {
             RtOptions::new(width as usize)
                 .initial_indent("┊ ".dim().into())
-                .subsequent_indent("┊ ".dim().into()),
-        )
+                .subsequent_indent("┊ ".dim().into())
+        };
+        adaptive_wrap_lines(&summary_lines, wrap_options)
     }
 }
 
@@ -475,8 +486,18 @@ impl HistoryCell for AgentMessageCell {
                 crate::style::codex_label_style(),
             ))));
         }
-        for line in &self.lines {
-            let initial_indent = "  ".into();
+        for (index, line) in self.lines.iter().enumerate() {
+            let initial_indent = if index == 0
+                && self.is_first_line
+                && matches!(
+                    crate::ui_profile::ui_profile(),
+                    crate::ui_profile::UiProfile::Upstream
+                )
+            {
+                "• ".dim().into()
+            } else {
+                "  ".into()
+            };
             let mut subsequent_indent = Line::from("  ");
             subsequent_indent
                 .spans

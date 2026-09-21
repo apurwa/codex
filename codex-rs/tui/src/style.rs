@@ -80,10 +80,13 @@ pub(crate) fn success_marker(text: &'static str) -> Span<'static> {
 
 /// Shared selection/action colors, independent of remapped ANSI terminal palettes.
 pub(crate) fn selected_control_style() -> Style {
-    Style::default()
-        .fg(Color::Rgb(255, 255, 255))
-        .bg(Color::Rgb(0, 95, 135))
-        .remove_modifier(ratatui::style::Modifier::DIM | ratatui::style::Modifier::REVERSED)
+    match crate::ui_profile::ui_profile() {
+        crate::ui_profile::UiProfile::CodexDev => Style::default()
+            .fg(Color::Rgb(255, 255, 255))
+            .bg(Color::Rgb(0, 95, 135))
+            .remove_modifier(ratatui::style::Modifier::DIM | ratatui::style::Modifier::REVERSED),
+        crate::ui_profile::UiProfile::Upstream => Style::default(),
+    }
 }
 
 #[derive(Clone, Copy)]
