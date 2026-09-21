@@ -441,6 +441,11 @@ pub(crate) fn init() -> Result<InitializedTerminal> {
 
     set_panic_hook();
 
+    // Resolve the codex-dev UI profile once, before any rendering. Defaults to
+    // upstream unless the launcher exported CODEX_UI_PROFILE=codex-dev.
+    crate::ui_profile::set_ui_profile_from_env();
+    tracing::debug!(ui_profile = ?crate::ui_profile::ui_profile(), "resolved UI profile");
+
     #[cfg(unix)]
     let backend = CrosstermBackend::new(stdout());
 

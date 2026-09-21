@@ -224,6 +224,7 @@ mod tooltips;
 mod transcript_reflow;
 mod tui;
 mod ui_consts;
+mod ui_profile;
 mod unarchive_prompt;
 pub(crate) mod update_action;
 mod worktree_startup;

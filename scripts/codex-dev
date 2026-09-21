@@ -33,6 +33,10 @@ if [ "${1:-}" = "--version" ] && [ "$#" -eq 1 ]; then
   fi
 fi
 
+# Select the codex-dev visual identity. The binary defaults to the upstream
+# profile, so this launcher is what opts in to the codex-dev customizations.
+export CODEX_UI_PROFILE=codex-dev
+
 exec "$binary" \
   -c 'tui.status_lines=[["current-dir"],["git-branch","pull-request-number","branch-changes"],["five-hour-limit","weekly-limit","context-remaining"],["model-with-reasoning","run-state","estimated-thread-cost"]]' \
   "$@"
