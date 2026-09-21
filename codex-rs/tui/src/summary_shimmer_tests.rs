@@ -77,11 +77,17 @@ fn working_has_overlapping_highlights_without_frame_to_frame_flashes() {
             );
             let expected = "Working"
                 .chars()
-                .zip([128, 156, 212, 240, 212, 156, 128])
-                .map(|(ch, level)| {
+                .zip([0.5, 0.625, 0.875, 1.0, 0.875, 0.625, 0.5])
+                .map(|(ch, alpha)| {
                     Span::styled(
                         ch.to_string(),
-                        Style::default().fg(rgb_color((level, level, level))),
+                        Style::default().fg(crate::terminal_palette::best_color(
+                            crate::color::blend(
+                                crate::style::COMPOSER_BLUE_RGB,
+                                (16, 16, 16),
+                                alpha,
+                            ),
+                        )),
                     )
                 })
                 .collect::<Vec<_>>();
@@ -109,6 +115,9 @@ fn sweep_preserves_combining_characters_and_emoji_clusters() {
     );
     assert_eq!(
         summary_shimmer(text, Duration::from_secs(/*secs*/ 1), MotionMode::Reduced),
-        vec![Span::from(text.to_owned())]
+        vec![Span::styled(
+            text.to_owned(),
+            crate::style::composer_blue_style(),
+        )]
     );
 }

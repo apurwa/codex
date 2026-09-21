@@ -467,6 +467,10 @@ impl HistoryCell for AgentMessageCell {
     fn is_stream_continuation(&self) -> bool {
         !self.is_first_line
     }
+
+    fn background_style(&self) -> Option<Style> {
+        Some(crate::style::codex_response_background_style())
+    }
 }
 
 /// A consolidated agent message cell that stores raw markdown source and re-renders from it.
@@ -612,7 +616,7 @@ impl HistoryCell for AgentMarkdownCell {
                 gutter,
             ));
             let mut labeled = vec![
-                HyperlinkLine::new(Line::default()),
+                HyperlinkLine::new(crate::style::codex_response_rule(width)),
                 HyperlinkLine::new(Line::from(Span::styled(
                     match self.phase {
                         Some(codex_protocol::models::MessagePhase::Commentary) => "CODEX · Update",
@@ -624,7 +628,7 @@ impl HistoryCell for AgentMarkdownCell {
                 HyperlinkLine::new(Line::default()),
             ];
             labeled.extend(body);
-            labeled.push(HyperlinkLine::new(Line::default()));
+            labeled.push(HyperlinkLine::new(crate::style::codex_response_rule(width)));
             labeled
         };
 
@@ -641,6 +645,10 @@ impl HistoryCell for AgentMarkdownCell {
 
     fn raw_lines(&self) -> Vec<Line<'static>> {
         raw_lines_from_source(&self.markdown_source)
+    }
+
+    fn background_style(&self) -> Option<Style> {
+        Some(crate::style::codex_response_background_style())
     }
 
     fn has_stable_transcript_height(&self) -> bool {
@@ -701,6 +709,10 @@ impl HistoryCell for StreamingAgentTailCell {
 
     fn is_stream_continuation(&self) -> bool {
         !self.is_first_line
+    }
+
+    fn background_style(&self) -> Option<Style> {
+        Some(crate::style::codex_response_background_style())
     }
 }
 pub(crate) fn new_user_prompt(
