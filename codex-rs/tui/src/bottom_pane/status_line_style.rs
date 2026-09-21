@@ -9,6 +9,7 @@ use ratatui::text::Span;
 use super::status_line_setup::StatusLineItem;
 use crate::render::highlight::foreground_style_for_scopes;
 use crate::thread_color::thread_color;
+use crate::ui_profile::{UiProfile, ui_profile};
 use codex_protocol::ThreadId;
 
 const STATUS_LINE_SEPARATOR: &str = " · ";
@@ -116,6 +117,7 @@ where
             spans.push(STATUS_LINE_SEPARATOR.dim());
         }
         let style = if use_theme_colors
+            && matches!(ui_profile(), UiProfile::CodexDev)
             && !matches!(
                 item,
                 StatusLineItem::ThreadName | StatusLineItem::ThreadTitle
@@ -204,6 +206,7 @@ fn soften_rgb_channel(channel: u8, luma: u16) -> u8 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ui_profile::{UiProfile, with_test_ui_profile};
     use pretty_assertions::assert_eq;
     use ratatui::style::Modifier;
 
@@ -216,16 +219,18 @@ mod tests {
 
     #[test]
     fn status_line_segments_preserve_order_and_plain_text() {
-        let line = status_line_from_segments_with_resolver(
-            [
-                (StatusLineItem::ModelName, "gpt-5".to_string()),
-                (StatusLineItem::CurrentDir, "/repo".to_string()),
-                (StatusLineItem::GitBranch, "main".to_string()),
-            ],
-            /*use_theme_colors*/ true,
-            /*thread_id*/ None,
-            |_| None,
-        )
+        let line = with_test_ui_profile(UiProfile::CodexDev, || {
+            status_line_from_segments_with_resolver(
+                [
+                    (StatusLineItem::ModelName, "gpt-5".to_string()),
+                    (StatusLineItem::CurrentDir, "/repo".to_string()),
+                    (StatusLineItem::GitBranch, "main".to_string()),
+                ],
+                /*use_theme_colors*/ true,
+                /*thread_id*/ None,
+                |_| None,
+            )
+        })
         .expect("status line");
 
         assert_eq!(line_text(&line), "gpt-5 · /repo · main");
@@ -239,18 +244,20 @@ mod tests {
 
     #[test]
     fn status_line_segments_dim_separators_and_use_theme_styles_first() {
-        let line = status_line_from_segments_with_resolver(
-            [
-                (StatusLineItem::ModelName, "gpt-5".to_string()),
-                (StatusLineItem::ContextUsed, "Context 12% used".to_string()),
-            ],
-            /*use_theme_colors*/ true,
-            /*thread_id*/ None,
-            |accent| match accent {
-                StatusLineAccent::Model => Some(Style::default().red()),
-                _ => None,
-            },
-        )
+        let line = with_test_ui_profile(UiProfile::CodexDev, || {
+            status_line_from_segments_with_resolver(
+                [
+                    (StatusLineItem::ModelName, "gpt-5".to_string()),
+                    (StatusLineItem::ContextUsed, "Context 12% used".to_string()),
+                ],
+                /*use_theme_colors*/ true,
+                /*thread_id*/ None,
+                |accent| match accent {
+                    StatusLineAccent::Model => Some(Style::default().red()),
+                    _ => None,
+                },
+            )
+        })
         .expect("status line");
 
         assert_eq!(line.spans[0].style.fg, Some(STATUS_LINE_PRIMARY_BLUE));
@@ -261,16 +268,34 @@ mod tests {
     }
 
     #[test]
+    fn upstream_profile_preserves_theme_accent_styles() {
+        let line = with_test_ui_profile(UiProfile::Upstream, || {
+            status_line_from_segments_with_resolver(
+                [(StatusLineItem::ModelName, "gpt-5".to_string())],
+                /*use_theme_colors*/ true,
+                /*thread_id*/ None,
+                |_| Some(Style::default().red()),
+            )
+        })
+        .expect("status line");
+
+        assert_eq!(line.spans[0].style.fg, Some(Color::Red));
+        assert!(!line.spans[0].style.add_modifier.contains(Modifier::DIM));
+    }
+
+    #[test]
     fn thread_usage_items_share_an_accent_and_dim_separator() {
-        let line = status_line_from_segments_with_resolver(
-            [
-                (StatusLineItem::ThreadCredits, "5.2 credits".to_string()),
-                (StatusLineItem::EstimatedThreadCost, "~$0.21".to_string()),
-            ],
-            /*use_theme_colors*/ true,
-            /*thread_id*/ None,
-            |_| None,
-        )
+        let line = with_test_ui_profile(UiProfile::CodexDev, || {
+            status_line_from_segments_with_resolver(
+                [
+                    (StatusLineItem::ThreadCredits, "5.2 credits".to_string()),
+                    (StatusLineItem::EstimatedThreadCost, "~$0.21".to_string()),
+                ],
+                /*use_theme_colors*/ true,
+                /*thread_id*/ None,
+                |_| None,
+            )
+        })
         .expect("thread usage status line");
 
         assert_eq!(line_text(&line), "5.2 credits · ~$0.21");
@@ -281,12 +306,14 @@ mod tests {
     #[test]
     #[allow(clippy::disallowed_methods)]
     fn status_line_segments_soften_rgb_theme_styles_without_dimming_text() {
-        let line = status_line_from_segments_with_resolver(
-            [(StatusLineItem::ModelName, "gpt-5".to_string())],
-            /*use_theme_colors*/ true,
-            /*thread_id*/ None,
-            |_| Some(Style::default().fg(Color::Rgb(255, 0, 0))),
-        )
+        let line = with_test_ui_profile(UiProfile::CodexDev, || {
+            status_line_from_segments_with_resolver(
+                [(StatusLineItem::ModelName, "gpt-5".to_string())],
+                /*use_theme_colors*/ true,
+                /*thread_id*/ None,
+                |_| Some(Style::default().fg(Color::Rgb(255, 0, 0))),
+            )
+        })
         .expect("status line");
 
         assert_eq!(line.spans[0].style.fg, Some(STATUS_LINE_PRIMARY_BLUE));
