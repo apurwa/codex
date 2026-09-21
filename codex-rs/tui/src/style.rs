@@ -37,14 +37,17 @@ pub(crate) fn composer_blue_style() -> Style {
 
 /// Border style for Codex response cards.
 pub(crate) fn codex_response_border_style() -> Style {
-    composer_blue_style().bold()
+    match crate::ui_profile::ui_profile() {
+        crate::ui_profile::UiProfile::CodexDev => Style::default().fg(Color::DarkGray).bold(),
+        crate::ui_profile::UiProfile::Upstream => Style::default(),
+    }
 }
 
 /// Pale cool background that distinguishes Codex responses from user messages.
 pub(crate) fn codex_response_background_style() -> Style {
     match crate::ui_profile::ui_profile() {
         crate::ui_profile::UiProfile::CodexDev => match default_bg() {
-            Some(bg) => Style::default().bg(best_color(codex_response_bg_rgb(bg))),
+            Some(bg) => Style::default().bg(best_color(user_message_bg_rgb(bg))),
             None => Style::default(),
         },
         crate::ui_profile::UiProfile::Upstream => Style::default(),
@@ -56,6 +59,16 @@ pub(crate) fn codex_response_rule(width: u16) -> Line<'static> {
         crate::ui_profile::UiProfile::CodexDev => Line::from(Span::styled(
             "─".repeat(usize::from(width.saturating_sub(1))),
             codex_response_border_style(),
+        )),
+        crate::ui_profile::UiProfile::Upstream => Line::default(),
+    }
+}
+
+pub(crate) fn user_message_rule(width: u16) -> Line<'static> {
+    match crate::ui_profile::ui_profile() {
+        crate::ui_profile::UiProfile::CodexDev => Line::from(Span::styled(
+            "─".repeat(usize::from(width.saturating_sub(1))),
+            composer_blue_style(),
         )),
         crate::ui_profile::UiProfile::Upstream => Line::default(),
     }
@@ -138,7 +151,7 @@ pub fn user_message_style() -> Style {
 pub(crate) fn transcript_user_message_style() -> Style {
     match crate::ui_profile::ui_profile() {
         crate::ui_profile::UiProfile::CodexDev => match default_bg() {
-            Some(bg) => Style::default().bg(best_color(transcript_user_message_bg_rgb(bg))),
+            Some(bg) => Style::default().bg(best_color(codex_response_bg_rgb(bg))),
             None => Style::default(),
         },
         crate::ui_profile::UiProfile::Upstream => Style::default(),
@@ -230,15 +243,6 @@ pub(crate) fn user_message_bg_rgb(terminal_bg: (u8, u8, u8)) -> (u8, u8, u8) {
         ((0, 0, 0), 0.04)
     } else {
         ((255, 255, 255), 0.12)
-    };
-    blend(top, terminal_bg, alpha)
-}
-
-fn transcript_user_message_bg_rgb(terminal_bg: (u8, u8, u8)) -> (u8, u8, u8) {
-    let (top, alpha) = if is_light(terminal_bg) {
-        ((0, 0, 0), 0.08)
-    } else {
-        ((255, 255, 255), 0.18)
     };
     blend(top, terminal_bg, alpha)
 }

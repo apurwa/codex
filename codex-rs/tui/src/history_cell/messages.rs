@@ -294,12 +294,8 @@ impl HistoryCell for UserHistoryCell {
             return lines;
         }
 
-        let background_width = usize::from(width.saturating_sub(1));
         let mut lines = vec![
-            HyperlinkLine::new(Line::from(Span::styled(
-                "─".repeat(background_width),
-                Style::default().dim(),
-            ))),
+            HyperlinkLine::new(crate::style::user_message_rule(width)),
             HyperlinkLine::new(Line::from(Span::styled("YOU", accent_style)).style(style)),
         ];
 
