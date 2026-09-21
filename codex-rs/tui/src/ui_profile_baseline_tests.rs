@@ -163,3 +163,38 @@ fn upstream_markdown_keeps_upstream_heading_and_code_styles() {
             .contains(ratatui::style::Modifier::BOLD)
     }));
 }
+
+/// Under Upstream, a user message renders as plain upstream text with no codex-dev band:
+/// no `YOU` label and no `│` rail. Under CodexDev it renders the band.
+#[test]
+fn upstream_user_cell_has_no_you_band() {
+    use crate::history_cell::UserHistoryCell;
+
+    let user_cell = || UserHistoryCell {
+        message: "hello world".into(),
+        text_elements: Vec::new(),
+        local_image_paths: Vec::new(),
+        remote_image_urls: Vec::new(),
+        spoken: false,
+    };
+
+    let upstream = with_test_ui_profile(UiProfile::Upstream, || {
+        rendered(&user_cell().display_lines(40))
+    });
+    assert!(
+        !upstream.iter().any(|line| line.contains("YOU")),
+        "upstream leaked the codex-dev YOU label: {upstream:?}"
+    );
+    assert!(
+        !upstream.iter().any(|line| line.contains('│')),
+        "upstream leaked the codex-dev user rail: {upstream:?}"
+    );
+
+    let codex_dev = with_test_ui_profile(UiProfile::CodexDev, || {
+        rendered(&user_cell().display_lines(40))
+    });
+    assert!(
+        codex_dev.iter().any(|line| line.contains("YOU")),
+        "codex-dev lost its YOU band: {codex_dev:?}"
+    );
+}
