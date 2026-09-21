@@ -9,6 +9,7 @@ use crate::terminal_palette::rgb_color;
 use crate::terminal_palette::stdout_color_level;
 use ratatui::style::Color;
 use ratatui::style::Style;
+use ratatui::text::Span;
 
 const LIGHT_BG_ACCENT_RGB: (u8, u8, u8) = (0, 95, 135);
 
@@ -22,6 +23,11 @@ pub(crate) fn tool_success_style() -> Style {
     // Use a vivid green on the light transcript background; the previous
     // forest green read as olive/muted in the pale terminal theme.
     Style::default().fg(Color::Rgb(0x00, 0xc8, 0x53)).bold()
+}
+
+/// Render a success marker consistently across transcript, approval, and status surfaces.
+pub(crate) fn success_marker(text: &'static str) -> Span<'static> {
+    Span::styled(text, tool_success_style())
 }
 
 /// Shared selection/action colors, independent of remapped ANSI terminal palettes.

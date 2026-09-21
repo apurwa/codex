@@ -240,7 +240,7 @@ impl HistoryCell for ExecCell {
                 if let Some(duration) = call.duration {
                     let duration = format_duration(duration);
                     let mut result: Line = if output.exit_code == 0 {
-                        Line::from(Span::styled("✓", crate::style::tool_success_style()))
+                        Line::from(crate::style::success_marker("✓"))
                     } else {
                         Line::from(vec![
                             "✗".red().bold(),

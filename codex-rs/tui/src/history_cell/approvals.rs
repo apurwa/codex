@@ -121,10 +121,10 @@ pub fn new_approval_decision_cell(
                         " this time".bold(),
                     ]
                 };
-                ("✔ ".green(), summary)
+                (crate::style::success_marker("✔ "), summary)
             }
             ApprovalDecisionSubject::NetworkAccess { target } => (
-                "✔ ".green(),
+                crate::style::success_marker("✔ "),
                 vec![
                     actor.subject().into(),
                     "approved".bold(),
@@ -139,7 +139,7 @@ pub fn new_approval_decision_cell(
         } => {
             let snippet = Span::from(exec_snippet(&proposed_execpolicy_amendment.command)).dim();
             (
-                "✔ ".green(),
+                crate::style::success_marker("✔ "),
                 vec![
                     actor.subject().into(),
                     "approved".bold(),
@@ -166,10 +166,10 @@ pub fn new_approval_decision_cell(
                         " every time this session".bold(),
                     ]
                 };
-                ("✔ ".green(), summary)
+                (crate::style::success_marker("✔ "), summary)
             }
             ApprovalDecisionSubject::NetworkAccess { target } => (
-                "✔ ".green(),
+                crate::style::success_marker("✔ "),
                 vec![
                     actor.subject().into(),
                     "approved".bold(),
@@ -188,7 +188,7 @@ pub fn new_approval_decision_cell(
             };
             match network_policy_amendment.action {
                 NetworkPolicyRuleAction::Allow => (
-                    "✔ ".green(),
+                    crate::style::success_marker("✔ "),
                     vec![
                         actor.subject().into(),
                         "persisted".bold(),

@@ -1075,9 +1075,12 @@ impl WidgetRef for AuthModeWidget {
                 state.render(area, buf, self.error_message());
             }
             SignInState::BedrockConfigured => {
-                Paragraph::new("✓ Amazon Bedrock configured".green())
-                    .wrap(Wrap { trim: false })
-                    .render(area, buf);
+                Paragraph::new(Line::from(vec![
+                    crate::style::success_marker("✓ "),
+                    "Amazon Bedrock configured".into(),
+                ]))
+                .wrap(Wrap { trim: false })
+                .render(area, buf);
             }
         }
     }

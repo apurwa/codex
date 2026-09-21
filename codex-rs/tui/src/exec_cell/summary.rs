@@ -52,7 +52,7 @@ impl ExecCell {
             " · Ctrl+T".to_string()
         };
         let title_width = usize::from(width).saturating_sub(2 + details.chars().count());
-        let mut line = Line::from(vec![Span::styled("✓ ", crate::style::tool_success_style())]);
+        let mut line = Line::from(vec![crate::style::success_marker("✓ ")]);
         line.extend(
             truncate_line_with_ellipsis_if_overflow(Line::from(title).bold(), title_width).spans,
         );
