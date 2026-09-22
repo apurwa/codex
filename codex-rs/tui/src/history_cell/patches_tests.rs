@@ -14,13 +14,14 @@ fn viewed_image_retains_original_path_in_details() {
                     .iter()
                     .map(ToString::to_string)
                     .collect::<Vec<_>>(),
-                vec!["", "CODEX · Tool Calls", "┊ • Viewed image example.png"]
+                vec!["", "CODEX · Tool Calls", "", "┊ • Viewed image example.png"]
             );
             assert_eq!(
                 cell.raw_lines(),
                 vec![
                     Line::default(),
                     Line::from("CODEX · Tool Calls"),
+                    Line::default(),
                     Line::from(format!("┊ Viewed image {path}")),
                 ]
             );
@@ -32,6 +33,7 @@ fn viewed_image_retains_original_path_in_details() {
                 vec![
                     String::new(),
                     "CODEX · Tool Calls".to_string(),
+                    String::new(),
                     format!("┊ • Viewed image {path}"),
                 ]
             );

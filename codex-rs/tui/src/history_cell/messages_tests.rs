@@ -119,9 +119,9 @@ fn commentary_and_final_answers_are_labeled_and_readable_with_unchanged_raw_sour
         })
         .collect::<Vec<_>>();
         insta::assert_snapshot!(headings.join("\n"), @r###"
-Style::new().fg(Color::Rgb(0, 95, 135)).bold()
-Style::new().fg(Color::Rgb(0, 95, 135)).bold()
-Style::new().fg(Color::Rgb(0, 95, 135)).bold()
+Style::new().fg(Color::Rgb(128, 0, 0)).bold()
+Style::new().fg(Color::Rgb(128, 0, 0)).bold()
+Style::new().fg(Color::Rgb(128, 0, 0)).bold()
 "###);
         assert!(
             commentary_lines

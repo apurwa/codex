@@ -192,7 +192,8 @@ fn code_mode_output_shares_a_row_budget_across_blocks() {
         insta::assert_snapshot!(display, @"
 
     CODEX · Tool Calls
-    ┊ ✓ node_repl.js · 0ms · Ctrl+T details
+
+    ┊ ✓ node_repl.js
     ");
         let transcript = cell
             .transcript_lines(/*width*/ 100)
@@ -237,6 +238,7 @@ fn code_mode_output_keeps_trailing_failure_diagnostics() {
         insta::assert_snapshot!(display, @"
 
     CODEX · Tool Calls
+
     ┊ • Inspect page
     ┊   └ Script failed
     ┊     Page title
@@ -486,11 +488,13 @@ fn code_mode_preserves_text_fields_on_nontext_and_unknown_blocks() {
     history:
 
     CODEX · Tool Calls
-    ┊ ✓ node_repl.js · 0ms · Ctrl+T details
+
+    ┊ ✓ node_repl.js
 
     transcript:
 
     CODEX · Tool Calls
+
     ┊ • Called node_repl.js({"title":"Inspect results"})
     ┊   └ Returned image
     ┊     Script completed
@@ -505,6 +509,7 @@ fn code_mode_preserves_text_fields_on_nontext_and_unknown_blocks() {
             vec![
                 Line::default(),
                 Line::from("CODEX · Tool Calls"),
+                Line::default(),
                 Line::from("┊ Called node_repl.js({\"title\":\"Inspect results\"})"),
                 Line::from("┊ Returned image"),
                 Line::from(format!(
@@ -544,11 +549,13 @@ fn code_mode_preserves_text_fields_on_nontext_and_unknown_blocks() {
     history:
 
     CODEX · Tool Calls
-    ┊ ✓ cua_repl.js · 0ms · Ctrl+T details
+
+    ┊ ✓ cua_repl.js
 
     transcript:
 
     CODEX · Tool Calls
+
     ┊ • Called cua_repl.js()
     ┊   └ Returned image
     ┊     Script completed
@@ -574,10 +581,10 @@ fn titled_image_call_keeps_error_and_full_title_when_narrow() {
             },
             /*animations_enabled*/ false,
         );
-        assert_eq!(
-            cell.display_lines(/*width*/ 80)[2].to_string(),
-            format!("┊ • {title}")
-        );
+        assert!(cell
+            .display_lines(/*width*/ 80)
+            .iter()
+            .any(|line| line.to_string() == format!("┊ • {title}")));
         cell.complete(
             Duration::ZERO,
             Ok(CallToolResult {
@@ -589,8 +596,15 @@ fn titled_image_call_keeps_error_and_full_title_when_narrow() {
             }),
         );
         let lines = cell.display_lines(/*width*/ 32);
-        assert!(lines[2].width() <= 32);
-        assert_eq!(lines[2].spans[1].style, "•".red().bold().style);
+        let title_line = lines
+            .iter()
+            .find(|line| line.to_string().contains("Inspect"))
+            .expect("title line");
+        assert!(title_line.width() <= 32);
+        assert!(title_line
+            .spans
+            .iter()
+            .any(|span| span.style == "•".red().bold().style));
         insta::assert_snapshot!(
             lines
                 .iter()

@@ -53,7 +53,7 @@ fn web_action_compact_display_preserves_transcript_and_raw_details() {
             },
         );
         let display = cell.display_lines(/*width*/ 32);
-        assert_eq!(display.len(), 3);
+        assert_eq!(display.len(), 4);
         assert!(display.iter().all(|line| line.width() <= 32));
         insta::assert_snapshot!(
             display
@@ -68,6 +68,7 @@ fn web_action_compact_display_preserves_transcript_and_raw_details() {
             vec![
                 Line::default(),
                 Line::from("CODEX · Tool Calls"),
+                Line::default(),
                 Line::from(format!("┊ {full}")),
             ]
         );
@@ -79,6 +80,7 @@ fn web_action_compact_display_preserves_transcript_and_raw_details() {
             vec![
                 String::new(),
                 "CODEX · Tool Calls".to_string(),
+                String::new(),
                 format!("┊ • {full}"),
             ]
         );
@@ -102,6 +104,7 @@ fn pending_web_action_and_legacy_query() {
             @r"
 
         CODEX · Tool Calls
+
         ┊ • Browsing the web"
         );
         let legacy = new_web_search_call("call".into(), "old query".into(), WebSearchAction::Other);
@@ -110,6 +113,7 @@ fn pending_web_action_and_legacy_query() {
             vec![
                 Line::default(),
                 Line::from("CODEX · Tool Calls"),
+                Line::default(),
                 Line::from("┊ Searched the web for old query"),
             ]
         );
@@ -132,6 +136,7 @@ fn batched_search_retains_each_query() {
             vec![
                 Line::default(),
                 Line::from("CODEX · Tool Calls"),
+                Line::default(),
                 Line::from("┊ Searched the web for first query, second query"),
             ]
         );
@@ -144,6 +149,7 @@ fn batched_search_retains_each_query() {
             @r"
 
         CODEX · Tool Calls
+
         ┊ • Searched the web for first query, second query"
         );
     });
