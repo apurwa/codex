@@ -683,8 +683,10 @@ impl App {
                 self.add_agents_overview_error(format!("Failed to attach to task: {error}"));
                 return Ok(AppRunControl::Continue);
             }
-            // Replacing the widget clears the terminal before the remaining server requests.
-            loading::draw(tui)?;
+            // Do not draw a loading frame here. `replace_chat_widget_with_app_server_thread`
+            // queues the reset and initial-history replay events; drawing synchronously between
+            // replay and those queued events commits a frame that the deferred reset can clear,
+            // leaving a resumed Agents Overview thread visibly blank.
             if read_only {
                 self.ensure_thread_channel(root_thread_id)
                     .mark_external_writer();
