@@ -1,5 +1,6 @@
 ---
 source: tui/src/history_cell/tests.rs
+assertion_line: 584
 expression: rendered
 ---
 rich before:
@@ -8,7 +9,7 @@ YOU
 │ Please format this
 │ for copying
 ───────────────────────────────────────
-
+───────────────────────────────────────
 CODEX
 
   - first item
@@ -19,11 +20,11 @@ CODEX
    code    x = 1
 
   copy me
-
+───────────────────────────────────────
 
 CODEX · Tool Calls
 
-┊ ✓ workspace.in… · 5ms · Ctrl+T details
+┊ ✓ workspace.inspect
 
 raw on:
 Please format this
@@ -51,7 +52,7 @@ YOU
 │ Please format this
 │ for copying
 ───────────────────────────────────────
-
+───────────────────────────────────────
 CODEX
 
   - first item
@@ -62,8 +63,8 @@ CODEX
    code    x = 1
 
   copy me
-
+───────────────────────────────────────
 
 CODEX · Tool Calls
 
-┊ ✓ workspace.in… · 5ms · Ctrl+T details
+┊ ✓ workspace.inspect

@@ -1,8 +1,9 @@
 ---
 source: tui/src/history_cell/tests.rs
+assertion_line: 2203
 expression: rendered
 ---
 
 CODEX · Tool Calls
 
-┊ ✓ set -o pipefail · Ctrl+T
+┊ ✓ set -o pipefail

@@ -1,8 +1,9 @@
 ---
 source: tui/src/history_cell/tests.rs
+assertion_line: 1836
 expression: rendered
 ---
 
 CODEX · Tool Calls
 
-┊ ✓ metrics.ge… · 1.28s · Ctrl+T details
+┊ ✓ metrics.get_nearby_metric

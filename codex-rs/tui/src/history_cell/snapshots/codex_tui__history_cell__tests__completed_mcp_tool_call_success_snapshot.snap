@@ -1,8 +1,9 @@
 ---
 source: tui/src/history_cell/tests.rs
+assertion_line: 1641
 expression: rendered
 ---
 
 CODEX · Tool Calls
 
-┊ ✓ search.find_docs · 1.42s · Ctrl+T details
+┊ ✓ search.find_docs

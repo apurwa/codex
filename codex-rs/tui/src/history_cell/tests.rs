@@ -31,14 +31,16 @@ use std::path::Path;
 
 #[test]
 fn codex_tool_call_group_has_heading_and_single_spacers() {
-    let lines =
-        crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
-            prepend_codex_tool_call_label(vec![Line::from("Explored")])
-        });
-    assert_eq!(
-        lines.iter().map(ToString::to_string).collect::<Vec<_>>(),
-        vec!["", "CODEX · Tool Calls", "", "┊ Explored"]
-    );
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
+        let lines =
+            crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
+                prepend_codex_tool_call_label(vec![Line::from("Explored")])
+            });
+        assert_eq!(
+            lines.iter().map(ToString::to_string).collect::<Vec<_>>(),
+            vec!["", "CODEX · Tool Calls", "", "┊ Explored"]
+        );
+    });
 }
 use std::path::PathBuf;
 
@@ -495,54 +497,57 @@ fn proposed_plan_cell_unwraps_markdown_fenced_table() {
 
 #[test]
 fn structured_tool_cell_renders_raw_plain_text_without_prefix_or_style() {
-    let invocation = McpInvocation {
-        server: "search".into(),
-        tool: "find_docs".into(),
-        arguments: Some(json!({"query": "raw mode"})),
-    };
-    let result = CallToolResult {
-        content: vec![text_block("alpha\nbeta")],
-        is_error: None,
-        structured_content: None,
-        meta: None,
-    };
-    let mut cell = new_active_mcp_tool_call(
-        "call-raw".to_string(),
-        invocation,
-        /*animations_enabled*/ false,
-    );
-    cell.complete(Duration::from_millis(1), Ok(result));
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
+        let invocation = McpInvocation {
+            server: "search".into(),
+            tool: "find_docs".into(),
+            arguments: Some(json!({"query": "raw mode"})),
+        };
+        let result = CallToolResult {
+            content: vec![text_block("alpha\nbeta")],
+            is_error: None,
+            structured_content: None,
+            meta: None,
+        };
+        let mut cell = new_active_mcp_tool_call(
+            "call-raw".to_string(),
+            invocation,
+            /*animations_enabled*/ false,
+        );
+        cell.complete(Duration::from_millis(1), Ok(result));
 
-    let lines = cell.raw_lines();
-    let rendered = render_lines(&lines);
-    assert_eq!(rendered[0], "");
-    assert_eq!(rendered[1], "CODEX · Tool Calls");
-    assert!(rendered[2].starts_with("┊ Called search.find_docs("));
-    assert_eq!(rendered[3..], ["┊ alpha".to_string(), "┊ beta".to_string()]);
-    assert_unstyled_lines(&lines);
+        let lines = cell.raw_lines();
+        let rendered = render_lines(&lines);
+        assert_eq!(rendered[0], "");
+        assert_eq!(rendered[1], "CODEX · Tool Calls");
+        assert!(rendered[3].starts_with("┊ Called search.find_docs("));
+        assert_eq!(rendered[4..], ["┊ alpha".to_string(), "┊ beta".to_string()]);
+        assert_unstyled_lines(&lines);
+    });
 }
 
 #[test]
 fn raw_mode_toggle_transcript_snapshot() {
-    let mut tool_cell = new_active_mcp_tool_call(
-        "call-snapshot".to_string(),
-        McpInvocation {
-            server: "workspace".to_string(),
-            tool: "inspect".to_string(),
-            arguments: Some(json!({"path": "README.md"})),
-        },
-        /*animations_enabled*/ false,
-    );
-    tool_cell.complete(
-        Duration::from_millis(5),
-        Ok(CallToolResult {
-            content: vec![text_block("structured output\nsecond line")],
-            is_error: None,
-            structured_content: None,
-            meta: None,
-        }),
-    );
-    let cells: Vec<Box<dyn HistoryCell>> = vec![
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
+        let mut tool_cell = new_active_mcp_tool_call(
+            "call-snapshot".to_string(),
+            McpInvocation {
+                server: "workspace".to_string(),
+                tool: "inspect".to_string(),
+                arguments: Some(json!({"path": "README.md"})),
+            },
+            /*animations_enabled*/ false,
+        );
+        tool_cell.complete(
+            Duration::from_millis(5),
+            Ok(CallToolResult {
+                content: vec![text_block("structured output\nsecond line")],
+                is_error: None,
+                structured_content: None,
+                meta: None,
+            }),
+        );
+        let cells: Vec<Box<dyn HistoryCell>> = vec![
             Box::new(new_user_prompt(
                 "Please format this\nfor copying".to_string(),
                 Vec::new(),
@@ -556,53 +561,58 @@ fn raw_mode_toggle_transcript_snapshot() {
             Box::new(tool_cell),
         ];
 
-    let render = |mode| {
-        cells
-            .iter()
-            .flat_map(|cell| cell.display_lines_for_mode(/*width*/ 40, mode))
-            .map(|line| {
-                line.spans
-                    .into_iter()
-                    .map(|span| span.content.into_owned())
-                    .collect::<String>()
-            })
-            .collect::<Vec<_>>()
-            .join("\n")
-    };
-    let rendered = format!(
-        "rich before:\n{}\n\nraw on:\n{}\n\nrich after:\n{}",
-        render(HistoryRenderMode::Rich),
-        render(HistoryRenderMode::Raw),
-        render(HistoryRenderMode::Rich)
-    );
+        let render = |mode| {
+            cells
+                .iter()
+                .flat_map(|cell| cell.display_lines_for_mode(/*width*/ 40, mode))
+                .map(|line| {
+                    line.spans
+                        .into_iter()
+                        .map(|span| span.content.into_owned())
+                        .collect::<String>()
+                })
+                .collect::<Vec<_>>()
+                .join("\n")
+        };
+        let rendered = format!(
+            "rich before:\n{}\n\nraw on:\n{}\n\nrich after:\n{}",
+            render(HistoryRenderMode::Rich),
+            render(HistoryRenderMode::Raw),
+            render(HistoryRenderMode::Rich)
+        );
 
-    insta::assert_snapshot!("raw_mode_toggle_transcript", rendered);
+        insta::assert_snapshot!("raw_mode_toggle_transcript", rendered);
+    });
 }
 
 #[test]
 fn image_generation_call_renders_saved_path() {
-    let saved_path = test_path_buf("/tmp/generated-image.png").abs();
-    let expected_saved_path = format!(
-        "  └ Saved to: {}",
-        Url::from_file_path(saved_path.as_path()).expect("test path should convert to file URL")
-    );
-    let cell = new_image_generation_call(
-        "call-image-generation".to_string(),
-        "completed",
-        Some("A tiny blue square".to_string()),
-        Some(saved_path),
-    );
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
+        let saved_path = test_path_buf("/tmp/generated-image.png").abs();
+        let expected_saved_path = format!(
+            "  └ Saved to: {}",
+            Url::from_file_path(saved_path.as_path())
+                .expect("test path should convert to file URL")
+        );
+        let cell = new_image_generation_call(
+            "call-image-generation".to_string(),
+            "completed",
+            Some("A tiny blue square".to_string()),
+            Some(saved_path),
+        );
 
-    assert_eq!(
-        render_lines(&cell.display_lines(/*width*/ 80)),
-        vec![
-            "".to_string(),
-            "CODEX · Tool Calls".to_string(),
-            "┊ • Generated Image:".to_string(),
-            "┊   └ A tiny blue square".to_string(),
-            format!("┊ {expected_saved_path}"),
-        ],
-    );
+        assert_eq!(
+            render_lines(&cell.display_lines(/*width*/ 80)),
+            vec![
+                "".to_string(),
+                "CODEX · Tool Calls".to_string(),
+                "".to_string(),
+                "┊ • Generated Image:".to_string(),
+                "┊   └ A tiny blue square".to_string(),
+                format!("┊ {expected_saved_path}"),
+            ],
+        );
+    });
 }
 
 fn session_configured_event(model: &str) -> ThreadSessionState {
@@ -633,13 +643,15 @@ fn session_configured_event(model: &str) -> ThreadSessionState {
 
 #[test]
 fn unified_exec_interaction_cell_renders_input() {
-    let input = (1..=16).map(|line| format!("line {line}\n")).collect();
-    let cell = new_unified_exec_interaction(Some("cat".to_string()), input);
-    let lines = render_lines(&cell.display_lines(/*width*/ 80));
-    assert_eq!(lines, render_transcript(&cell));
-    insta::assert_snapshot!(lines.join("\n"), @"
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
+        let input = (1..=16).map(|line| format!("line {line}\n")).collect();
+        let cell = new_unified_exec_interaction(Some("cat".to_string()), input);
+        let lines = render_lines(&cell.display_lines(/*width*/ 80));
+        assert_eq!(lines, render_transcript(&cell));
+        insta::assert_snapshot!(lines.join("\n"), @"
 
     CODEX · Tool Calls
+
     ┊ ↳ Interacted with background terminal · cat
     ┊   └ line 1
     ┊     line 2
@@ -658,45 +670,50 @@ fn unified_exec_interaction_cell_renders_input() {
     ┊     line 15
     ┊     line 16
     ");
+    });
 }
 
 #[test]
 fn unified_exec_interaction_cell_renders_wait() {
-    let cell = new_unified_exec_interaction(/*command_display*/ None, String::new());
-    let lines = render_transcript(&cell);
-    assert_eq!(
-        lines,
-        vec![
-            "",
-            "CODEX · Tool Calls",
-            "",
-            "┊ • Waited for background terminal"
-        ]
-    );
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
+        let cell = new_unified_exec_interaction(/*command_display*/ None, String::new());
+        let lines = render_transcript(&cell);
+        assert_eq!(
+            lines,
+            vec![
+                "",
+                "CODEX · Tool Calls",
+                "",
+                "┊ • Waited for background terminal"
+            ]
+        );
+    });
 }
 
 #[test]
 fn consecutive_tool_call_cell_reuses_group_heading() {
-    let first = new_unified_exec_interaction(/*command_display*/ None, String::new());
-    let continuation = ToolCallContinuationCell::new(Box::new(new_unified_exec_interaction(
-        Some("cargo test".to_string()),
-        String::new(),
-    )));
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
+        let first = new_unified_exec_interaction(/*command_display*/ None, String::new());
+        let continuation = ToolCallContinuationCell::new(Box::new(new_unified_exec_interaction(
+            Some("cargo test".to_string()),
+            String::new(),
+        )));
 
-    assert_eq!(
-        render_lines(&first.display_lines(/*width*/ 80)),
-        vec![
-            "",
-            "CODEX · Tool Calls",
-            "",
-            "┊ • Waited for background terminal"
-        ]
-    );
-    assert_eq!(
-        render_lines(&continuation.display_lines(/*width*/ 80)),
-        vec!["", "┊ • Waited for background terminal · cargo test"]
-    );
-    assert!(continuation.is_codex_tool_call());
+        assert_eq!(
+            render_lines(&first.display_lines(/*width*/ 80)),
+            vec![
+                "",
+                "CODEX · Tool Calls",
+                "",
+                "┊ • Waited for background terminal"
+            ]
+        );
+        assert_eq!(
+            render_lines(&continuation.display_lines(/*width*/ 80)),
+            vec!["", "┊ • Waited for background terminal · cargo test"]
+        );
+        assert!(continuation.is_codex_tool_call());
+    });
 }
 
 #[test]
@@ -1278,49 +1295,54 @@ fn prefixed_wrapped_history_cell_height_matches_wrapped_rendering() {
 
 #[test]
 fn unified_exec_interaction_cell_height_matches_wrapped_rendering() {
-    let url_like = "example.test/api/v1/projects/alpha-team/releases/2026-02-17/builds/1234567890/artifacts/reports/performance/summary/detail/with/a/very/long/path";
-    let cell: Box<dyn HistoryCell> = Box::new(UnifiedExecInteractionCell::new(
-        Some("true".to_string()),
-        url_like.to_string(),
-    ));
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
+        let url_like = "example.test/api/v1/projects/alpha-team/releases/2026-02-17/builds/1234567890/artifacts/reports/performance/summary/detail/with/a/very/long/path";
+        let cell: Box<dyn HistoryCell> = Box::new(UnifiedExecInteractionCell::new(
+            Some("true".to_string()),
+            url_like.to_string(),
+        ));
 
-    let width: u16 = 24;
-    let logical_height = cell.display_lines(width).len() as u16;
-    let wrapped_height = cell.desired_height(width);
-    assert!(
-        wrapped_height > logical_height,
-        "expected wrapped height to exceed logical line count ({logical_height}), got {wrapped_height}"
-    );
+        let width: u16 = 24;
+        let logical_height = cell.display_lines(width).len() as u16;
+        let wrapped_height = cell.desired_height(width);
+        assert!(
+            wrapped_height > logical_height,
+            "expected wrapped height to exceed logical line count ({logical_height}), got {wrapped_height}"
+        );
 
-    let area = Rect::new(0, 0, width, wrapped_height);
-    let mut buf = ratatui::buffer::Buffer::empty(area);
-    cell.render(area, &mut buf);
+        let area = Rect::new(0, 0, width, wrapped_height);
+        let mut buf = ratatui::buffer::Buffer::empty(area);
+        cell.render(area, &mut buf);
 
-    let rendered = buf
-        .content()
-        .iter()
-        .map(|cell| cell.symbol())
-        .collect::<String>();
-    assert!(
-        rendered.contains("CODEX · Tool Calls") && rendered.contains("Interacted with"),
-        "expected the rendered cell to keep its tool label and header visible, got: {rendered:?}"
-    );
+        let rendered = buf
+            .content()
+            .iter()
+            .map(|cell| cell.symbol())
+            .collect::<String>();
+        assert!(
+            rendered.contains("CODEX · Tool Calls") && rendered.contains("Interacted with"),
+            "expected the rendered cell to keep its tool label and header visible, got: {rendered:?}"
+        );
+    });
 }
 
 #[test]
 fn web_search_history_cell_snapshot() {
-    let query = "example search query with several generic words to exercise wrapping".to_string();
-    let cell = new_web_search_call(
-        "call-1".to_string(),
-        query.clone(),
-        WebSearchAction::Search {
-            query: Some(query),
-            queries: None,
-        },
-    );
-    let rendered = render_lines(&cell.display_lines(/*width*/ 64)).join("\n");
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
+        let query =
+            "example search query with several generic words to exercise wrapping".to_string();
+        let cell = new_web_search_call(
+            "call-1".to_string(),
+            query.clone(),
+            WebSearchAction::Search {
+                query: Some(query),
+                queries: None,
+            },
+        );
+        let rendered = render_lines(&cell.display_lines(/*width*/ 64)).join("\n");
 
-    insta::assert_snapshot!(rendered);
+        insta::assert_snapshot!(rendered);
+    });
 }
 
 #[test]
@@ -1363,136 +1385,154 @@ fn vite_plus_update_available_history_cell_snapshot() {
 
 #[test]
 fn web_search_history_cell_without_detail_snapshot() {
-    let cell = new_web_search_call("call-1".to_string(), String::new(), WebSearchAction::Other);
-    let rendered = render_lines(&cell.display_lines(/*width*/ 64)).join("\n");
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
+        let cell = new_web_search_call("call-1".to_string(), String::new(), WebSearchAction::Other);
+        let rendered = render_lines(&cell.display_lines(/*width*/ 64)).join("\n");
 
-    insta::assert_snapshot!(rendered);
+        insta::assert_snapshot!(rendered);
+    });
 }
 
 #[test]
 fn web_search_history_cell_truncates() {
-    let query = "example search query with several generic words to exercise wrapping".to_string();
-    let cell = new_web_search_call(
-        "call-1".to_string(),
-        query.clone(),
-        WebSearchAction::Search {
-            query: Some(query),
-            queries: None,
-        },
-    );
-    let rendered = render_lines(&cell.display_lines(/*width*/ 64));
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
+        let query =
+            "example search query with several generic words to exercise wrapping".to_string();
+        let cell = new_web_search_call(
+            "call-1".to_string(),
+            query.clone(),
+            WebSearchAction::Search {
+                query: Some(query),
+                queries: None,
+            },
+        );
+        let rendered = render_lines(&cell.display_lines(/*width*/ 64));
 
-    assert_eq!(
-        rendered,
-        vec![
-            "".to_string(),
-            "CODEX · Tool Calls".to_string(),
-            "┊ • Searched the web for example search query with several gene…".to_string(),
-        ]
-    );
+        assert_eq!(
+            rendered,
+            vec![
+                "".to_string(),
+                "CODEX · Tool Calls".to_string(),
+                "".to_string(),
+                "┊ • Searched the web for example search query with several gene…".to_string(),
+            ]
+        );
+    });
 }
 
 #[test]
 fn web_search_history_cell_short_query_does_not_wrap() {
-    let query = "short query".to_string();
-    let cell = new_web_search_call(
-        "call-1".to_string(),
-        query.clone(),
-        WebSearchAction::Search {
-            query: Some(query),
-            queries: None,
-        },
-    );
-    let rendered = render_lines(&cell.display_lines(/*width*/ 64));
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
+        let query = "short query".to_string();
+        let cell = new_web_search_call(
+            "call-1".to_string(),
+            query.clone(),
+            WebSearchAction::Search {
+                query: Some(query),
+                queries: None,
+            },
+        );
+        let rendered = render_lines(&cell.display_lines(/*width*/ 64));
 
-    assert_eq!(
-        rendered,
-        vec![
-            "".to_string(),
-            "CODEX · Tool Calls".to_string(),
-            "┊ • Searched the web for short query".to_string(),
-        ]
-    );
+        assert_eq!(
+            rendered,
+            vec![
+                "".to_string(),
+                "CODEX · Tool Calls".to_string(),
+                "".to_string(),
+                "┊ • Searched the web for short query".to_string(),
+            ]
+        );
+    });
 }
 
 #[test]
 fn web_search_history_cell_transcript_snapshot() {
-    let query = "example search query with several generic words to exercise wrapping".to_string();
-    let cell = new_web_search_call(
-        "call-1".to_string(),
-        query.clone(),
-        WebSearchAction::Search {
-            query: Some(query),
-            queries: None,
-        },
-    );
-    let rendered = render_lines(&cell.transcript_lines(/*width*/ 64)).join("\n");
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
+        let query =
+            "example search query with several generic words to exercise wrapping".to_string();
+        let cell = new_web_search_call(
+            "call-1".to_string(),
+            query.clone(),
+            WebSearchAction::Search {
+                query: Some(query),
+                queries: None,
+            },
+        );
+        let rendered = render_lines(&cell.transcript_lines(/*width*/ 64)).join("\n");
 
-    insta::assert_snapshot!(rendered);
+        insta::assert_snapshot!(rendered);
+    });
 }
 
 #[test]
 fn active_mcp_tool_call_snapshot() {
-    let invocation = McpInvocation {
-        server: "search".into(),
-        tool: "find_docs".into(),
-        arguments: Some(json!({
-            "query": "ratatui styling",
-            "limit": 3,
-        })),
-    };
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
+        let invocation = McpInvocation {
+            server: "search".into(),
+            tool: "find_docs".into(),
+            arguments: Some(json!({
+                "query": "ratatui styling",
+                "limit": 3,
+            })),
+        };
 
-    let cell = new_active_mcp_tool_call(
-        "call-1".into(),
-        invocation,
-        /*animations_enabled*/ true,
-    );
-    let rendered = render_lines(&cell.display_lines(/*width*/ 80)).join("\n");
+        let cell = new_active_mcp_tool_call(
+            "call-1".into(),
+            invocation,
+            /*animations_enabled*/ true,
+        );
+        let rendered = render_lines(&cell.display_lines(/*width*/ 80)).join("\n");
 
-    insta::assert_snapshot!(rendered);
+        insta::assert_snapshot!(rendered);
+    });
 }
 
 #[test]
 fn code_mode_tool_call_uses_title_and_preserves_full_transcript() {
-    let output = format!("{} transcript tail", "0123456789".repeat(20));
-    let mut cell = new_active_mcp_tool_call(
-        "call-code-mode".into(),
-        McpInvocation {
-            server: "node_repl".into(),
-            tool: "js".into(),
-            arguments: Some(json!({
-                "title": "Inspect Spotify workspace",
-                "code": "await tools.exec_command({ cmd: 'git status' })",
-            })),
-        },
-        /*animations_enabled*/ false,
-    );
-    cell.complete(
-        Duration::ZERO,
-        Ok(CallToolResult {
-            content: vec![
-                text_block("Script completed\nWall time 0.1 seconds\nOutput:\n"),
-                text_block(
-                    &json!({"chunk_id": "chunk-1", "output": output, "exit_code": 0}).to_string(),
-                ),
-            ],
-            is_error: None,
-            structured_content: None,
-            meta: None,
-        }),
-    );
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
+        let output = format!("{} transcript tail", "0123456789".repeat(20));
+        let mut cell = new_active_mcp_tool_call(
+            "call-code-mode".into(),
+            McpInvocation {
+                server: "node_repl".into(),
+                tool: "js".into(),
+                arguments: Some(json!({
+                    "title": "Inspect Spotify workspace",
+                    "code": "await tools.exec_command({ cmd: 'git status' })",
+                })),
+            },
+            /*animations_enabled*/ false,
+        );
+        cell.complete(
+            Duration::ZERO,
+            Ok(CallToolResult {
+                content: vec![
+                    text_block("Script completed\nWall time 0.1 seconds\nOutput:\n"),
+                    text_block(
+                        &json!({"chunk_id": "chunk-1", "output": output, "exit_code": 0})
+                            .to_string(),
+                    ),
+                ],
+                is_error: None,
+                structured_content: None,
+                meta: None,
+            }),
+        );
 
-    let history = render_lines(&cell.display_lines(/*width*/ 40)).join("\n");
-    let transcript = render_lines(&cell.transcript_lines(/*width*/ 180)).join("\n");
-    insta::assert_snapshot!(format!("history:\n{history}\n\ntranscript:\n{transcript}"), @r#"
+        let history = render_lines(&cell.display_lines(/*width*/ 40)).join("\n");
+        let transcript = render_lines(&cell.transcript_lines(/*width*/ 180)).join("\n");
+        insta::assert_snapshot!(format!("history:\n{history}\n\ntranscript:\n{transcript}"), @r#"
     history:
 
     CODEX · Tool Calls
-    ┊ ✓ node_repl.js · 0ms · Ctrl+T details
+
+    ┊ ✓ node_repl.js
 
     transcript:
 
     CODEX · Tool Calls
+
     ┊ • Called node_repl.js({"title":"Inspect Spotify workspace","code":"await tools.exec_command({ cmd: 'git status' })"})
     ┊   └ Script completed
     ┊     Wall time 0.1 seconds
@@ -1501,35 +1541,40 @@ fn code_mode_tool_call_uses_title_and_preserves_full_transcript() {
     ┊         1","output":"0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456
     ┊         7890123456789012345678901234567890123456789 transcript tail","exit_code":0}
     "#);
+    });
 }
 
 #[test]
 fn code_mode_tool_call_preserves_failure_details() {
-    let mut cell = new_active_mcp_tool_call(
-        "call-code-mode-failed".into(),
-        McpInvocation {
-            server: "node_repl".into(),
-            tool: "js".into(),
-            arguments: Some(json!({"title": "Inspect workspace", "code": "throw Error('denied')"})),
-        },
-        /*animations_enabled*/ false,
-    );
-    cell.complete(
-        Duration::ZERO,
-        Ok(CallToolResult {
-            content: vec![text_block("Script failed\nOutput:\npermission denied")],
-            is_error: Some(true),
-            structured_content: None,
-            meta: None,
-        }),
-    );
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
+        let mut cell = new_active_mcp_tool_call(
+            "call-code-mode-failed".into(),
+            McpInvocation {
+                server: "node_repl".into(),
+                tool: "js".into(),
+                arguments: Some(
+                    json!({"title": "Inspect workspace", "code": "throw Error('denied')"}),
+                ),
+            },
+            /*animations_enabled*/ false,
+        );
+        cell.complete(
+            Duration::ZERO,
+            Ok(CallToolResult {
+                content: vec![text_block("Script failed\nOutput:\npermission denied")],
+                is_error: Some(true),
+                structured_content: None,
+                meta: None,
+            }),
+        );
 
-    let history = render_lines(&cell.display_lines(/*width*/ 80)).join("\n");
-    let transcript = render_lines(&cell.transcript_lines(/*width*/ 120)).join("\n");
-    insta::assert_snapshot!(format!("history:\n{history}\n\ntranscript:\n{transcript}"), @r#"
+        let history = render_lines(&cell.display_lines(/*width*/ 80)).join("\n");
+        let transcript = render_lines(&cell.transcript_lines(/*width*/ 120)).join("\n");
+        insta::assert_snapshot!(format!("history:\n{history}\n\ntranscript:\n{transcript}"), @r#"
     history:
 
     CODEX · Tool Calls
+
     ┊ • Inspect workspace
     ┊   └ Script failed
     ┊     Output:
@@ -1538,11 +1583,13 @@ fn code_mode_tool_call_preserves_failure_details() {
     transcript:
 
     CODEX · Tool Calls
+
     ┊ • Called node_repl.js({"title":"Inspect workspace","code":"throw Error('denied')"})
     ┊   └ Script failed
     ┊     Output:
     ┊     permission denied
     "#);
+    });
 }
 
 #[test]
@@ -1573,248 +1620,264 @@ fn thread_recap_loading_without_animations_snapshot() {
 
 #[test]
 fn completed_mcp_tool_call_success_snapshot() {
-    let invocation = McpInvocation {
-        server: "search".into(),
-        tool: "find_docs".into(),
-        arguments: Some(json!({
-            "query": "ratatui styling",
-            "limit": 3,
-        })),
-    };
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
+        let invocation = McpInvocation {
+            server: "search".into(),
+            tool: "find_docs".into(),
+            arguments: Some(json!({
+                "query": "ratatui styling",
+                "limit": 3,
+            })),
+        };
 
-    let result = CallToolResult {
-        content: vec![text_block("Found styling guidance in styles.md")],
-        is_error: None,
-        structured_content: None,
-        meta: None,
-    };
+        let result = CallToolResult {
+            content: vec![text_block("Found styling guidance in styles.md")],
+            is_error: None,
+            structured_content: None,
+            meta: None,
+        };
 
-    let mut cell = new_active_mcp_tool_call(
-        "call-2".into(),
-        invocation,
-        /*animations_enabled*/ true,
-    );
-    cell.complete(Duration::from_millis(1420), Ok(result));
+        let mut cell = new_active_mcp_tool_call(
+            "call-2".into(),
+            invocation,
+            /*animations_enabled*/ true,
+        );
+        cell.complete(Duration::from_millis(1420), Ok(result));
 
-    let rendered = render_lines(&cell.display_lines(/*width*/ 80)).join("\n");
+        let rendered = render_lines(&cell.display_lines(/*width*/ 80)).join("\n");
 
-    insta::assert_snapshot!(rendered);
+        insta::assert_snapshot!(rendered);
+    });
 }
 
 #[test]
 fn completed_mcp_tool_call_image_after_text_snapshot() {
-    let invocation = McpInvocation {
-        server: "image".into(),
-        tool: "generate".into(),
-        arguments: Some(json!({
-            "prompt": "tiny image",
-        })),
-    };
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
+        let invocation = McpInvocation {
+            server: "image".into(),
+            tool: "generate".into(),
+            arguments: Some(json!({
+                "prompt": "tiny image",
+            })),
+        };
 
-    let result = CallToolResult {
-        content: vec![
-            text_block("Here is the image:"),
-            image_block(SMALL_PNG_BASE64),
-        ],
-        is_error: None,
-        structured_content: None,
-        meta: None,
-    };
+        let result = CallToolResult {
+            content: vec![
+                text_block("Here is the image:"),
+                image_block(SMALL_PNG_BASE64),
+            ],
+            is_error: None,
+            structured_content: None,
+            meta: None,
+        };
 
-    let mut cell = new_active_mcp_tool_call(
-        "call-image".into(),
-        invocation,
-        /*animations_enabled*/ true,
-    );
-    cell.complete(Duration::from_millis(25), Ok(result));
+        let mut cell = new_active_mcp_tool_call(
+            "call-image".into(),
+            invocation,
+            /*animations_enabled*/ true,
+        );
+        cell.complete(Duration::from_millis(25), Ok(result));
 
-    let rendered = render_lines(&cell.display_lines(/*width*/ 80)).join("\n");
-    insta::assert_snapshot!(rendered);
+        let rendered = render_lines(&cell.display_lines(/*width*/ 80)).join("\n");
+        insta::assert_snapshot!(rendered);
+    });
 }
 
 #[test]
 fn completed_mcp_tool_call_accepts_data_url_image_blocks() {
-    let invocation = McpInvocation {
-        server: "image".into(),
-        tool: "generate".into(),
-        arguments: Some(json!({
-            "prompt": "tiny image",
-        })),
-    };
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
+        let invocation = McpInvocation {
+            server: "image".into(),
+            tool: "generate".into(),
+            arguments: Some(json!({
+                "prompt": "tiny image",
+            })),
+        };
 
-    let data_url = format!("data:image/png;base64,{SMALL_PNG_BASE64}");
-    let result = CallToolResult {
-        content: vec![image_block(&data_url)],
-        is_error: None,
-        structured_content: None,
-        meta: None,
-    };
+        let data_url = format!("data:image/png;base64,{SMALL_PNG_BASE64}");
+        let result = CallToolResult {
+            content: vec![image_block(&data_url)],
+            is_error: None,
+            structured_content: None,
+            meta: None,
+        };
 
-    let mut cell = new_active_mcp_tool_call(
-        "call-image-data-url".into(),
-        invocation,
-        /*animations_enabled*/ true,
-    );
-    cell.complete(Duration::from_millis(25), Ok(result));
+        let mut cell = new_active_mcp_tool_call(
+            "call-image-data-url".into(),
+            invocation,
+            /*animations_enabled*/ true,
+        );
+        cell.complete(Duration::from_millis(25), Ok(result));
 
-    let rendered = render_lines(&cell.display_lines(/*width*/ 80)).join("\n");
-    insta::assert_snapshot!(rendered);
+        let rendered = render_lines(&cell.display_lines(/*width*/ 80)).join("\n");
+        insta::assert_snapshot!(rendered);
+    });
 }
 
 #[test]
 fn completed_mcp_tool_call_multiple_image_blocks_snapshot() {
-    let invocation = McpInvocation {
-        server: "image".into(),
-        tool: "generate".into(),
-        arguments: Some(json!({
-            "prompt": "tiny image",
-        })),
-    };
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
+        let invocation = McpInvocation {
+            server: "image".into(),
+            tool: "generate".into(),
+            arguments: Some(json!({
+                "prompt": "tiny image",
+            })),
+        };
 
-    let result = CallToolResult {
-        content: vec![image_block("not-base64"), image_block(SMALL_PNG_BASE64)],
-        is_error: None,
-        structured_content: None,
-        meta: None,
-    };
+        let result = CallToolResult {
+            content: vec![image_block("not-base64"), image_block(SMALL_PNG_BASE64)],
+            is_error: None,
+            structured_content: None,
+            meta: None,
+        };
 
-    let mut cell = new_active_mcp_tool_call(
-        "call-image-2".into(),
-        invocation,
-        /*animations_enabled*/ true,
-    );
-    cell.complete(Duration::from_millis(25), Ok(result));
+        let mut cell = new_active_mcp_tool_call(
+            "call-image-2".into(),
+            invocation,
+            /*animations_enabled*/ true,
+        );
+        cell.complete(Duration::from_millis(25), Ok(result));
 
-    let rendered = render_lines(&cell.display_lines(/*width*/ 80)).join("\n");
-    insta::assert_snapshot!(rendered);
+        let rendered = render_lines(&cell.display_lines(/*width*/ 80)).join("\n");
+        insta::assert_snapshot!(rendered);
+    });
 }
 
 #[test]
 fn completed_mcp_tool_call_error_snapshot() {
-    let invocation = McpInvocation {
-        server: "search".into(),
-        tool: "find_docs".into(),
-        arguments: Some(json!({
-            "query": "ratatui styling",
-            "limit": 3,
-        })),
-    };
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
+        let invocation = McpInvocation {
+            server: "search".into(),
+            tool: "find_docs".into(),
+            arguments: Some(json!({
+                "query": "ratatui styling",
+                "limit": 3,
+            })),
+        };
 
-    let mut cell = new_active_mcp_tool_call(
-        "call-3".into(),
-        invocation,
-        /*animations_enabled*/ true,
-    );
-    cell.complete(Duration::from_secs(2), Err("network timeout".into()));
+        let mut cell = new_active_mcp_tool_call(
+            "call-3".into(),
+            invocation,
+            /*animations_enabled*/ true,
+        );
+        cell.complete(Duration::from_secs(2), Err("network timeout".into()));
 
-    let rendered = render_lines(&cell.display_lines(/*width*/ 80)).join("\n");
+        let rendered = render_lines(&cell.display_lines(/*width*/ 80)).join("\n");
 
-    insta::assert_snapshot!(rendered);
+        insta::assert_snapshot!(rendered);
+    });
 }
 
 #[test]
 fn completed_mcp_tool_call_multiple_outputs_snapshot() {
-    let invocation = McpInvocation {
-        server: "search".into(),
-        tool: "find_docs".into(),
-        arguments: Some(json!({
-            "query": "ratatui styling",
-            "limit": 3,
-        })),
-    };
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
+        let invocation = McpInvocation {
+            server: "search".into(),
+            tool: "find_docs".into(),
+            arguments: Some(json!({
+                "query": "ratatui styling",
+                "limit": 3,
+            })),
+        };
 
-    let result = CallToolResult {
-        content: vec![
-            text_block(
-                "Found styling guidance in styles.md and additional notes in CONTRIBUTING.md.",
-            ),
-            resource_link_block(
-                "file:///docs/styles.md",
-                "styles.md",
-                Some("Styles"),
-                Some("Link to styles documentation"),
-            ),
-        ],
-        is_error: None,
-        structured_content: None,
-        meta: None,
-    };
+        let result = CallToolResult {
+            content: vec![
+                text_block(
+                    "Found styling guidance in styles.md and additional notes in CONTRIBUTING.md.",
+                ),
+                resource_link_block(
+                    "file:///docs/styles.md",
+                    "styles.md",
+                    Some("Styles"),
+                    Some("Link to styles documentation"),
+                ),
+            ],
+            is_error: None,
+            structured_content: None,
+            meta: None,
+        };
 
-    let mut cell = new_active_mcp_tool_call(
-        "call-4".into(),
-        invocation,
-        /*animations_enabled*/ true,
-    );
-    cell.complete(Duration::from_millis(640), Ok(result));
+        let mut cell = new_active_mcp_tool_call(
+            "call-4".into(),
+            invocation,
+            /*animations_enabled*/ true,
+        );
+        cell.complete(Duration::from_millis(640), Ok(result));
 
-    let rendered = render_lines(&cell.display_lines(/*width*/ 48)).join("\n");
+        let rendered = render_lines(&cell.display_lines(/*width*/ 48)).join("\n");
 
-    insta::assert_snapshot!(rendered);
+        insta::assert_snapshot!(rendered);
+    });
 }
 
 #[test]
 fn completed_mcp_tool_call_wrapped_outputs_snapshot() {
-    let invocation = McpInvocation {
-        server: "metrics".into(),
-        tool: "get_nearby_metric".into(),
-        arguments: Some(json!({
-            "query": "very_long_query_that_needs_wrapping_to_display_properly_in_the_history",
-            "limit": 1,
-        })),
-    };
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
+        let invocation = McpInvocation {
+            server: "metrics".into(),
+            tool: "get_nearby_metric".into(),
+            arguments: Some(json!({
+                "query": "very_long_query_that_needs_wrapping_to_display_properly_in_the_history",
+                "limit": 1,
+            })),
+        };
 
-    let result = CallToolResult {
-        content: vec![text_block(
-            "Line one of the response, which is quite long and needs wrapping.\nLine two continues the response with more detail.",
-        )],
-        is_error: None,
-        structured_content: None,
-        meta: None,
-    };
+        let result = CallToolResult {
+            content: vec![text_block(
+                "Line one of the response, which is quite long and needs wrapping.\nLine two continues the response with more detail.",
+            )],
+            is_error: None,
+            structured_content: None,
+            meta: None,
+        };
 
-    let mut cell = new_active_mcp_tool_call(
-        "call-5".into(),
-        invocation,
-        /*animations_enabled*/ true,
-    );
-    cell.complete(Duration::from_millis(1280), Ok(result));
+        let mut cell = new_active_mcp_tool_call(
+            "call-5".into(),
+            invocation,
+            /*animations_enabled*/ true,
+        );
+        cell.complete(Duration::from_millis(1280), Ok(result));
 
-    let rendered = render_lines(&cell.display_lines(/*width*/ 40)).join("\n");
+        let rendered = render_lines(&cell.display_lines(/*width*/ 40)).join("\n");
 
-    insta::assert_snapshot!(rendered);
+        insta::assert_snapshot!(rendered);
+    });
 }
 
 #[test]
 fn completed_mcp_tool_call_multiple_outputs_inline_snapshot() {
-    let invocation = McpInvocation {
-        server: "metrics".into(),
-        tool: "summary".into(),
-        arguments: Some(json!({
-            "metric": "trace.latency",
-            "window": "15m",
-        })),
-    };
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
+        let invocation = McpInvocation {
+            server: "metrics".into(),
+            tool: "summary".into(),
+            arguments: Some(json!({
+                "metric": "trace.latency",
+                "window": "15m",
+            })),
+        };
 
-    let result = CallToolResult {
-        content: vec![
-            text_block("Latency summary: p50=120ms, p95=480ms."),
-            text_block("No anomalies detected."),
-        ],
-        is_error: None,
-        structured_content: None,
-        meta: None,
-    };
+        let result = CallToolResult {
+            content: vec![
+                text_block("Latency summary: p50=120ms, p95=480ms."),
+                text_block("No anomalies detected."),
+            ],
+            is_error: None,
+            structured_content: None,
+            meta: None,
+        };
 
-    let mut cell = new_active_mcp_tool_call(
-        "call-6".into(),
-        invocation,
-        /*animations_enabled*/ true,
-    );
-    cell.complete(Duration::from_millis(320), Ok(result));
+        let mut cell = new_active_mcp_tool_call(
+            "call-6".into(),
+            invocation,
+            /*animations_enabled*/ true,
+        );
+        cell.complete(Duration::from_millis(320), Ok(result));
 
-    let rendered = render_lines(&cell.display_lines(/*width*/ 120)).join("\n");
+        let rendered = render_lines(&cell.display_lines(/*width*/ 120)).join("\n");
 
-    insta::assert_snapshot!(rendered);
+        insta::assert_snapshot!(rendered);
+    });
 }
 
 #[test]
@@ -1984,525 +2047,557 @@ fn session_header_directory_front_truncates_long_segment() {
 
 #[test]
 fn coalesces_sequential_reads_within_one_call() {
-    // Build one exec cell with a Search followed by two Reads
-    let call_id = "c1".to_string();
-    let mut cell = ExecCell::new(
-        ExecCall {
-            call_id: call_id.clone(),
-            command: vec!["bash".into(), "-lc".into(), "echo".into()],
-            parsed: vec![
-                ParsedCommand::Search {
-                    query: Some("shimmer_spans".into()),
-                    path: None,
-                    cmd: "rg shimmer_spans".into(),
-                },
-                ParsedCommand::Read {
-                    name: "shimmer.rs".into(),
-                    cmd: "cat shimmer.rs".into(),
-                    path: "shimmer.rs".into(),
-                },
-                ParsedCommand::Read {
-                    name: "status_indicator_widget.rs".into(),
-                    cmd: "cat status_indicator_widget.rs".into(),
-                    path: "status_indicator_widget.rs".into(),
-                },
-            ],
-            output: None,
-            source: ExecCommandSource::Agent,
-            start_time: Some(Instant::now()),
-            duration: None,
-            interaction_input: None,
-        },
-        /*animations_enabled*/ true,
-    );
-    // Mark call complete so markers are ✓
-    cell.complete_call(&call_id, CommandOutput::default(), Duration::from_millis(1));
-
-    let lines = cell.display_lines(/*width*/ 80);
-    let rendered = render_lines(&lines).join("\n");
-    insta::assert_snapshot!(rendered);
-}
-
-#[test]
-fn coalesces_reads_across_multiple_calls() {
-    let mut cell = ExecCell::new(
-        ExecCall {
-            call_id: "c1".to_string(),
-            command: vec!["bash".into(), "-lc".into(), "echo".into()],
-            parsed: vec![ParsedCommand::Search {
-                query: Some("shimmer_spans".into()),
-                path: None,
-                cmd: "rg shimmer_spans".into(),
-            }],
-            output: None,
-            source: ExecCommandSource::Agent,
-            start_time: Some(Instant::now()),
-            duration: None,
-            interaction_input: None,
-        },
-        /*animations_enabled*/ true,
-    );
-    // Call 1: Search only
-    cell.complete_call("c1", CommandOutput::default(), Duration::from_millis(1));
-    // Call 2: Read A
-    assert!(cell.add_call(
-        "c2".into(),
-        vec!["bash".into(), "-lc".into(), "echo".into()],
-        vec![ParsedCommand::Read {
-            name: "shimmer.rs".into(),
-            cmd: "cat shimmer.rs".into(),
-            path: "shimmer.rs".into(),
-        }],
-        ExecCommandSource::Agent,
-        /*interaction_input*/ None,
-    ));
-    cell.complete_call("c2", CommandOutput::default(), Duration::from_millis(1));
-    // Call 3: Read B
-    assert!(cell.add_call(
-        "c3".into(),
-        vec!["bash".into(), "-lc".into(), "echo".into()],
-        vec![ParsedCommand::Read {
-            name: "status_indicator_widget.rs".into(),
-            cmd: "cat status_indicator_widget.rs".into(),
-            path: "status_indicator_widget.rs".into(),
-        }],
-        ExecCommandSource::Agent,
-        /*interaction_input*/ None,
-    ));
-    cell.complete_call("c3", CommandOutput::default(), Duration::from_millis(1));
-
-    let lines = cell.display_lines(/*width*/ 80);
-    let rendered = render_lines(&lines).join("\n");
-    insta::assert_snapshot!(rendered);
-}
-
-#[test]
-fn coalesced_reads_dedupe_names() {
-    let mut cell = ExecCell::new(
-        ExecCall {
-            call_id: "c1".to_string(),
-            command: vec!["bash".into(), "-lc".into(), "echo".into()],
-            parsed: vec![
-                ParsedCommand::Read {
-                    name: "auth.rs".into(),
-                    cmd: "cat auth.rs".into(),
-                    path: "auth.rs".into(),
-                },
-                ParsedCommand::Read {
-                    name: "auth.rs".into(),
-                    cmd: "cat auth.rs".into(),
-                    path: "auth.rs".into(),
-                },
-                ParsedCommand::Read {
-                    name: "shimmer.rs".into(),
-                    cmd: "cat shimmer.rs".into(),
-                    path: "shimmer.rs".into(),
-                },
-            ],
-            output: None,
-            source: ExecCommandSource::Agent,
-            start_time: Some(Instant::now()),
-            duration: None,
-            interaction_input: None,
-        },
-        /*animations_enabled*/ true,
-    );
-    cell.complete_call("c1", CommandOutput::default(), Duration::from_millis(1));
-    let lines = cell.display_lines(/*width*/ 80);
-    let rendered = render_lines(&lines).join("\n");
-    insta::assert_snapshot!(rendered);
-}
-
-#[test]
-fn multiline_command_wraps_with_extra_indent_on_subsequent_lines() {
-    // Create a completed exec cell with a multiline command
-    let cmd = "set -o pipefail\ncargo test -p codex-tui --quiet".to_string();
-    let call_id = "c1".to_string();
-    let mut cell = ExecCell::new(
-        ExecCall {
-            call_id: call_id.clone(),
-            command: vec!["bash".into(), "-lc".into(), cmd],
-            parsed: Vec::new(),
-            output: None,
-            source: ExecCommandSource::Agent,
-            start_time: Some(Instant::now()),
-            duration: None,
-            interaction_input: None,
-        },
-        /*animations_enabled*/ true,
-    );
-    // Mark call complete so it renders as "Ran"
-    cell.complete_call(&call_id, CommandOutput::default(), Duration::from_millis(1));
-
-    // Small width to keep the wrapped continuation-indent path covered.
-    let width: u16 = 28;
-    let lines = cell.display_lines(width);
-    let rendered = render_lines(&lines).join("\n");
-    insta::assert_snapshot!(rendered);
-}
-
-#[test]
-fn single_line_command_compact_when_fits() {
-    let call_id = "c1".to_string();
-    let mut cell = ExecCell::new(
-        ExecCall {
-            call_id: call_id.clone(),
-            command: vec!["echo".into(), "ok".into()],
-            parsed: Vec::new(),
-            output: None,
-            source: ExecCommandSource::Agent,
-            start_time: Some(Instant::now()),
-            duration: None,
-            interaction_input: None,
-        },
-        /*animations_enabled*/ true,
-    );
-    cell.complete_call(&call_id, CommandOutput::default(), Duration::from_millis(1));
-    // Wide enough that it fits inline
-    let lines = cell.display_lines(/*width*/ 80);
-    let rendered = render_lines(&lines).join("\n");
-    insta::assert_snapshot!(rendered);
-}
-
-#[test]
-fn codex_tool_call_label_distinguishes_agent_exec_from_user_shell() {
-    let make_cell = |source| {
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
+        // Build one exec cell with a Search followed by two Reads
+        let call_id = "c1".to_string();
         let mut cell = ExecCell::new(
             ExecCall {
-                call_id: "c1".to_string(),
-                command: vec!["git".into(), "status".into()],
-                parsed: Vec::new(),
+                call_id: call_id.clone(),
+                command: vec!["bash".into(), "-lc".into(), "echo".into()],
+                parsed: vec![
+                    ParsedCommand::Search {
+                        query: Some("shimmer_spans".into()),
+                        path: None,
+                        cmd: "rg shimmer_spans".into(),
+                    },
+                    ParsedCommand::Read {
+                        name: "shimmer.rs".into(),
+                        cmd: "cat shimmer.rs".into(),
+                        path: "shimmer.rs".into(),
+                    },
+                    ParsedCommand::Read {
+                        name: "status_indicator_widget.rs".into(),
+                        cmd: "cat status_indicator_widget.rs".into(),
+                        path: "status_indicator_widget.rs".into(),
+                    },
+                ],
                 output: None,
-                source,
+                source: ExecCommandSource::Agent,
                 start_time: Some(Instant::now()),
                 duration: None,
                 interaction_input: None,
             },
-            /*animations_enabled*/ false,
+            /*animations_enabled*/ true,
+        );
+        // Mark call complete so markers are ✓
+        cell.complete_call(&call_id, CommandOutput::default(), Duration::from_millis(1));
+
+        let lines = cell.display_lines(/*width*/ 80);
+        let rendered = render_lines(&lines).join("\n");
+        insta::assert_snapshot!(rendered);
+    });
+}
+
+#[test]
+fn coalesces_reads_across_multiple_calls() {
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
+        let mut cell = ExecCell::new(
+            ExecCall {
+                call_id: "c1".to_string(),
+                command: vec!["bash".into(), "-lc".into(), "echo".into()],
+                parsed: vec![ParsedCommand::Search {
+                    query: Some("shimmer_spans".into()),
+                    path: None,
+                    cmd: "rg shimmer_spans".into(),
+                }],
+                output: None,
+                source: ExecCommandSource::Agent,
+                start_time: Some(Instant::now()),
+                duration: None,
+                interaction_input: None,
+            },
+            /*animations_enabled*/ true,
+        );
+        // Call 1: Search only
+        cell.complete_call("c1", CommandOutput::default(), Duration::from_millis(1));
+        // Call 2: Read A
+        assert!(cell.add_call(
+            "c2".into(),
+            vec!["bash".into(), "-lc".into(), "echo".into()],
+            vec![ParsedCommand::Read {
+                name: "shimmer.rs".into(),
+                cmd: "cat shimmer.rs".into(),
+                path: "shimmer.rs".into(),
+            }],
+            ExecCommandSource::Agent,
+            /*interaction_input*/ None,
+        ));
+        cell.complete_call("c2", CommandOutput::default(), Duration::from_millis(1));
+        // Call 3: Read B
+        assert!(cell.add_call(
+            "c3".into(),
+            vec!["bash".into(), "-lc".into(), "echo".into()],
+            vec![ParsedCommand::Read {
+                name: "status_indicator_widget.rs".into(),
+                cmd: "cat status_indicator_widget.rs".into(),
+                path: "status_indicator_widget.rs".into(),
+            }],
+            ExecCommandSource::Agent,
+            /*interaction_input*/ None,
+        ));
+        cell.complete_call("c3", CommandOutput::default(), Duration::from_millis(1));
+
+        let lines = cell.display_lines(/*width*/ 80);
+        let rendered = render_lines(&lines).join("\n");
+        insta::assert_snapshot!(rendered);
+    });
+}
+
+#[test]
+fn coalesced_reads_dedupe_names() {
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
+        let mut cell = ExecCell::new(
+            ExecCall {
+                call_id: "c1".to_string(),
+                command: vec!["bash".into(), "-lc".into(), "echo".into()],
+                parsed: vec![
+                    ParsedCommand::Read {
+                        name: "auth.rs".into(),
+                        cmd: "cat auth.rs".into(),
+                        path: "auth.rs".into(),
+                    },
+                    ParsedCommand::Read {
+                        name: "auth.rs".into(),
+                        cmd: "cat auth.rs".into(),
+                        path: "auth.rs".into(),
+                    },
+                    ParsedCommand::Read {
+                        name: "shimmer.rs".into(),
+                        cmd: "cat shimmer.rs".into(),
+                        path: "shimmer.rs".into(),
+                    },
+                ],
+                output: None,
+                source: ExecCommandSource::Agent,
+                start_time: Some(Instant::now()),
+                duration: None,
+                interaction_input: None,
+            },
+            /*animations_enabled*/ true,
         );
         cell.complete_call("c1", CommandOutput::default(), Duration::from_millis(1));
-        cell
-    };
+        let lines = cell.display_lines(/*width*/ 80);
+        let rendered = render_lines(&lines).join("\n");
+        insta::assert_snapshot!(rendered);
+    });
+}
 
-    let agent_lines = make_cell(ExecCommandSource::Agent).display_lines(/*width*/ 80);
-    assert_eq!(agent_lines[1].to_string(), "CODEX · Tool Calls");
-    assert_eq!(
-        agent_lines[1].spans[0].style,
-        crate::style::codex_label_style()
-    );
+#[test]
+fn multiline_command_wraps_with_extra_indent_on_subsequent_lines() {
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
+        // Create a completed exec cell with a multiline command
+        let cmd = "set -o pipefail\ncargo test -p codex-tui --quiet".to_string();
+        let call_id = "c1".to_string();
+        let mut cell = ExecCell::new(
+            ExecCall {
+                call_id: call_id.clone(),
+                command: vec!["bash".into(), "-lc".into(), cmd],
+                parsed: Vec::new(),
+                output: None,
+                source: ExecCommandSource::Agent,
+                start_time: Some(Instant::now()),
+                duration: None,
+                interaction_input: None,
+            },
+            /*animations_enabled*/ true,
+        );
+        // Mark call complete so it renders as "Ran"
+        cell.complete_call(&call_id, CommandOutput::default(), Duration::from_millis(1));
 
-    let user_lines = make_cell(ExecCommandSource::UserShell).display_lines(/*width*/ 80);
-    assert!(
-        user_lines
-            .iter()
-            .all(|line| line.to_string() != "CODEX · Tool Calls")
-    );
-    assert!(
-        render_lines(&user_lines)
-            .join("\n")
-            .contains("You ran git status")
-    );
+        // Small width to keep the wrapped continuation-indent path covered.
+        let width: u16 = 28;
+        let lines = cell.display_lines(width);
+        let rendered = render_lines(&lines).join("\n");
+        insta::assert_snapshot!(rendered);
+    });
+}
+
+#[test]
+fn single_line_command_compact_when_fits() {
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
+        let call_id = "c1".to_string();
+        let mut cell = ExecCell::new(
+            ExecCall {
+                call_id: call_id.clone(),
+                command: vec!["echo".into(), "ok".into()],
+                parsed: Vec::new(),
+                output: None,
+                source: ExecCommandSource::Agent,
+                start_time: Some(Instant::now()),
+                duration: None,
+                interaction_input: None,
+            },
+            /*animations_enabled*/ true,
+        );
+        cell.complete_call(&call_id, CommandOutput::default(), Duration::from_millis(1));
+        // Wide enough that it fits inline
+        let lines = cell.display_lines(/*width*/ 80);
+        let rendered = render_lines(&lines).join("\n");
+        insta::assert_snapshot!(rendered);
+    });
+}
+
+#[test]
+fn codex_tool_call_label_distinguishes_agent_exec_from_user_shell() {
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
+        let make_cell = |source| {
+            let mut cell = ExecCell::new(
+                ExecCall {
+                    call_id: "c1".to_string(),
+                    command: vec!["git".into(), "status".into()],
+                    parsed: Vec::new(),
+                    output: None,
+                    source,
+                    start_time: Some(Instant::now()),
+                    duration: None,
+                    interaction_input: None,
+                },
+                /*animations_enabled*/ false,
+            );
+            cell.complete_call("c1", CommandOutput::default(), Duration::from_millis(1));
+            cell
+        };
+
+        let agent_lines = make_cell(ExecCommandSource::Agent).display_lines(/*width*/ 80);
+        assert_eq!(agent_lines[1].to_string(), "CODEX · Tool Calls");
+        assert_eq!(
+            agent_lines[1].spans[0].style,
+            crate::style::codex_label_style()
+        );
+
+        let user_lines = make_cell(ExecCommandSource::UserShell).display_lines(/*width*/ 80);
+        assert!(
+            user_lines
+                .iter()
+                .all(|line| line.to_string() != "CODEX · Tool Calls")
+        );
+        assert!(
+            render_lines(&user_lines)
+                .join("\n")
+                .contains("You ran git status")
+        );
+    });
 }
 
 #[test]
 fn patch_history_cell_uses_codex_tool_call_label() {
-    let cell = new_patch_event(
-        HashMap::from([(
-            PathBuf::from("README.md"),
-            FileChange::Add {
-                content: "hello\n".to_string(),
-            },
-        )]),
-        Path::new("/tmp/project"),
-    );
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
+        let cell = new_patch_event(
+            HashMap::from([(
+                PathBuf::from("README.md"),
+                FileChange::Add {
+                    content: "hello\n".to_string(),
+                },
+            )]),
+            Path::new("/tmp/project"),
+        );
 
-    let display_lines = cell.display_lines(/*width*/ 80);
-    assert_eq!(display_lines[1].to_string(), "CODEX · Tool Calls");
-    assert!(
-        render_lines(&display_lines)
-            .join("\n")
-            .contains("• Added README.md (+1 -0) · Ctrl+T details")
-    );
-    assert_eq!(display_lines.len(), 3, "patch display should stay compact");
-    assert!(
-        cell.transcript_lines(/*width*/ 80).len() > display_lines.len(),
-        "expanded transcript should retain the full patch"
-    );
-    assert_eq!(cell.raw_lines()[1].to_string(), "CODEX · Tool Calls");
+        let display_lines = cell.display_lines(/*width*/ 80);
+        assert_eq!(display_lines[1].to_string(), "CODEX · Tool Calls");
+        assert!(
+            render_lines(&display_lines)
+                .join("\n")
+                .contains("• Added README.md (+1 -0)")
+        );
+        assert_eq!(display_lines.len(), 4, "patch display should stay compact");
+        assert!(
+            cell.transcript_lines(/*width*/ 80).len() > display_lines.len(),
+            "expanded transcript should retain the full patch"
+        );
+        assert_eq!(cell.raw_lines()[1].to_string(), "CODEX · Tool Calls");
+    });
 }
 
 #[test]
 fn single_line_command_wraps_with_four_space_continuation() {
-    let call_id = "c1".to_string();
-    let long = "a_very_long_token_without_spaces_to_force_wrapping".to_string();
-    let mut cell = ExecCell::new(
-        ExecCall {
-            call_id: call_id.clone(),
-            command: vec!["bash".into(), "-lc".into(), long],
-            parsed: Vec::new(),
-            output: None,
-            source: ExecCommandSource::Agent,
-            start_time: Some(Instant::now()),
-            duration: None,
-            interaction_input: None,
-        },
-        /*animations_enabled*/ true,
-    );
-    cell.complete_call(&call_id, CommandOutput::default(), Duration::from_millis(1));
-    let lines = cell.display_lines(/*width*/ 24);
-    let rendered = render_lines(&lines).join("\n");
-    insta::assert_snapshot!(rendered);
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
+        let call_id = "c1".to_string();
+        let long = "a_very_long_token_without_spaces_to_force_wrapping".to_string();
+        let mut cell = ExecCell::new(
+            ExecCall {
+                call_id: call_id.clone(),
+                command: vec!["bash".into(), "-lc".into(), long],
+                parsed: Vec::new(),
+                output: None,
+                source: ExecCommandSource::Agent,
+                start_time: Some(Instant::now()),
+                duration: None,
+                interaction_input: None,
+            },
+            /*animations_enabled*/ true,
+        );
+        cell.complete_call(&call_id, CommandOutput::default(), Duration::from_millis(1));
+        let lines = cell.display_lines(/*width*/ 24);
+        let rendered = render_lines(&lines).join("\n");
+        insta::assert_snapshot!(rendered);
+    });
 }
 
 #[test]
 fn single_line_command_over_highlight_limit_uses_plain_text_fallback() {
-    let call_id = "c1".to_string();
-    let base64_like = "A".repeat(MAX_HIGHLIGHT_LINE_BYTES + 1);
-    let mut cell = ExecCell::new(
-        ExecCall {
-            call_id: call_id.clone(),
-            command: vec!["bash".into(), "-lc".into(), base64_like],
-            parsed: Vec::new(),
-            output: None,
-            source: ExecCommandSource::Agent,
-            start_time: Some(Instant::now()),
-            duration: None,
-            interaction_input: None,
-        },
-        /*animations_enabled*/ true,
-    );
-    cell.complete_call(&call_id, CommandOutput::default(), Duration::from_millis(1));
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
+        let call_id = "c1".to_string();
+        let base64_like = "A".repeat(MAX_HIGHLIGHT_LINE_BYTES + 1);
+        let mut cell = ExecCell::new(
+            ExecCall {
+                call_id: call_id.clone(),
+                command: vec!["bash".into(), "-lc".into(), base64_like],
+                parsed: Vec::new(),
+                output: None,
+                source: ExecCommandSource::Agent,
+                start_time: Some(Instant::now()),
+                duration: None,
+                interaction_input: None,
+            },
+            /*animations_enabled*/ true,
+        );
+        cell.complete_call(&call_id, CommandOutput::default(), Duration::from_millis(1));
 
-    let rendered = render_lines(&cell.display_lines(/*width*/ 24)).join("\n");
+        let rendered = render_lines(&cell.display_lines(/*width*/ 24)).join("\n");
 
-    insta::assert_snapshot!(rendered);
+        insta::assert_snapshot!(rendered);
+    });
 }
 
 #[test]
 fn multiline_command_without_wrap_uses_branch_then_eight_spaces() {
-    let call_id = "c1".to_string();
-    let cmd = "echo one\necho two".to_string();
-    let mut cell = ExecCell::new(
-        ExecCall {
-            call_id: call_id.clone(),
-            command: vec!["bash".into(), "-lc".into(), cmd],
-            parsed: Vec::new(),
-            output: None,
-            source: ExecCommandSource::Agent,
-            start_time: Some(Instant::now()),
-            duration: None,
-            interaction_input: None,
-        },
-        /*animations_enabled*/ true,
-    );
-    cell.complete_call(&call_id, CommandOutput::default(), Duration::from_millis(1));
-    let lines = cell.display_lines(/*width*/ 80);
-    let rendered = render_lines(&lines).join("\n");
-    insta::assert_snapshot!(rendered);
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
+        let call_id = "c1".to_string();
+        let cmd = "echo one\necho two".to_string();
+        let mut cell = ExecCell::new(
+            ExecCall {
+                call_id: call_id.clone(),
+                command: vec!["bash".into(), "-lc".into(), cmd],
+                parsed: Vec::new(),
+                output: None,
+                source: ExecCommandSource::Agent,
+                start_time: Some(Instant::now()),
+                duration: None,
+                interaction_input: None,
+            },
+            /*animations_enabled*/ true,
+        );
+        cell.complete_call(&call_id, CommandOutput::default(), Duration::from_millis(1));
+        let lines = cell.display_lines(/*width*/ 80);
+        let rendered = render_lines(&lines).join("\n");
+        insta::assert_snapshot!(rendered);
+    });
 }
 
 #[test]
 fn multiline_command_both_lines_wrap_with_correct_prefixes() {
-    let call_id = "c1".to_string();
-    let cmd =
-        "first_token_is_long_enough_to_wrap\nsecond_token_is_also_long_enough_to_wrap".to_string();
-    let mut cell = ExecCell::new(
-        ExecCall {
-            call_id: call_id.clone(),
-            command: vec!["bash".into(), "-lc".into(), cmd],
-            parsed: Vec::new(),
-            output: None,
-            source: ExecCommandSource::Agent,
-            start_time: Some(Instant::now()),
-            duration: None,
-            interaction_input: None,
-        },
-        /*animations_enabled*/ true,
-    );
-    cell.complete_call(&call_id, CommandOutput::default(), Duration::from_millis(1));
-    let lines = cell.display_lines(/*width*/ 28);
-    let rendered = render_lines(&lines).join("\n");
-    insta::assert_snapshot!(rendered);
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
+        let call_id = "c1".to_string();
+        let cmd = "first_token_is_long_enough_to_wrap\nsecond_token_is_also_long_enough_to_wrap"
+            .to_string();
+        let mut cell = ExecCell::new(
+            ExecCall {
+                call_id: call_id.clone(),
+                command: vec!["bash".into(), "-lc".into(), cmd],
+                parsed: Vec::new(),
+                output: None,
+                source: ExecCommandSource::Agent,
+                start_time: Some(Instant::now()),
+                duration: None,
+                interaction_input: None,
+            },
+            /*animations_enabled*/ true,
+        );
+        cell.complete_call(&call_id, CommandOutput::default(), Duration::from_millis(1));
+        let lines = cell.display_lines(/*width*/ 28);
+        let rendered = render_lines(&lines).join("\n");
+        insta::assert_snapshot!(rendered);
+    });
 }
 
 #[test]
 fn stderr_tail_more_than_five_lines_snapshot() {
-    // Build an exec cell with a non-zero exit and 10 lines on stderr to exercise
-    // the head/tail rendering and gutter prefixes.
-    let call_id = "c_err".to_string();
-    let mut cell = ExecCell::new(
-        ExecCall {
-            call_id: call_id.clone(),
-            command: vec!["bash".into(), "-lc".into(), "seq 1 10 1>&2 && false".into()],
-            parsed: Vec::new(),
-            output: None,
-            source: ExecCommandSource::Agent,
-            start_time: Some(Instant::now()),
-            duration: None,
-            interaction_input: None,
-        },
-        /*animations_enabled*/ true,
-    );
-    let stderr: String = (1..=10)
-        .map(|n| n.to_string())
-        .collect::<Vec<_>>()
-        .join("\n");
-    cell.complete_call(
-        &call_id,
-        CommandOutput::new(/*exit_code*/ 1, stderr),
-        Duration::from_millis(1),
-    );
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
+        // Build an exec cell with a non-zero exit and 10 lines on stderr to exercise
+        // the head/tail rendering and gutter prefixes.
+        let call_id = "c_err".to_string();
+        let mut cell = ExecCell::new(
+            ExecCall {
+                call_id: call_id.clone(),
+                command: vec!["bash".into(), "-lc".into(), "seq 1 10 1>&2 && false".into()],
+                parsed: Vec::new(),
+                output: None,
+                source: ExecCommandSource::Agent,
+                start_time: Some(Instant::now()),
+                duration: None,
+                interaction_input: None,
+            },
+            /*animations_enabled*/ true,
+        );
+        let stderr: String = (1..=10)
+            .map(|n| n.to_string())
+            .collect::<Vec<_>>()
+            .join("\n");
+        cell.complete_call(
+            &call_id,
+            CommandOutput::new(/*exit_code*/ 1, stderr),
+            Duration::from_millis(1),
+        );
 
-    let rendered = cell
-        .display_lines(/*width*/ 80)
-        .iter()
-        .map(|l| {
-            l.spans
-                .iter()
-                .map(|s| s.content.as_ref())
-                .collect::<String>()
-        })
-        .collect::<Vec<_>>()
-        .join("\n");
-    insta::assert_snapshot!(rendered);
+        let rendered = cell
+            .display_lines(/*width*/ 80)
+            .iter()
+            .map(|l| {
+                l.spans
+                    .iter()
+                    .map(|s| s.content.as_ref())
+                    .collect::<String>()
+            })
+            .collect::<Vec<_>>()
+            .join("\n");
+        insta::assert_snapshot!(rendered);
+    });
 }
 
 #[test]
 fn ran_cell_multiline_with_stderr_snapshot() {
-    // Build an exec cell that completes (so it renders as "Ran") with a
-    // command long enough that it must render on its own line under the
-    // header, and include a couple of stderr lines to verify the output
-    // block prefixes and wrapping.
-    let call_id = "c_wrap_err".to_string();
-    let long_cmd =
-        "echo this_is_a_very_long_single_token_that_will_wrap_across_the_available_width";
-    let mut cell = ExecCell::new(
-        ExecCall {
-            call_id: call_id.clone(),
-            command: vec!["bash".into(), "-lc".into(), long_cmd.to_string()],
-            parsed: Vec::new(),
-            output: None,
-            source: ExecCommandSource::Agent,
-            start_time: Some(Instant::now()),
-            duration: None,
-            interaction_input: None,
-        },
-        /*animations_enabled*/ true,
-    );
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
+        // Build an exec cell that completes (so it renders as "Ran") with a
+        // command long enough that it must render on its own line under the
+        // header, and include a couple of stderr lines to verify the output
+        // block prefixes and wrapping.
+        let call_id = "c_wrap_err".to_string();
+        let long_cmd =
+            "echo this_is_a_very_long_single_token_that_will_wrap_across_the_available_width";
+        let mut cell = ExecCell::new(
+            ExecCall {
+                call_id: call_id.clone(),
+                command: vec!["bash".into(), "-lc".into(), long_cmd.to_string()],
+                parsed: Vec::new(),
+                output: None,
+                source: ExecCommandSource::Agent,
+                start_time: Some(Instant::now()),
+                duration: None,
+                interaction_input: None,
+            },
+            /*animations_enabled*/ true,
+        );
 
-    let stderr = "error: first line on stderr\nerror: second line on stderr".to_string();
-    cell.complete_call(
-        &call_id,
-        CommandOutput::new(/*exit_code*/ 1, stderr),
-        Duration::from_millis(5),
-    );
+        let stderr = "error: first line on stderr\nerror: second line on stderr".to_string();
+        cell.complete_call(
+            &call_id,
+            CommandOutput::new(/*exit_code*/ 1, stderr),
+            Duration::from_millis(5),
+        );
 
-    // Narrow width to force the command to render under the header line.
-    let width: u16 = 28;
-    let rendered = cell
-        .display_lines(width)
-        .iter()
-        .map(|l| {
-            l.spans
-                .iter()
-                .map(|s| s.content.as_ref())
-                .collect::<String>()
-        })
-        .collect::<Vec<_>>()
-        .join("\n");
-    insta::assert_snapshot!(rendered);
+        // Narrow width to force the command to render under the header line.
+        let width: u16 = 28;
+        let rendered = cell
+            .display_lines(width)
+            .iter()
+            .map(|l| {
+                l.spans
+                    .iter()
+                    .map(|s| s.content.as_ref())
+                    .collect::<String>()
+            })
+            .collect::<Vec<_>>()
+            .join("\n");
+        insta::assert_snapshot!(rendered);
+    });
 }
 #[test]
 fn user_history_cell_wraps_and_prefixes_each_line_snapshot() {
-    let msg = "_count_r\x1b[13;2:3uows";
-    let cell = UserHistoryCell {
-        spoken: false,
-        message: msg.to_string(),
-        text_elements: Vec::new(),
-        local_image_paths: Vec::new(),
-        remote_image_urls: Vec::new(),
-    };
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
+        let msg = "_count_r\x1b[13;2:3uows";
+        let cell = UserHistoryCell {
+            spoken: false,
+            message: msg.to_string(),
+            text_elements: Vec::new(),
+            local_image_paths: Vec::new(),
+            remote_image_urls: Vec::new(),
+        };
 
-    // Small width to force wrapping more clearly. Effective wrap width is width-2 due to the ▌ prefix and trailing space.
-    let width: u16 = 12;
-    let lines = cell.display_lines(width);
-    let rendered = render_lines(&lines).join("\n");
+        // Small width to force wrapping more clearly. Effective wrap width is width-2 due to the ▌ prefix and trailing space.
+        let width: u16 = 12;
+        let lines = cell.display_lines(width);
+        let rendered = render_lines(&lines).join("\n");
 
-    assert_eq!(render_lines(&cell.raw_lines()), ["_count_rows"]);
-    insta::assert_snapshot!(rendered);
+        assert_eq!(render_lines(&cell.raw_lines()), ["_count_rows"]);
+        insta::assert_snapshot!(rendered);
+    });
 }
 
 #[test]
 fn user_history_cell_wraps_long_urls_inside_the_message_gutter() {
-    let url = "https://example.test/forwarded/threads/10930?page=1&search=&filter=all&queue=customer_support_unprocessed&sort=latest_desc&forwardedScope=all";
-    let message = format!(
-        "Skip tests.\n\nI just reprocessed\n{url}\ncan you check where we are with it?\n\n[Image #1]"
-    );
-    let image_start = message.find("[Image #1]").unwrap();
-    let cell = UserHistoryCell {
-        spoken: false,
-        message,
-        text_elements: vec![TextElement::new(
-            (image_start..image_start + "[Image #1]".len()).into(),
-            Some("[Image #1]".to_string()),
-        )],
-        local_image_paths: Vec::new(),
-        remote_image_urls: Vec::new(),
-    };
-    let width = 64;
-    let hyperlink_lines = cell.display_hyperlink_lines(width);
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
+        let url = "https://example.test/forwarded/threads/10930?page=1&search=&filter=all&queue=customer_support_unprocessed&sort=latest_desc&forwardedScope=all";
+        let message = format!(
+            "Skip tests.\n\nI just reprocessed\n{url}\ncan you check where we are with it?\n\n[Image #1]"
+        );
+        let image_start = message.find("[Image #1]").unwrap();
+        let cell = UserHistoryCell {
+            spoken: false,
+            message,
+            text_elements: vec![TextElement::new(
+                (image_start..image_start + "[Image #1]".len()).into(),
+                Some("[Image #1]".to_string()),
+            )],
+            local_image_paths: Vec::new(),
+            remote_image_urls: Vec::new(),
+        };
+        let width = 64;
+        let hyperlink_lines = cell.display_hyperlink_lines(width);
 
-    assert!(
-        hyperlink_lines
-            .iter()
-            .all(|line| line.width() <= usize::from(width)),
-        "every user-message row must fit its viewport: {hyperlink_lines:?}"
-    );
-
-    let linked_rows = hyperlink_lines
-        .iter()
-        .filter(|line| !line.hyperlinks.is_empty())
-        .collect::<Vec<_>>();
-    assert!(linked_rows.len() > 1, "expected the long URL to wrap");
-    assert!(
-        linked_rows.iter().all(|line| {
-            line.line
-                .spans
-                .first()
-                .is_some_and(|span| span.content == "│ ")
-        }),
-        "wrapped URL rows must retain the user-message gutter: {linked_rows:?}"
-    );
-    assert!(
-        linked_rows.iter().all(|line| {
-            line.hyperlinks
+        assert!(
+            hyperlink_lines
                 .iter()
-                .all(|hyperlink| hyperlink.destination == url)
-        }),
-        "each wrapped URL fragment must preserve the complete clickable destination"
-    );
+                .all(|line| line.width() <= usize::from(width)),
+            "every user-message row must fit its viewport: {hyperlink_lines:?}"
+        );
 
-    insta::assert_snapshot!(
-        "user_history_cell_wraps_long_urls_inside_the_message_gutter",
-        render_lines(&cell.display_lines(width)).join("\n")
-    );
+        let linked_rows = hyperlink_lines
+            .iter()
+            .filter(|line| !line.hyperlinks.is_empty())
+            .collect::<Vec<_>>();
+        assert!(linked_rows.len() > 1, "expected the long URL to wrap");
+        assert!(
+            linked_rows.iter().all(|line| {
+                line.line
+                    .spans
+                    .first()
+                    .is_some_and(|span| span.content == "│ ")
+            }),
+            "wrapped URL rows must retain the user-message gutter: {linked_rows:?}"
+        );
+        assert!(
+            linked_rows.iter().all(|line| {
+                line.hyperlinks
+                    .iter()
+                    .all(|hyperlink| hyperlink.destination == url)
+            }),
+            "each wrapped URL fragment must preserve the complete clickable destination"
+        );
+
+        insta::assert_snapshot!(
+            "user_history_cell_wraps_long_urls_inside_the_message_gutter",
+            render_lines(&cell.display_lines(width)).join("\n")
+        );
+    });
 }
 
 #[test]
 fn user_history_cell_renders_remote_image_urls() {
-    let cell = UserHistoryCell {
-        spoken: false,
-        message: "describe these".to_string(),
-        text_elements: Vec::new(),
-        local_image_paths: Vec::new(),
-        remote_image_urls: vec!["https://example.com/example.png".to_string()],
-    };
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
+        let cell = UserHistoryCell {
+            spoken: false,
+            message: "describe these".to_string(),
+            text_elements: Vec::new(),
+            local_image_paths: Vec::new(),
+            remote_image_urls: vec!["https://example.com/example.png".to_string()],
+        };
 
-    let rendered = render_lines(&cell.display_lines(/*width*/ 80)).join("\n");
+        let rendered = render_lines(&cell.display_lines(/*width*/ 80)).join("\n");
 
-    assert!(rendered.contains("[Image #1]"));
-    assert!(rendered.contains("describe these"));
-    insta::assert_snapshot!(rendered);
+        assert!(rendered.contains("[Image #1]"));
+        assert!(rendered.contains("describe these"));
+        insta::assert_snapshot!(rendered);
+    });
 }
 
 #[test]
@@ -2533,22 +2628,24 @@ fn user_history_cell_summarizes_inline_data_urls() {
 
 #[test]
 fn user_history_cell_numbers_multiple_remote_images() {
-    let cell = UserHistoryCell {
-        spoken: false,
-        message: "describe both".to_string(),
-        text_elements: Vec::new(),
-        local_image_paths: Vec::new(),
-        remote_image_urls: vec![
-            "https://example.com/one.png".to_string(),
-            "https://example.com/two.png".to_string(),
-        ],
-    };
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
+        let cell = UserHistoryCell {
+            spoken: false,
+            message: "describe both".to_string(),
+            text_elements: Vec::new(),
+            local_image_paths: Vec::new(),
+            remote_image_urls: vec![
+                "https://example.com/one.png".to_string(),
+                "https://example.com/two.png".to_string(),
+            ],
+        };
 
-    let rendered = render_lines(&cell.display_lines(/*width*/ 80)).join("\n");
+        let rendered = render_lines(&cell.display_lines(/*width*/ 80)).join("\n");
 
-    assert!(rendered.contains("[Image #1]"));
-    assert!(rendered.contains("[Image #2]"));
-    insta::assert_snapshot!(rendered);
+        assert!(rendered.contains("[Image #1]"));
+        assert!(rendered.contains("[Image #2]"));
+        insta::assert_snapshot!(rendered);
+    });
 }
 
 #[test]
@@ -2624,56 +2721,58 @@ fn user_history_cell_trims_trailing_blank_message_lines_with_text_elements() {
 
 #[test]
 fn render_uses_wrapping_for_long_url_like_line() {
-    let url = "https://example.test/api/v1/projects/alpha-team/releases/2026-02-17/builds/1234567890/artifacts/reports/performance/summary/detail/with/a/very/long/path/that/keeps/going/for/testing/purposes-only-and-does/not/need/to/resolve/index.html?session_id=abc123def456ghi789jkl012mno345pqr678stu901vwx234yz";
-    let cell: Box<dyn HistoryCell> = Box::new(UserHistoryCell {
-        spoken: false,
-        message: url.to_string(),
-        text_elements: Vec::new(),
-        local_image_paths: Vec::new(),
-        remote_image_urls: Vec::new(),
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
+        let url = "https://example.test/api/v1/projects/alpha-team/releases/2026-02-17/builds/1234567890/artifacts/reports/performance/summary/detail/with/a/very/long/path/that/keeps/going/for/testing/purposes-only-and-does/not/need/to/resolve/index.html?session_id=abc123def456ghi789jkl012mno345pqr678stu901vwx234yz";
+        let cell: Box<dyn HistoryCell> = Box::new(UserHistoryCell {
+            spoken: false,
+            message: url.to_string(),
+            text_elements: Vec::new(),
+            local_image_paths: Vec::new(),
+            remote_image_urls: Vec::new(),
+        });
+
+        let width: u16 = 52;
+        let height = cell.desired_height(width);
+        assert!(
+            height > 1,
+            "expected wrapped height for long URL, got {height}"
+        );
+
+        let area = Rect::new(0, 0, width, height);
+        let mut buf = ratatui::buffer::Buffer::empty(area);
+        cell.render(area, &mut buf);
+
+        let rendered = (0..area.height)
+            .map(|y| {
+                (0..area.width)
+                    .map(|x| {
+                        let symbol = crate::terminal_hyperlinks::strip_osc8(buf[(x, y)].symbol());
+                        if symbol.is_empty() {
+                            ' '
+                        } else {
+                            symbol.chars().next().unwrap_or(' ')
+                        }
+                    })
+                    .collect::<String>()
+            })
+            .collect::<Vec<_>>();
+        let rendered_blob = rendered.join("\n");
+        let rendered_url = rendered
+            .iter()
+            .filter_map(|line| line.trim_end().strip_prefix("│ ").map(str::trim))
+            .collect::<String>();
+
+        assert_eq!(
+            rendered_url, url,
+            "wrapped URL must preserve every character"
+        );
+
+        let non_empty_rows = rendered.iter().filter(|row| !row.trim().is_empty()).count() as u16;
+        assert!(
+            non_empty_rows > 3,
+            "expected long URL to span multiple visible rows, got:\n{rendered_blob}"
+        );
     });
-
-    let width: u16 = 52;
-    let height = cell.desired_height(width);
-    assert!(
-        height > 1,
-        "expected wrapped height for long URL, got {height}"
-    );
-
-    let area = Rect::new(0, 0, width, height);
-    let mut buf = ratatui::buffer::Buffer::empty(area);
-    cell.render(area, &mut buf);
-
-    let rendered = (0..area.height)
-        .map(|y| {
-            (0..area.width)
-                .map(|x| {
-                    let symbol = crate::terminal_hyperlinks::strip_osc8(buf[(x, y)].symbol());
-                    if symbol.is_empty() {
-                        ' '
-                    } else {
-                        symbol.chars().next().unwrap_or(' ')
-                    }
-                })
-                .collect::<String>()
-        })
-        .collect::<Vec<_>>();
-    let rendered_blob = rendered.join("\n");
-    let rendered_url = rendered
-        .iter()
-        .filter_map(|line| line.trim_end().strip_prefix("│ ").map(str::trim))
-        .collect::<String>();
-
-    assert_eq!(
-        rendered_url, url,
-        "wrapped URL must preserve every character"
-    );
-
-    let non_empty_rows = rendered.iter().filter(|row| !row.trim().is_empty()).count() as u16;
-    assert!(
-        non_empty_rows > 3,
-        "expected long URL to span multiple visible rows, got:\n{rendered_blob}"
-    );
 }
 
 #[test]
@@ -2766,72 +2865,78 @@ fn plan_update_does_not_split_url_like_tokens_in_note_or_step() {
 
 #[test]
 fn reasoning_summary_block() {
-    let cell = new_reasoning_summary_block(
-        vec!["**High level reasoning**\n\nDetailed reasoning goes here.".to_string()],
-        &test_cwd(),
-    );
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
+        let cell = new_reasoning_summary_block(
+            vec!["**High level reasoning**\n\nDetailed reasoning goes here.".to_string()],
+            &test_cwd(),
+        );
 
-    let rendered_display = render_lines(&cell.display_lines(/*width*/ 80));
-    assert_eq!(rendered_display, Vec::<String>::new());
+        let rendered_display = render_lines(&cell.display_lines(/*width*/ 80));
+        assert_eq!(rendered_display, Vec::<String>::new());
 
-    let rendered_transcript = render_transcript(cell.as_ref());
-    assert_eq!(rendered_transcript, vec!["┊ Detailed reasoning goes here."]);
+        let rendered_transcript = render_transcript(cell.as_ref());
+        assert_eq!(rendered_transcript, vec!["┊ Detailed reasoning goes here."]);
+    });
 }
 
 #[test]
 fn reasoning_summary_height_matches_wrapped_rendering_for_url_like_content() {
-    let summary = "example.test/api/v1/projects/alpha-team/releases/2026-02-17/builds/1234567890/artifacts/reports/performance/summary/detail/with/a/very/long/path/that/keeps/going";
-    let cell: Box<dyn HistoryCell> = Box::new(ReasoningSummaryCell::new(
-        "High level reasoning".to_string(),
-        summary.to_string(),
-        &test_cwd(),
-        /*transcript_only*/ false,
-    ));
-    let width: u16 = 24;
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
+        let summary = "example.test/api/v1/projects/alpha-team/releases/2026-02-17/builds/1234567890/artifacts/reports/performance/summary/detail/with/a/very/long/path/that/keeps/going";
+        let cell: Box<dyn HistoryCell> = Box::new(ReasoningSummaryCell::new(
+            "High level reasoning".to_string(),
+            summary.to_string(),
+            &test_cwd(),
+            /*transcript_only*/ false,
+        ));
+        let width: u16 = 24;
 
-    let logical_height = cell.display_lines(width).len() as u16;
-    let wrapped_height = cell.desired_height(width);
-    let expected_wrapped_height = Paragraph::new(Text::from(cell.display_lines(width)))
-        .wrap(Wrap { trim: false })
-        .line_count(width) as u16;
-    assert_eq!(wrapped_height, expected_wrapped_height);
-    assert!(
-        wrapped_height >= logical_height,
-        "expected wrapped height to be at least logical line count ({logical_height}), got {wrapped_height}"
-    );
+        let logical_height = cell.display_lines(width).len() as u16;
+        let wrapped_height = cell.desired_height(width);
+        let expected_wrapped_height = Paragraph::new(Text::from(cell.display_lines(width)))
+            .wrap(Wrap { trim: false })
+            .line_count(width) as u16;
+        assert_eq!(wrapped_height, expected_wrapped_height);
+        assert!(
+            wrapped_height >= logical_height,
+            "expected wrapped height to be at least logical line count ({logical_height}), got {wrapped_height}"
+        );
 
-    let wrapped_transcript_height = cell.desired_transcript_height(width);
-    assert_eq!(wrapped_transcript_height, wrapped_height);
+        let wrapped_transcript_height = cell.desired_transcript_height(width);
+        assert_eq!(wrapped_transcript_height, wrapped_height);
 
-    let area = Rect::new(0, 0, width, wrapped_height);
-    let mut buf = ratatui::buffer::Buffer::empty(area);
-    cell.render(area, &mut buf);
+        let area = Rect::new(0, 0, width, wrapped_height);
+        let mut buf = ratatui::buffer::Buffer::empty(area);
+        cell.render(area, &mut buf);
 
-    let first_row = (0..area.width)
-        .map(|x| {
-            let symbol = buf[(x, 0)].symbol();
-            if symbol.is_empty() {
-                ' '
-            } else {
-                symbol.chars().next().unwrap_or(' ')
-            }
-        })
-        .collect::<String>();
-    assert!(
-        first_row.contains("┊"),
-        "expected first rendered row to keep summary rail visible, got: {first_row:?}"
-    );
+        let first_row = (0..area.width)
+            .map(|x| {
+                let symbol = buf[(x, 0)].symbol();
+                if symbol.is_empty() {
+                    ' '
+                } else {
+                    symbol.chars().next().unwrap_or(' ')
+                }
+            })
+            .collect::<String>();
+        assert!(
+            first_row.contains("┊"),
+            "expected first rendered row to keep summary rail visible, got: {first_row:?}"
+        );
+    });
 }
 
 #[test]
 fn reasoning_summary_block_returns_reasoning_cell_when_feature_disabled() {
-    let cell = new_reasoning_summary_block(
-        vec!["Detailed reasoning goes here.".to_string()],
-        &test_cwd(),
-    );
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
+        let cell = new_reasoning_summary_block(
+            vec!["Detailed reasoning goes here.".to_string()],
+            &test_cwd(),
+        );
 
-    let rendered = render_transcript(cell.as_ref());
-    assert_eq!(rendered, vec!["┊ Detailed reasoning goes here."]);
+        let rendered = render_transcript(cell.as_ref());
+        assert_eq!(rendered, vec!["┊ Detailed reasoning goes here."]);
+    });
 }
 
 #[tokio::test]
@@ -2849,63 +2954,71 @@ async fn reasoning_summary_block_respects_config_overrides() {
 
 #[test]
 fn reasoning_summary_block_falls_back_when_header_is_missing() {
-    let cell = new_reasoning_summary_block(
-        vec!["**High level reasoning without closing".to_string()],
-        &test_cwd(),
-    );
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
+        let cell = new_reasoning_summary_block(
+            vec!["**High level reasoning without closing".to_string()],
+            &test_cwd(),
+        );
 
-    let rendered = render_transcript(cell.as_ref());
-    assert_eq!(rendered, vec!["┊ **High level reasoning without closing"]);
+        let rendered = render_transcript(cell.as_ref());
+        assert_eq!(rendered, vec!["┊ **High level reasoning without closing"]);
+    });
 }
 
 #[test]
 fn reasoning_summary_block_falls_back_when_summary_is_missing() {
-    let cell = new_reasoning_summary_block(
-        vec!["**High level reasoning without closing**".to_string()],
-        &test_cwd(),
-    );
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
+        let cell = new_reasoning_summary_block(
+            vec!["**High level reasoning without closing**".to_string()],
+            &test_cwd(),
+        );
 
-    let rendered = render_transcript(cell.as_ref());
-    assert_eq!(rendered, vec!["┊ High level reasoning without closing"]);
+        let rendered = render_transcript(cell.as_ref());
+        assert_eq!(rendered, vec!["┊ High level reasoning without closing"]);
 
-    let cell = new_reasoning_summary_block(
-        vec!["**High level reasoning without closing**\n\n  ".to_string()],
-        &test_cwd(),
-    );
+        let cell = new_reasoning_summary_block(
+            vec!["**High level reasoning without closing**\n\n  ".to_string()],
+            &test_cwd(),
+        );
 
-    let rendered = render_transcript(cell.as_ref());
-    assert_eq!(rendered, vec!["┊ High level reasoning without closing"]);
+        let rendered = render_transcript(cell.as_ref());
+        assert_eq!(rendered, vec!["┊ High level reasoning without closing"]);
+    });
 }
 
 #[test]
 fn reasoning_summary_block_keeps_title_only_summary_in_expanded_transcript() {
-    let cell = new_reasoning_summary_block(
-        vec!["**Confirming backend JSONL source**".to_string()],
-        &test_cwd(),
-    );
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
+        let cell = new_reasoning_summary_block(
+            vec!["**Confirming backend JSONL source**".to_string()],
+            &test_cwd(),
+        );
 
-    let rendered_display = render_lines(&cell.display_lines(/*width*/ 80));
-    assert_eq!(rendered_display, Vec::<String>::new());
+        let rendered_display = render_lines(&cell.display_lines(/*width*/ 80));
+        assert_eq!(rendered_display, Vec::<String>::new());
 
-    let rendered_transcript = render_transcript(cell.as_ref());
-    assert_eq!(
-        rendered_transcript,
-        vec!["┊ Confirming backend JSONL source"]
-    );
+        let rendered_transcript = render_transcript(cell.as_ref());
+        assert_eq!(
+            rendered_transcript,
+            vec!["┊ Confirming backend JSONL source"]
+        );
+    });
 }
 
 #[test]
 fn reasoning_summary_block_splits_header_and_summary_when_present() {
-    let cell = new_reasoning_summary_block(
-        vec!["**High level plan**\n\nWe should fix the bug next.".to_string()],
-        &test_cwd(),
-    );
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
+        let cell = new_reasoning_summary_block(
+            vec!["**High level plan**\n\nWe should fix the bug next.".to_string()],
+            &test_cwd(),
+        );
 
-    let rendered_display = render_lines(&cell.display_lines(/*width*/ 80));
-    assert_eq!(rendered_display, Vec::<String>::new());
+        let rendered_display = render_lines(&cell.display_lines(/*width*/ 80));
+        assert_eq!(rendered_display, Vec::<String>::new());
 
-    let rendered_transcript = render_transcript(cell.as_ref());
-    assert_eq!(rendered_transcript, vec!["┊ We should fix the bug next."]);
+        let rendered_transcript = render_transcript(cell.as_ref());
+        assert_eq!(rendered_transcript, vec!["┊ We should fix the bug next."]);
+    });
 }
 
 #[test]
@@ -2927,79 +3040,87 @@ fn reasoning_summary_block_hides_empty_html_comment_parts() {
 
 #[test]
 fn reasoning_summary_block_preserves_bold_content_after_empty_html_comment_part() {
-    let cell = new_reasoning_summary_block(
-        vec![
-            "**Status**\n\n<!-- -->".to_string(),
-            "**Important conclusion**".to_string(),
-            "<!-- -->".to_string(),
-        ],
-        &test_cwd(),
-    );
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
+        let cell = new_reasoning_summary_block(
+            vec![
+                "**Status**\n\n<!-- -->".to_string(),
+                "**Important conclusion**".to_string(),
+                "<!-- -->".to_string(),
+            ],
+            &test_cwd(),
+        );
 
-    let rendered_display = render_lines(&cell.display_lines(/*width*/ 80));
-    assert_eq!(rendered_display, Vec::<String>::new());
+        let rendered_display = render_lines(&cell.display_lines(/*width*/ 80));
+        assert_eq!(rendered_display, Vec::<String>::new());
 
-    let rendered_transcript = render_transcript(cell.as_ref());
-    assert_eq!(rendered_transcript, vec!["┊ Important conclusion"]);
+        let rendered_transcript = render_transcript(cell.as_ref());
+        assert_eq!(rendered_transcript, vec!["┊ Important conclusion"]);
 
-    let cell = new_reasoning_summary_block(
-        vec![
-            "**Status**\n\n<!-- -->".to_string(),
-            "**Result:** keep **this**".to_string(),
-        ],
-        &test_cwd(),
-    );
+        let cell = new_reasoning_summary_block(
+            vec![
+                "**Status**\n\n<!-- -->".to_string(),
+                "**Result:** keep **this**".to_string(),
+            ],
+            &test_cwd(),
+        );
 
-    let rendered_transcript = render_transcript(cell.as_ref());
-    assert_eq!(rendered_transcript, vec!["┊ Result: keep this"]);
+        let rendered_transcript = render_transcript(cell.as_ref());
+        assert_eq!(rendered_transcript, vec!["┊ Result: keep this"]);
+    });
 }
 
 #[test]
 fn reasoning_summary_block_strips_header_after_leading_empty_part() {
-    let cell = new_reasoning_summary_block(
-        vec![
-            "**Status**\n\n<!-- -->".to_string(),
-            "**Checking tests**\n\nTests passed".to_string(),
-        ],
-        &test_cwd(),
-    );
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
+        let cell = new_reasoning_summary_block(
+            vec![
+                "**Status**\n\n<!-- -->".to_string(),
+                "**Checking tests**\n\nTests passed".to_string(),
+            ],
+            &test_cwd(),
+        );
 
-    let rendered_display = render_lines(&cell.display_lines(/*width*/ 80));
-    assert_eq!(rendered_display, Vec::<String>::new());
+        let rendered_display = render_lines(&cell.display_lines(/*width*/ 80));
+        assert_eq!(rendered_display, Vec::<String>::new());
 
-    let rendered_transcript = render_transcript(cell.as_ref());
-    assert_eq!(rendered_transcript, vec!["┊ Tests passed"]);
+        let rendered_transcript = render_transcript(cell.as_ref());
+        assert_eq!(rendered_transcript, vec!["┊ Tests passed"]);
+    });
 }
 
 #[test]
 fn reasoning_summary_block_drops_empty_part_after_real_content() {
-    let cell = new_reasoning_summary_block(
-        vec![
-            "**Plan**\n\ndone".to_string(),
-            "**Checking tests**\n\n<!-- -->".to_string(),
-        ],
-        &test_cwd(),
-    );
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
+        let cell = new_reasoning_summary_block(
+            vec![
+                "**Plan**\n\ndone".to_string(),
+                "**Checking tests**\n\n<!-- -->".to_string(),
+            ],
+            &test_cwd(),
+        );
 
-    let rendered_display = render_lines(&cell.display_lines(/*width*/ 80));
-    assert_eq!(rendered_display, Vec::<String>::new());
+        let rendered_display = render_lines(&cell.display_lines(/*width*/ 80));
+        assert_eq!(rendered_display, Vec::<String>::new());
 
-    let rendered_transcript = render_transcript(cell.as_ref());
-    assert_eq!(rendered_transcript, vec!["┊ done"]);
+        let rendered_transcript = render_transcript(cell.as_ref());
+        assert_eq!(rendered_transcript, vec!["┊ done"]);
+    });
 }
 
 #[test]
 fn reasoning_summary_block_preserves_literal_html_comment() {
-    let cell = new_reasoning_summary_block(
-        vec!["**Plan**\n\nUse `<!-- -->` in JSX.".to_string()],
-        &test_cwd(),
-    );
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
+        let cell = new_reasoning_summary_block(
+            vec!["**Plan**\n\nUse `<!-- -->` in JSX.".to_string()],
+            &test_cwd(),
+        );
 
-    let rendered_display = render_lines(&cell.display_lines(/*width*/ 80));
-    assert_eq!(rendered_display, Vec::<String>::new());
+        let rendered_display = render_lines(&cell.display_lines(/*width*/ 80));
+        assert_eq!(rendered_display, Vec::<String>::new());
 
-    let rendered_transcript = render_transcript(cell.as_ref());
-    assert_eq!(rendered_transcript, vec!["┊ Use <!-- --> in JSX."]);
+        let rendered_transcript = render_transcript(cell.as_ref());
+        assert_eq!(rendered_transcript, vec!["┊ Use <!-- --> in JSX."]);
+    });
 }
 
 #[test]
@@ -3021,61 +3142,67 @@ fn deprecation_notice_renders_summary_with_details() {
 
 #[test]
 fn agent_markdown_cell_renders_source_at_different_widths() {
-    let source =
-        "A long agent message that should wrap differently when the terminal width changes.\n";
-    let cell = AgentMarkdownCell::new(source.to_string(), &test_cwd());
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
+        let source =
+            "A long agent message that should wrap differently when the terminal width changes.\n";
+        let cell = AgentMarkdownCell::new(source.to_string(), &test_cwd());
 
-    let lines_80 = render_lines(&cell.display_lines(/*width*/ 80));
-    assert!(
-        lines_80.get(1).is_some_and(|line| line == "CODEX"),
-        "assistant response should start with a CODEX label: {lines_80:?}"
-    );
+        let lines_80 = render_lines(&cell.display_lines(/*width*/ 80));
+        assert!(
+            lines_80.get(1).is_some_and(|line| line == "CODEX"),
+            "assistant response should start with a CODEX label: {lines_80:?}"
+        );
 
-    let lines_32 = render_lines(&cell.display_lines(/*width*/ 32));
-    assert!(
-        lines_32.len() > lines_80.len(),
-        "narrower width should produce more wrapped lines: {lines_32:?}",
-    );
+        let lines_32 = render_lines(&cell.display_lines(/*width*/ 32));
+        assert!(
+            lines_32.len() > lines_80.len(),
+            "narrower width should produce more wrapped lines: {lines_32:?}",
+        );
+    });
 }
 
 #[test]
 fn agent_markdown_cell_does_not_split_words_after_inline_markdown() {
-    let source = "This paragraph is intentionally long so you can inspect soft wrapping behavior while also checking inline formatting like **bold text**, *italic text*, ***bold italic text***, `inline code`, ~~strikethrough~~, a [link to example.com](https://example.com), and a literal path like [README.md](/Users/felipe.coury/code/codex.fcoury-worktrees/README.md) without introducing manual line breaks.\n";
-    let cell = AgentMarkdownCell::new(source.to_string(), &test_cwd());
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
+        let source = "This paragraph is intentionally long so you can inspect soft wrapping behavior while also checking inline formatting like **bold text**, *italic text*, ***bold italic text***, `inline code`, ~~strikethrough~~, a [link to example.com](https://example.com), and a literal path like [README.md](/Users/felipe.coury/code/codex.fcoury-worktrees/README.md) without introducing manual line breaks.\n";
+        let cell = AgentMarkdownCell::new(source.to_string(), &test_cwd());
 
-    let lines = render_lines(&cell.display_lines(/*width*/ 190));
-    assert!(
-        lines[3].ends_with("inline code,"),
-        "expected wrapping to stop before 'strikethrough': {lines:?}",
-    );
-    assert!(
-        lines[4].starts_with("  strikethrough,"),
-        "expected the next line to resume with the full word: {lines:?}",
-    );
+        let lines = render_lines(&cell.display_lines(/*width*/ 190));
+        assert!(
+            lines[3].ends_with("inline code,"),
+            "expected wrapping to stop before 'strikethrough': {lines:?}",
+        );
+        assert!(
+            lines[4].starts_with("  strikethrough,"),
+            "expected the next line to resume with the full word: {lines:?}",
+        );
+    });
 }
 
 #[test]
 fn streamed_agent_list_paragraph_preserves_item_indent_when_wrapped() {
-    let cell = AgentMessageCell::new(
-        vec![
-            Line::from("1. Correctness issue: server tool-search completions are rejected."),
-            Line::default(),
-            Line::from(
-                "   In next_prompt_suggestion.rs, ToolSearchCall records its call id, but a paired output is ignored and suppresses suggestions.",
-            ),
-        ],
-        /*is_first_line*/ true,
-    );
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
+        let cell = AgentMessageCell::new(
+            vec![
+                Line::from("1. Correctness issue: server tool-search completions are rejected."),
+                Line::default(),
+                Line::from(
+                    "   In next_prompt_suggestion.rs, ToolSearchCall records its call id, but a paired output is ignored and suppresses suggestions.",
+                ),
+            ],
+            /*is_first_line*/ true,
+        );
 
-    let lines = render_lines(&cell.display_lines(/*width*/ 64));
-    assert!(
-        lines
-            .iter()
-            .filter(|line| line.contains("paired output") || line.contains("suggestions."))
-            .all(|line| line.starts_with("     ")),
-        "expected all wrapped paragraph rows to retain the assistant gutter and list indent: {lines:?}",
-    );
-    insta::assert_snapshot!(lines.join("\n"));
+        let lines = render_lines(&cell.display_lines(/*width*/ 64));
+        assert!(
+            lines
+                .iter()
+                .filter(|line| line.contains("paired output") || line.contains("suggestions."))
+                .all(|line| line.starts_with("     ")),
+            "expected all wrapped paragraph rows to retain the assistant gutter and list indent: {lines:?}",
+        );
+        insta::assert_snapshot!(lines.join("\n"));
+    });
 }
 
 #[test]

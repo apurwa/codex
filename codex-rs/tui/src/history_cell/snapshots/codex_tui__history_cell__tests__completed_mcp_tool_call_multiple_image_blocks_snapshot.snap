@@ -1,9 +1,9 @@
 ---
 source: tui/src/history_cell/tests.rs
-assertion_line: 1668
+assertion_line: 1735
 expression: rendered
 ---
 
 CODEX · Tool Calls
 
-┊ ✓ image.generate · 25ms · Ctrl+T details
+┊ ✓ image.generate
