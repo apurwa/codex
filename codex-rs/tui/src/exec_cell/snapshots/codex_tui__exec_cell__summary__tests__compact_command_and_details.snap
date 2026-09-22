@@ -1,13 +1,14 @@
 ---
 source: tui/src/exec_cell/summary_tests.rs
-assertion_line: 52
-expression: "format!(\"{}\\n\\n{full}\", summary[2])"
+assertion_line: 105
+expression: "format!(\"{compact}\\n\\n{full}\")"
 ---
-┊ ✓ printf 'first\nsecond' · 2.00s · 2 lines · Ctrl+T details
+┊ ✓ printf 'first\nsecond'
 
 
 CODEX · Tool Calls
-$ printf 'first\nsecond'
-first
-second
-✓ • 2.00s
+
+┊ $ printf 'first\nsecond'
+┊ first
+┊ second
+┊ ✓ • 2.00s

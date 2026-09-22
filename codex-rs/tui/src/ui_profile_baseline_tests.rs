@@ -121,8 +121,12 @@ fn upstream_completed_mcp_call_has_no_compact_summary() {
         rendered(&completed_mcp().display_lines(40))
     });
     assert!(
-        codex_dev.iter().any(|line| line.contains("Ctrl+T details")),
+        codex_dev.iter().any(|line| line.contains("node_repl.js")),
         "codex-dev lost its compact MCP summary: {codex_dev:?}"
+    );
+    assert!(
+        !codex_dev.iter().any(|line| line.contains("Ctrl+T details")),
+        "codex-dev compact MCP summary still exposes the metadata hint: {codex_dev:?}"
     );
 }
 

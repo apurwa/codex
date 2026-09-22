@@ -138,14 +138,10 @@ impl McpToolCallCell {
                 crate::ui_profile::ui_profile(),
                 crate::ui_profile::UiProfile::CodexDev
             )
-            && let Some(duration) = self.duration
+            && self.duration.is_some()
         {
             let title = format!("{}.{}", self.invocation.server, self.invocation.tool);
-            let hint = format!(
-                " · {} · Ctrl+T details",
-                codex_utils_elapsed::format_duration(duration)
-            );
-            let title_width = usize::from(width).saturating_sub(2 + hint.chars().count());
+            let title_width = usize::from(width).saturating_sub(2);
             let mut line = Line::from(crate::style::success_marker_with_upstream(
                 "✓ ",
                 "✓ ".green().bold(),
@@ -157,7 +153,6 @@ impl McpToolCallCell {
                 )
                 .spans,
             );
-            line.push_span(hint);
             return vec![
                 crate::line_truncation::truncate_line_with_ellipsis_if_overflow(
                     line,

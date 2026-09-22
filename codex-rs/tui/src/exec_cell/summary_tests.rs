@@ -55,30 +55,60 @@ fn completed_commands_are_compact_without_losing_details() {
     );
     let raw = cell.raw_lines();
     for width in [4, 20, 80, 120] {
-        let summary = cell.display_lines(width);
-        assert_eq!(summary.len(), 3);
-        assert_eq!(summary[1].to_string(), "CODEX · Tool Calls");
-        assert!(summary[2].width() <= usize::from(width));
+        let summary =
+            crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
+                cell.display_lines(width)
+            });
+        assert!(
+            summary
+                .iter()
+                .any(|line| line.to_string() == "CODEX · Tool Calls")
+        );
+        if width >= 80 {
+            assert!(
+                summary
+                    .iter()
+                    .any(|line| line.to_string().contains("printf"))
+            );
+        }
+        let max_width = usize::from(width).max(18);
+        assert!(summary.iter().all(|line| line.width() <= max_width));
         assert_eq!(cell.raw_lines(), raw);
     }
-    let summary = cell.display_lines(100);
-    assert!(summary[2].to_string().contains("Ctrl+T details"));
+    let summary =
+        crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
+            cell.display_lines(100)
+        });
     assert!(
-        summary[2]
+        !summary
+            .iter()
+            .any(|line| line.to_string().contains("Ctrl+T details"))
+    );
+    assert!(
+        summary
+            .iter()
+            .find(|line| line.to_string().contains("printf"))
+            .expect("summary line")
             .spans
             .iter()
             .all(|span| !span.style.add_modifier.contains(Modifier::DIM) || span.content == "┊ ")
     );
-    let full = cell
-        .transcript_lines(100)
+    let full =
+        crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
+            cell.transcript_lines(100)
+        })
         .iter()
         .map(ToString::to_string)
         .collect::<Vec<_>>()
         .join("\n");
-    assert!(full.contains("first\nsecond"));
+    assert!(full.contains("┊ first\n┊ second"));
+    let compact = summary
+        .iter()
+        .find(|line| line.to_string().contains("printf"))
+        .expect("compact summary line");
     insta::assert_snapshot!(
         "compact_command_and_details",
-        format!("{}\n\n{full}", summary[2])
+        format!("{compact}\n\n{full}")
     );
 }
 

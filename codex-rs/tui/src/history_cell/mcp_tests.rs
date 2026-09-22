@@ -315,25 +315,27 @@ fn completed_success_is_compact_but_transcript_keeps_details() {
         ])),
     );
 
+    let display =
+        crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
+            cell.display_lines(/* width */ 100)
+        });
     assert_eq!(
-        cell.display_lines(/* width */ 100)
-            .iter()
-            .map(ToString::to_string)
-            .collect::<Vec<_>>(),
-        vec![
-            "",
-            "CODEX · Tool Calls",
-            "┊ ✓ linear.get_issue · 1.25s · Ctrl+T details"
-        ]
+        display.iter().map(ToString::to_string).collect::<Vec<_>>(),
+        vec!["", "CODEX · Tool Calls", "", "┊ ✓ linear.get_issue"]
     );
+    let transcript =
+        crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
+            cell.transcript_lines(/* width */ 100)
+        });
     assert_eq!(
-        cell.transcript_lines(/* width */ 100)
+        transcript
             .iter()
             .map(ToString::to_string)
             .collect::<Vec<_>>(),
         vec![
             "",
             "CODEX · Tool Calls",
+            "",
             "┊ • Called linear.get_issue({\"id\":\"ENG-42\"})",
             "┊   └ Issue details",
         ]
