@@ -744,9 +744,7 @@ impl App {
             self.chat_widget.set_parent_owned_thread();
         }
         self.reset_for_thread_switch(tui)?;
-        self.pending_thread_switch_resets += 1;
-        self.app_event_tx
-            .send(AppEvent::ResetTranscriptForThreadSwitch);
+        self.queue_thread_switch_reset();
         self.replay_thread_snapshot(snapshot, resume_restored_queue);
         if external_writer {
             self.chat_widget.show_external_writer_thread();
@@ -774,6 +772,18 @@ impl App {
             Self::clear_terminal_for_thread_switch(&mut tui.terminal)?;
         }
         Ok(())
+    }
+
+    /// Queue the deferred reset used by scrollback-backed screens. Owned screens have already
+    /// reset synchronously before replay and receive history cells directly; a second deferred
+    /// reset would erase the freshly replayed owned-screen cells.
+    pub(super) fn queue_thread_switch_reset(&mut self) {
+        if self.has_owned_screen() {
+            return;
+        }
+        self.pending_thread_switch_resets += 1;
+        self.app_event_tx
+            .send(AppEvent::ResetTranscriptForThreadSwitch);
     }
 
     pub(super) fn clear_terminal_for_thread_switch<B>(
@@ -1051,9 +1061,7 @@ impl App {
         // resume/fork flows pass `None` so they cannot replay old history and then auto-submit a new
         // user turn by accident.
         self.reset_for_thread_switch(tui)?;
-        self.pending_thread_switch_resets += 1;
-        self.app_event_tx
-            .send(AppEvent::ResetTranscriptForThreadSwitch);
+        self.queue_thread_switch_reset();
         self.reset_thread_event_state();
         let init = self.chatwidget_init_for_forked_or_resumed_thread(
             tui,

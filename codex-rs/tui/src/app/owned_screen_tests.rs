@@ -143,6 +143,41 @@ async fn replay_retains_cells_while_draw_scheduling_is_deferred() {
 }
 
 #[tokio::test]
+async fn thread_switch_replay_is_not_erased_by_a_deferred_owned_screen_reset() {
+    let mut app = super::super::test_support::make_test_app().await;
+    app.owned_screen = App::owned_screen_for_behavior(
+        AltScreenBehavior::Owned,
+        &app.chat_widget,
+        app.keymap.pager.clone(),
+    );
+    let mut tui = crate::tui::test_support::make_test_tui().expect("create test TUI");
+
+    app.insert_history_cell(&mut tui, Box::new(TestCell("old thread")));
+    app.reset_for_thread_switch(&mut tui)
+        .expect("reset thread UI state");
+    app.queue_thread_switch_reset();
+    assert_eq!(app.pending_thread_switch_resets, 0);
+
+    app.begin_initial_history_replay_buffer();
+    app.insert_history_cell(&mut tui, Box::new(TestCell("resumed message")));
+    app.finish_initial_history_replay_buffer(&mut tui);
+
+    assert_eq!(app.transcript_cells.len(), 1);
+    assert_eq!(
+        app.owned_screen
+            .as_ref()
+            .expect("owned screen")
+            .viewport
+            .committed_cell_count(),
+        1
+    );
+    assert_eq!(
+        app.transcript_cells[0].display_lines(80)[0].to_string(),
+        "resumed message"
+    );
+}
+
+#[tokio::test]
 async fn navigation_does_not_steal_printable_or_draft_input() {
     let mut app = super::super::test_support::make_test_app().await;
     app.owned_screen = App::owned_screen_for_behavior(

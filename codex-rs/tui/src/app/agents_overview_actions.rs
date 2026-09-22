@@ -273,9 +273,7 @@ impl App {
         }
         if detach_primary {
             self.reset_for_thread_switch(tui)?;
-            self.pending_thread_switch_resets += 1;
-            self.app_event_tx
-                .send(AppEvent::ResetTranscriptForThreadSwitch);
+            self.queue_thread_switch_reset();
             self.reset_thread_event_state();
             let init = self.chatwidget_init_for_forked_or_resumed_thread(
                 tui,

@@ -3305,9 +3305,7 @@ impl App {
                 self.agents_overview.input_states.remove(&thread_id);
                 self.agents_overview.dispatched_requests.remove(&thread_id);
                 self.reset_for_thread_switch(tui)?;
-                self.pending_thread_switch_resets += 1;
-                self.app_event_tx
-                    .send(AppEvent::ResetTranscriptForThreadSwitch);
+                self.queue_thread_switch_reset();
                 self.reset_thread_event_state();
                 let init = self.chatwidget_init_for_forked_or_resumed_thread(
                     tui,
@@ -3365,9 +3363,7 @@ impl App {
                 self.agents_overview.input_states.remove(&thread_id);
                 self.agents_overview.dispatched_requests.remove(&thread_id);
                 self.reset_for_thread_switch(tui)?;
-                self.pending_thread_switch_resets += 1;
-                self.app_event_tx
-                    .send(AppEvent::ResetTranscriptForThreadSwitch);
+                self.queue_thread_switch_reset();
                 self.reset_thread_event_state();
                 let init = self.chatwidget_init_for_forked_or_resumed_thread(
                     tui,
