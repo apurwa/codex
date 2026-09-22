@@ -18,7 +18,7 @@ pub(crate) const COMPOSER_BLUE_RGB: (u8, u8, u8) = (0, 95, 135);
 /// Speaker label using the shared Codex response accent.
 pub(crate) fn codex_label_style() -> Style {
     match crate::ui_profile::ui_profile() {
-        crate::ui_profile::UiProfile::CodexDev => codex_response_border_style().bold(),
+        crate::ui_profile::UiProfile::CodexDev => Style::default().fg(Color::Rgb(128, 0, 0)).bold(),
         crate::ui_profile::UiProfile::Upstream => Style::default(),
     }
 }
@@ -37,17 +37,14 @@ pub(crate) fn composer_blue_style() -> Style {
 
 /// Border style for Codex response cards.
 pub(crate) fn codex_response_border_style() -> Style {
-    match crate::ui_profile::ui_profile() {
-        crate::ui_profile::UiProfile::CodexDev => Style::default().fg(Color::DarkGray).bold(),
-        crate::ui_profile::UiProfile::Upstream => Style::default(),
-    }
+    composer_blue_style().bold()
 }
 
 /// Pale cool background that distinguishes Codex responses from user messages.
 pub(crate) fn codex_response_background_style() -> Style {
     match crate::ui_profile::ui_profile() {
         crate::ui_profile::UiProfile::CodexDev => match default_bg() {
-            Some(bg) => Style::default().bg(best_color(user_message_bg_rgb(bg))),
+            Some(bg) => Style::default().bg(best_color(codex_response_bg_rgb(bg))),
             None => Style::default(),
         },
         crate::ui_profile::UiProfile::Upstream => Style::default(),
