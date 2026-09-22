@@ -233,9 +233,10 @@ where
     // Regular invocation. Run the async entry point on a thread with the same
     // stack budget as Tokio workers; `Runtime::block_on` otherwise runs the
     // top-level future on the caller's OS stack.
+    let stack_size = runtime_stack_size_bytes();
     let handle = std::thread::Builder::new()
         .name("codex-main".to_string())
-        .stack_size(THREAD_STACK_SIZE_BYTES)
+        .stack_size(stack_size)
         .spawn(move || {
             let runtime = build_runtime()?;
             runtime.block_on(run_main_with_arg0_guard(
@@ -293,8 +294,20 @@ fn linux_sandbox_exe_path(
 fn build_runtime() -> anyhow::Result<tokio::runtime::Runtime> {
     let mut builder = tokio::runtime::Builder::new_multi_thread();
     builder.enable_all();
-    builder.thread_stack_size(THREAD_STACK_SIZE_BYTES);
+    builder.thread_stack_size(runtime_stack_size_bytes());
     Ok(builder.build()?)
+}
+
+/// The Agents Overview startup path constructs a large `ChatWidget` while several
+/// async startup layers are still being polled synchronously. Keep the official
+/// CLI's upstream stack budget unchanged, but give the opt-in codex-dev launcher
+/// enough headroom until that construction is moved fully off the stack.
+fn runtime_stack_size_bytes() -> usize {
+    if std::env::var_os("CODEX_UI_PROFILE").as_deref() == Some(std::ffi::OsStr::new("codex-dev")) {
+        64 * 1024 * 1024
+    } else {
+        THREAD_STACK_SIZE_BYTES
+    }
 }
 
 const ILLEGAL_ENV_VAR_PREFIX: &str = "CODEX_";
