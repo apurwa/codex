@@ -528,31 +528,34 @@ async fn question_history_search_uses_updated_bindings() {
 
 #[tokio::test]
 async fn question_editor_keeps_working_status_and_queued_messages_visible() {
-    let (mut chat, _rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
-    chat.show_welcome_banner = false;
-    chat.bottom_pane.set_task_running(/*running*/ true);
-    chat.bottom_pane
-        .set_composer_text("main draft".into(), Vec::new(), Vec::new());
-    chat.input_queue
-        .queued_user_messages
-        .push_back(UserMessage::from("queued follow-up".to_string()).into());
-    chat.refresh_pending_input_preview();
-    chat.add_async_questions("message", &questions());
-    chat.handle_key_event(KeyEvent::new(KeyCode::Up, KeyModifiers::ALT));
-    let open = render_bottom_popup(&chat, /*width*/ 80);
-    let open = open.split("\n  1 of 2").next().unwrap().trim_end();
-    chat.bottom_pane.set_task_running(/*running*/ false);
-    assert!(chat.bottom_pane.questions.as_ref().unwrap().expanded);
-    chat.input_queue.queued_user_messages.clear();
-    chat.refresh_pending_input_preview();
-    chat.handle_key_event(KeyEvent::from(KeyCode::Esc));
-    chat.bottom_pane.set_status_line_enabled(/*enabled*/ false);
-    let completed = render_bottom_popup(&chat, /*width*/ 80);
-    let completed = completed.split("\n─").next().unwrap();
-    insta::assert_snapshot!(
-        "questions_with_status_and_queue",
-        format!("OPEN\n{open}\n\nONLY QUESTIONS\n{completed}")
-    );
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+        let (mut chat, _rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
+        chat.show_welcome_banner = false;
+        chat.bottom_pane.set_task_running(/*running*/ true);
+        chat.bottom_pane
+            .set_composer_text("main draft".into(), Vec::new(), Vec::new());
+        chat.input_queue
+            .queued_user_messages
+            .push_back(UserMessage::from("queued follow-up".to_string()).into());
+        chat.refresh_pending_input_preview();
+        chat.add_async_questions("message", &questions());
+        chat.handle_key_event(KeyEvent::new(KeyCode::Up, KeyModifiers::ALT));
+        let open = render_bottom_popup(&chat, /*width*/ 80);
+        let open = open.split("\n  1 of 2").next().unwrap().trim_end();
+        chat.bottom_pane.set_task_running(/*running*/ false);
+        assert!(chat.bottom_pane.questions.as_ref().unwrap().expanded);
+        chat.input_queue.queued_user_messages.clear();
+        chat.refresh_pending_input_preview();
+        chat.handle_key_event(KeyEvent::from(KeyCode::Esc));
+        chat.bottom_pane.set_status_line_enabled(/*enabled*/ false);
+        let completed = render_bottom_popup(&chat, /*width*/ 80);
+        let completed = completed.split("\n─").next().unwrap();
+        insta::assert_snapshot!(
+            "questions_with_status_and_queue",
+            format!("OPEN\n{open}\n\nONLY QUESTIONS\n{completed}")
+        );
+    })
+    .await;
 }
 
 #[tokio::test]

@@ -14,121 +14,127 @@ use pretty_assertions::assert_eq;
 
 #[tokio::test]
 async fn resumed_initial_messages_render_history() {
-    let (mut chat, mut rx, _ops) = make_chatwidget_manual(/*model_override*/ None).await;
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+        let (mut chat, mut rx, _ops) = make_chatwidget_manual(/*model_override*/ None).await;
 
-    let thread_id = ThreadId::new();
-    let rollout_file = NamedTempFile::new().unwrap();
-    let configured = crate::session_state::ThreadSessionState {
-        windows_sandbox_host: crate::app::WindowsSandboxHost::Local,
-        thread_id,
-        forked_from_id: None,
-        fork_parent_title: None,
-        thread_name: None,
-        model: "test-model".to_string(),
-        model_provider_id: "test-provider".to_string(),
-        service_tier: None,
-        approval_policy: AskForApproval::Never,
-        approvals_reviewer: ApprovalsReviewer::User,
-        permission_profile: PermissionProfile::read_only(),
-        active_permission_profile: None,
-        cwd: test_path_buf("/home/user/project").abs(),
-        runtime_workspace_roots: Vec::new(),
-        instruction_source_paths: Vec::new(),
-        reasoning_effort: Some(ReasoningEffortConfig::default()),
-        collaboration_mode: None,
-        personality: None,
-        message_history: None,
-        network_proxy: None,
-        rollout_path: Some(rollout_file.path().to_path_buf()),
-    };
+        let thread_id = ThreadId::new();
+        let rollout_file = NamedTempFile::new().unwrap();
+        let configured = crate::session_state::ThreadSessionState {
+            windows_sandbox_host: crate::app::WindowsSandboxHost::Local,
+            thread_id,
+            forked_from_id: None,
+            fork_parent_title: None,
+            thread_name: None,
+            model: "test-model".to_string(),
+            model_provider_id: "test-provider".to_string(),
+            service_tier: None,
+            approval_policy: AskForApproval::Never,
+            approvals_reviewer: ApprovalsReviewer::User,
+            permission_profile: PermissionProfile::read_only(),
+            active_permission_profile: None,
+            cwd: test_path_buf("/home/user/project").abs(),
+            runtime_workspace_roots: Vec::new(),
+            instruction_source_paths: Vec::new(),
+            reasoning_effort: Some(ReasoningEffortConfig::default()),
+            collaboration_mode: None,
+            personality: None,
+            message_history: None,
+            network_proxy: None,
+            rollout_path: Some(rollout_file.path().to_path_buf()),
+        };
 
-    chat.handle_thread_session(configured);
-    replay_user_message_text(
-        &mut chat,
-        "user-1",
-        "hello from user",
-        ReplayKind::ResumeInitialMessages,
-    );
-    replay_agent_message(
-        &mut chat,
-        "assistant-1",
-        "assistant reply",
-        ReplayKind::ResumeInitialMessages,
-    );
+        chat.handle_thread_session(configured);
+        replay_user_message_text(
+            &mut chat,
+            "user-1",
+            "hello from user",
+            ReplayKind::ResumeInitialMessages,
+        );
+        replay_agent_message(
+            &mut chat,
+            "assistant-1",
+            "assistant reply",
+            ReplayKind::ResumeInitialMessages,
+        );
 
-    let cells = drain_insert_history(&mut rx);
-    let mut merged_lines = Vec::new();
-    for lines in cells {
-        let text = lines
-            .iter()
-            .flat_map(|line| line.spans.iter())
-            .map(|span| span.content.clone())
-            .collect::<String>();
-        merged_lines.push(text);
-    }
+        let cells = drain_insert_history(&mut rx);
+        let mut merged_lines = Vec::new();
+        for lines in cells {
+            let text = lines
+                .iter()
+                .flat_map(|line| line.spans.iter())
+                .map(|span| span.content.clone())
+                .collect::<String>();
+            merged_lines.push(text);
+        }
 
-    let text_blob = merged_lines.join("\n");
-    assert!(
-        text_blob.contains("hello from user"),
-        "expected replayed user message",
-    );
-    assert!(
-        text_blob.contains("YOU") && text_blob.contains("│ hello from user"),
-        "expected replayed user message to retain the user label and rail",
-    );
-    assert!(
-        text_blob.contains("assistant reply"),
-        "expected replayed agent message",
-    );
+        let text_blob = merged_lines.join("\n");
+        assert!(
+            text_blob.contains("hello from user"),
+            "expected replayed user message",
+        );
+        assert!(
+            text_blob.contains("YOU") && text_blob.contains("│ hello from user"),
+            "expected replayed user message to retain the user label and rail",
+        );
+        assert!(
+            text_blob.contains("assistant reply"),
+            "expected replayed agent message",
+        );
+    })
+    .await;
 }
 
 #[tokio::test]
 async fn replayed_failed_turns_preserve_overload_warnings_between_retries() {
-    let (mut chat, mut rx, _ops) = make_chatwidget_manual(/*model_override*/ None).await;
-    let prompt = "The workspace also looks super confusing with its separator.";
-    let error_message = "Selected model is at capacity. Please try a different model.";
-    let failed_turn = |turn_id: &str, item_id: &str| AppServerTurn {
-        items: vec![AppServerThreadItem::UserMessage {
-            id: item_id.to_string(),
-            client_id: None,
-            content: vec![AppServerUserInput::Text {
-                text: prompt.to_string(),
-                text_elements: Vec::new(),
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+        let (mut chat, mut rx, _ops) = make_chatwidget_manual(/*model_override*/ None).await;
+        let prompt = "The workspace also looks super confusing with its separator.";
+        let error_message = "Selected model is at capacity. Please try a different model.";
+        let failed_turn = |turn_id: &str, item_id: &str| AppServerTurn {
+            items: vec![AppServerThreadItem::UserMessage {
+                id: item_id.to_string(),
+                client_id: None,
+                content: vec![AppServerUserInput::Text {
+                    text: prompt.to_string(),
+                    text_elements: Vec::new(),
+                }],
             }],
-        }],
-        ..app_server_turn(
-            turn_id,
-            AppServerTurnStatus::Failed,
-            /*duration_ms*/ None,
-            /*error*/
-            Some(AppServerTurnError {
-                misalignment: None,
-                message: error_message.to_string(),
-                codex_error_info: Some(CodexErrorInfo::ServerOverloaded),
-                additional_details: None,
-            }),
-        )
-    };
+            ..app_server_turn(
+                turn_id,
+                AppServerTurnStatus::Failed,
+                /*duration_ms*/ None,
+                /*error*/
+                Some(AppServerTurnError {
+                    misalignment: None,
+                    message: error_message.to_string(),
+                    codex_error_info: Some(CodexErrorInfo::ServerOverloaded),
+                    additional_details: None,
+                }),
+            )
+        };
 
-    chat.replay_thread_turns(
-        vec![
-            failed_turn("turn-1", "user-1"),
-            failed_turn("turn-2", "user-2"),
-        ],
-        ReplayKind::ResumeInitialMessages,
-    );
+        chat.replay_thread_turns(
+            vec![
+                failed_turn("turn-1", "user-1"),
+                failed_turn("turn-2", "user-2"),
+            ],
+            ReplayKind::ResumeInitialMessages,
+        );
 
-    let rendered = drain_insert_history(&mut rx)
-        .into_iter()
-        .map(|lines| lines_to_single_string(&lines))
-        .collect::<String>();
+        let rendered = drain_insert_history(&mut rx)
+            .into_iter()
+            .map(|lines| lines_to_single_string(&lines))
+            .collect::<String>();
 
-    assert_eq!(rendered.matches(prompt).count(), 2);
-    assert_eq!(rendered.matches(error_message).count(), 2);
-    insta::assert_snapshot!(
-        "replayed_failed_turns_preserve_overload_warnings_between_retries",
-        rendered
-    );
+        assert_eq!(rendered.matches(prompt).count(), 2);
+        assert_eq!(rendered.matches(error_message).count(), 2);
+        insta::assert_snapshot!(
+            "replayed_failed_turns_preserve_overload_warnings_between_retries",
+            rendered
+        );
+    })
+    .await;
 }
 
 #[tokio::test]
@@ -328,87 +334,91 @@ async fn replayed_delegated_tool_output_is_attributed_without_seeding_composer_h
 
 #[tokio::test]
 async fn replayed_nested_review_prompts_do_not_render_or_seed_composer_history() {
-    let (mut chat, mut rx, _ops) = make_chatwidget_manual(/*model_override*/ None).await;
-    let review_hint = "current changes";
-    let review_prompt = "Review the current code changes (staged, unstaged, and untracked files).";
-    let user_message = |id: &str, text: &str| AppServerThreadItem::UserMessage {
-        id: id.to_string(),
-        client_id: None,
-        content: vec![AppServerUserInput::Text {
-            text: text.to_string(),
-            text_elements: Vec::new(),
-        }],
-    };
-    let review_marker = |turn_id: &str| AppServerTurn {
-        items: vec![
-            AppServerThreadItem::EnteredReviewMode {
-                id: format!("{turn_id}-start"),
-                review: review_hint.to_string(),
-            },
-            AppServerThreadItem::ExitedReviewMode {
-                id: format!("{turn_id}-end"),
-                review: "review complete".to_string(),
-            },
-        ],
-        ..app_server_turn(
-            turn_id,
-            AppServerTurnStatus::Completed,
-            /*duration_ms*/ None,
-            /*error*/ None,
-        )
-    };
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+        let (mut chat, mut rx, _ops) = make_chatwidget_manual(/*model_override*/ None).await;
+        let review_hint = "current changes";
+        let review_prompt =
+            "Review the current code changes (staged, unstaged, and untracked files).";
+        let user_message = |id: &str, text: &str| AppServerThreadItem::UserMessage {
+            id: id.to_string(),
+            client_id: None,
+            content: vec![AppServerUserInput::Text {
+                text: text.to_string(),
+                text_elements: Vec::new(),
+            }],
+        };
+        let review_marker = |turn_id: &str| AppServerTurn {
+            items: vec![
+                AppServerThreadItem::EnteredReviewMode {
+                    id: format!("{turn_id}-start"),
+                    review: review_hint.to_string(),
+                },
+                AppServerThreadItem::ExitedReviewMode {
+                    id: format!("{turn_id}-end"),
+                    review: "review complete".to_string(),
+                },
+            ],
+            ..app_server_turn(
+                turn_id,
+                AppServerTurnStatus::Completed,
+                /*duration_ms*/ None,
+                /*error*/ None,
+            )
+        };
 
-    chat.replay_thread_turns(
-        vec![
-            review_marker("turn-review-before-steer"),
-            AppServerTurn {
-                items: vec![
-                    user_message("interrupted-prompt", review_hint),
-                    user_message("interrupted-steer", review_hint),
-                ],
-                completed_at: Some(1),
-                ..app_server_turn(
-                    "turn-interrupted",
-                    AppServerTurnStatus::Interrupted,
-                    /*duration_ms*/ None,
-                    /*error*/ None,
-                )
-            },
-            review_marker("turn-review"),
-            AppServerTurn {
-                items: vec![
-                    user_message("review-prompt-1", review_prompt),
-                    user_message("review-prompt-2", review_prompt),
-                    AppServerThreadItem::AgentMessage {
-                        id: "review-result".to_string(),
-                        text: "review result is retained".to_string(),
-                        phase: Some(MessagePhase::FinalAnswer),
-                        memory_citation: None,
-                        delivery: None,
-                        questions: None,
-                    },
-                ],
-                ..app_server_turn(
-                    "turn-review-child",
-                    AppServerTurnStatus::Interrupted,
-                    /*duration_ms*/ None,
-                    /*error*/ None,
-                )
-            },
-        ],
-        ReplayKind::ResumeInitialMessages,
-    );
+        chat.replay_thread_turns(
+            vec![
+                review_marker("turn-review-before-steer"),
+                AppServerTurn {
+                    items: vec![
+                        user_message("interrupted-prompt", review_hint),
+                        user_message("interrupted-steer", review_hint),
+                    ],
+                    completed_at: Some(1),
+                    ..app_server_turn(
+                        "turn-interrupted",
+                        AppServerTurnStatus::Interrupted,
+                        /*duration_ms*/ None,
+                        /*error*/ None,
+                    )
+                },
+                review_marker("turn-review"),
+                AppServerTurn {
+                    items: vec![
+                        user_message("review-prompt-1", review_prompt),
+                        user_message("review-prompt-2", review_prompt),
+                        AppServerThreadItem::AgentMessage {
+                            id: "review-result".to_string(),
+                            text: "review result is retained".to_string(),
+                            phase: Some(MessagePhase::FinalAnswer),
+                            memory_citation: None,
+                            delivery: None,
+                            questions: None,
+                        },
+                    ],
+                    ..app_server_turn(
+                        "turn-review-child",
+                        AppServerTurnStatus::Interrupted,
+                        /*duration_ms*/ None,
+                        /*error*/ None,
+                    )
+                },
+            ],
+            ReplayKind::ResumeInitialMessages,
+        );
 
-    let rendered = drain_insert_history(&mut rx)
-        .into_iter()
-        .map(|lines| lines_to_single_string(&lines))
-        .collect::<String>();
-    assert!(!rendered.contains(review_prompt));
-    assert_eq!(rendered.matches(review_hint).count(), 4);
-    insta::assert_snapshot!("replayed_nested_review_prompts", rendered);
+        let rendered = drain_insert_history(&mut rx)
+            .into_iter()
+            .map(|lines| lines_to_single_string(&lines))
+            .collect::<String>();
+        assert!(!rendered.contains(review_prompt));
+        assert_eq!(rendered.matches(review_hint).count(), 4);
+        insta::assert_snapshot!("replayed_nested_review_prompts", rendered);
 
-    chat.handle_key_event(KeyEvent::new(KeyCode::Up, KeyModifiers::NONE));
-    assert_eq!(chat.bottom_pane.composer_text(), review_hint);
+        chat.handle_key_event(KeyEvent::new(KeyCode::Up, KeyModifiers::NONE));
+        assert_eq!(chat.bottom_pane.composer_text(), review_hint);
+    })
+    .await;
 }
 
 #[tokio::test]
@@ -1183,54 +1193,57 @@ async fn replayed_thread_closed_notification_does_not_exit_tui() {
 
 #[tokio::test]
 async fn replayed_reasoning_item_preserves_summary_parts_and_hides_raw_reasoning_when_disabled() {
-    let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
-    chat.config.show_raw_agent_reasoning = false;
-    chat.handle_thread_session(crate::session_state::ThreadSessionState {
-        windows_sandbox_host: crate::app::WindowsSandboxHost::Local,
-        thread_id: ThreadId::new(),
-        forked_from_id: None,
-        fork_parent_title: None,
-        thread_name: None,
-        model: "test-model".to_string(),
-        model_provider_id: "test-provider".to_string(),
-        service_tier: None,
-        approval_policy: AskForApproval::Never,
-        approvals_reviewer: ApprovalsReviewer::User,
-        permission_profile: PermissionProfile::read_only(),
-        active_permission_profile: None,
-        cwd: test_project_path().abs(),
-        runtime_workspace_roots: Vec::new(),
-        instruction_source_paths: Vec::new(),
-        reasoning_effort: None,
-        collaboration_mode: None,
-        personality: None,
-        message_history: None,
-        network_proxy: None,
-        rollout_path: None,
-    });
-    let _ = drain_insert_history(&mut rx);
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+        let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
+        chat.config.show_raw_agent_reasoning = false;
+        chat.handle_thread_session(crate::session_state::ThreadSessionState {
+            windows_sandbox_host: crate::app::WindowsSandboxHost::Local,
+            thread_id: ThreadId::new(),
+            forked_from_id: None,
+            fork_parent_title: None,
+            thread_name: None,
+            model: "test-model".to_string(),
+            model_provider_id: "test-provider".to_string(),
+            service_tier: None,
+            approval_policy: AskForApproval::Never,
+            approvals_reviewer: ApprovalsReviewer::User,
+            permission_profile: PermissionProfile::read_only(),
+            active_permission_profile: None,
+            cwd: test_project_path().abs(),
+            runtime_workspace_roots: Vec::new(),
+            instruction_source_paths: Vec::new(),
+            reasoning_effort: None,
+            collaboration_mode: None,
+            personality: None,
+            message_history: None,
+            network_proxy: None,
+            rollout_path: None,
+        });
+        let _ = drain_insert_history(&mut rx);
 
-    chat.replay_thread_item(
-        AppServerThreadItem::Reasoning {
-            id: "reasoning-1".to_string(),
-            summary: vec![
-                "**Plan**\n\ndone".to_string(),
-                "**Checking tests**\n\n<!-- -->".to_string(),
-            ],
-            content: vec!["Raw reasoning".to_string()],
-        },
-        "turn-1".to_string(),
-        ReplayKind::ThreadSnapshot,
-    );
+        chat.replay_thread_item(
+            AppServerThreadItem::Reasoning {
+                id: "reasoning-1".to_string(),
+                summary: vec![
+                    "**Plan**\n\ndone".to_string(),
+                    "**Checking tests**\n\n<!-- -->".to_string(),
+                ],
+                content: vec!["Raw reasoning".to_string()],
+            },
+            "turn-1".to_string(),
+            ReplayKind::ThreadSnapshot,
+        );
 
-    let rendered = match rx.try_recv() {
-        Ok(AppEvent::InsertHistoryCell(cell)) => {
-            lines_to_single_string(&cell.transcript_lines(/*width*/ 80))
-        }
-        other => panic!("expected InsertHistoryCell, got {other:?}"),
-    };
-    assert_eq!(rendered, "┊ done\n");
-    assert!(!rendered.contains("Raw reasoning"));
+        let rendered = match rx.try_recv() {
+            Ok(AppEvent::InsertHistoryCell(cell)) => {
+                lines_to_single_string(&cell.transcript_lines(/*width*/ 80))
+            }
+            other => panic!("expected InsertHistoryCell, got {other:?}"),
+        };
+        assert_eq!(rendered, "┊ done\n");
+        assert!(!rendered.contains("Raw reasoning"));
+    })
+    .await;
 }
 
 #[tokio::test]
@@ -1314,6 +1327,8 @@ async fn replayed_in_progress_mcp_tool_call_stays_active() {
 
 #[tokio::test]
 async fn failed_repl_mcp_tool_call_preserves_status_and_result() {
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+
     for server in ["node_repl", "cua_repl"] {
         let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
         let _ = drain_insert_history(&mut rx);
@@ -1378,69 +1393,74 @@ async fn failed_repl_mcp_tool_call_preserves_status_and_result() {
             "{server}",
         );
     }
+
+    }).await;
 }
 
 #[tokio::test]
 async fn deferred_mcp_lifecycle_events_keep_fifo_after_stream_finishes() {
-    let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
-    let cwd = chat.config.cwd.to_path_buf();
-    chat.stream_controller = Some(crate::streaming::controller::StreamController::new(
-        /*width*/ Some(80),
-        cwd.as_path(),
-        chat.history_render_mode(),
-    ));
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+        let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
+        let cwd = chat.config.cwd.to_path_buf();
+        chat.stream_controller = Some(crate::streaming::controller::StreamController::new(
+            /*width*/ Some(80),
+            cwd.as_path(),
+            chat.history_render_mode(),
+        ));
 
-    chat.on_mcp_tool_call_started(AppServerThreadItem::McpToolCall {
-        id: "mcp-deferred".to_string(),
-        server: "copilot-bridge".to_string(),
-        tool: "copilot".to_string(),
-        status: codex_app_server_protocol::McpToolCallStatus::InProgress,
-        arguments: json!({"action": "wait"}),
-        app_context: None,
-        mcp_app_resource_uri: None,
-        mcp_app_ui: None,
-        plugin_id: None,
-        read_only_hint: None,
-        result: None,
-        error: None,
-        duration_ms: None,
-    });
-    assert!(!chat.interrupts.is_empty());
+        chat.on_mcp_tool_call_started(AppServerThreadItem::McpToolCall {
+            id: "mcp-deferred".to_string(),
+            server: "copilot-bridge".to_string(),
+            tool: "copilot".to_string(),
+            status: codex_app_server_protocol::McpToolCallStatus::InProgress,
+            arguments: json!({"action": "wait"}),
+            app_context: None,
+            mcp_app_resource_uri: None,
+            mcp_app_ui: None,
+            plugin_id: None,
+            read_only_hint: None,
+            result: None,
+            error: None,
+            duration_ms: None,
+        });
+        assert!(!chat.interrupts.is_empty());
 
-    chat.stream_controller = None;
-    chat.on_mcp_tool_call_completed(AppServerThreadItem::McpToolCall {
-        id: "mcp-deferred".to_string(),
-        server: "copilot-bridge".to_string(),
-        tool: "copilot".to_string(),
-        status: codex_app_server_protocol::McpToolCallStatus::Completed,
-        arguments: json!({"action": "wait"}),
-        app_context: None,
-        mcp_app_resource_uri: None,
-        mcp_app_ui: None,
-        plugin_id: None,
-        read_only_hint: None,
-        result: Some(Box::new(codex_app_server_protocol::McpToolCallResult {
-            content: vec![json!({"type": "text", "text": "deferred result"})],
-            structured_content: None,
-            meta: None,
-        })),
-        error: None,
-        duration_ms: Some(5),
-    });
+        chat.stream_controller = None;
+        chat.on_mcp_tool_call_completed(AppServerThreadItem::McpToolCall {
+            id: "mcp-deferred".to_string(),
+            server: "copilot-bridge".to_string(),
+            tool: "copilot".to_string(),
+            status: codex_app_server_protocol::McpToolCallStatus::Completed,
+            arguments: json!({"action": "wait"}),
+            app_context: None,
+            mcp_app_resource_uri: None,
+            mcp_app_ui: None,
+            plugin_id: None,
+            read_only_hint: None,
+            result: Some(Box::new(codex_app_server_protocol::McpToolCallResult {
+                content: vec![json!({"type": "text", "text": "deferred result"})],
+                structured_content: None,
+                meta: None,
+            })),
+            error: None,
+            duration_ms: Some(5),
+        });
 
-    assert!(!chat.interrupts.is_empty());
-    assert!(drain_insert_history(&mut rx).is_empty());
+        assert!(!chat.interrupts.is_empty());
+        assert!(drain_insert_history(&mut rx).is_empty());
 
-    chat.flush_interrupt_queue();
+        chat.flush_interrupt_queue();
 
-    assert!(chat.interrupts.is_empty());
-    assert!(chat.transcript.active_cell.is_none());
-    let rendered = drain_insert_history(&mut rx)
-        .into_iter()
-        .map(|lines| lines_to_single_string(&lines))
-        .collect::<String>();
-    assert!(rendered.contains("✓ copilot-bridge.copilot"), "{rendered}");
-    assert!(rendered.contains("Ctrl+T details"), "{rendered}");
+        assert!(chat.interrupts.is_empty());
+        assert!(chat.transcript.active_cell.is_none());
+        let rendered = drain_insert_history(&mut rx)
+            .into_iter()
+            .map(|lines| lines_to_single_string(&lines))
+            .collect::<String>();
+        assert!(rendered.contains("✓ copilot-bridge.copilot"), "{rendered}");
+        assert!(rendered.contains("Ctrl+T details"), "{rendered}");
+    })
+    .await;
 }
 
 #[tokio::test]
@@ -1504,80 +1524,85 @@ async fn live_reasoning_summary_is_not_rendered_twice_when_item_completes() {
 
 #[tokio::test]
 async fn live_reasoning_summary_drops_empty_parts_without_losing_content() {
-    let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
-    chat.show_welcome_banner = false;
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+        let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
+        chat.show_welcome_banner = false;
 
-    chat.handle_server_notification(
-        ServerNotification::TurnStarted(TurnStartedNotification {
-            thread_id: "thread-1".to_string(),
-            turn: AppServerTurn {
-                id: "turn-1".to_string(),
-                items_view: codex_app_server_protocol::TurnItemsView::Full,
-                items: Vec::new(),
-                status: AppServerTurnStatus::InProgress,
-                error: None,
-                started_at: Some(0),
-                completed_at: None,
-                duration_ms: None,
-            },
-        }),
-        /*replay_kind*/ None,
-    );
-    let _ = drain_insert_history(&mut rx);
-
-    handle_agent_reasoning_started(&mut chat, "reasoning-1");
-
-    for (summary_index, delta) in [
-        (0, "**Plan**\n\ndone"),
-        (1, "**Checking tests**\n\n<!-- -->"),
-    ] {
         chat.handle_server_notification(
-            ServerNotification::ReasoningSummaryPartAdded(
-                codex_app_server_protocol::ReasoningSummaryPartAddedNotification {
-                    thread_id: "thread-1".to_string(),
-                    turn_id: "turn-1".to_string(),
-                    item_id: "reasoning-1".to_string(),
-                    summary_index,
-                },
-            ),
-            /*replay_kind*/ None,
-        );
-        chat.handle_server_notification(
-            ServerNotification::ReasoningSummaryTextDelta(ReasoningSummaryTextDeltaNotification {
+            ServerNotification::TurnStarted(TurnStartedNotification {
                 thread_id: "thread-1".to_string(),
-                turn_id: "turn-1".to_string(),
-                item_id: "reasoning-1".to_string(),
-                delta: delta.to_string(),
-                summary_index,
+                turn: AppServerTurn {
+                    id: "turn-1".to_string(),
+                    items_view: codex_app_server_protocol::TurnItemsView::Full,
+                    items: Vec::new(),
+                    status: AppServerTurnStatus::InProgress,
+                    error: None,
+                    started_at: Some(0),
+                    completed_at: None,
+                    duration_ms: None,
+                },
             }),
             /*replay_kind*/ None,
         );
-    }
+        let _ = drain_insert_history(&mut rx);
 
-    chat.handle_server_notification(
-        ServerNotification::ItemCompleted(ItemCompletedNotification {
-            thread_id: "thread-1".to_string(),
-            turn_id: "turn-1".to_string(),
-            completed_at_ms: 0,
-            item: AppServerThreadItem::Reasoning {
-                id: "reasoning-1".to_string(),
-                summary: vec![
-                    "**Plan**\n\ndone".to_string(),
-                    "**Checking tests**\n\n<!-- -->".to_string(),
-                ],
-                content: Vec::new(),
-            },
-        }),
-        /*replay_kind*/ None,
-    );
+        handle_agent_reasoning_started(&mut chat, "reasoning-1");
 
-    let rendered = match rx.try_recv() {
-        Ok(AppEvent::InsertHistoryCell(cell)) => {
-            lines_to_single_string(&cell.transcript_lines(/*width*/ 80))
+        for (summary_index, delta) in [
+            (0, "**Plan**\n\ndone"),
+            (1, "**Checking tests**\n\n<!-- -->"),
+        ] {
+            chat.handle_server_notification(
+                ServerNotification::ReasoningSummaryPartAdded(
+                    codex_app_server_protocol::ReasoningSummaryPartAddedNotification {
+                        thread_id: "thread-1".to_string(),
+                        turn_id: "turn-1".to_string(),
+                        item_id: "reasoning-1".to_string(),
+                        summary_index,
+                    },
+                ),
+                /*replay_kind*/ None,
+            );
+            chat.handle_server_notification(
+                ServerNotification::ReasoningSummaryTextDelta(
+                    ReasoningSummaryTextDeltaNotification {
+                        thread_id: "thread-1".to_string(),
+                        turn_id: "turn-1".to_string(),
+                        item_id: "reasoning-1".to_string(),
+                        delta: delta.to_string(),
+                        summary_index,
+                    },
+                ),
+                /*replay_kind*/ None,
+            );
         }
-        other => panic!("expected InsertHistoryCell, got {other:?}"),
-    };
-    assert_eq!(rendered, "┊ done\n");
+
+        chat.handle_server_notification(
+            ServerNotification::ItemCompleted(ItemCompletedNotification {
+                thread_id: "thread-1".to_string(),
+                turn_id: "turn-1".to_string(),
+                completed_at_ms: 0,
+                item: AppServerThreadItem::Reasoning {
+                    id: "reasoning-1".to_string(),
+                    summary: vec![
+                        "**Plan**\n\ndone".to_string(),
+                        "**Checking tests**\n\n<!-- -->".to_string(),
+                    ],
+                    content: Vec::new(),
+                },
+            }),
+            /*replay_kind*/ None,
+        );
+
+        let rendered = match rx.try_recv() {
+            Ok(AppEvent::InsertHistoryCell(cell)) => {
+                lines_to_single_string(&cell.transcript_lines(/*width*/ 80))
+            }
+            other => panic!("expected InsertHistoryCell, got {other:?}"),
+        };
+        assert_eq!(rendered, "┊ done\n");
+    })
+    .await;
 }
 
 #[tokio::test]
@@ -1597,51 +1622,54 @@ async fn thread_snapshot_replayed_turn_started_marks_task_running() {
 
 #[tokio::test]
 async fn replayed_in_progress_turn_marks_task_running() {
-    for replay_kind in [
-        ReplayKind::ResumeInitialMessages,
-        ReplayKind::ThreadSnapshot,
-    ] {
-        for items_view in [
-            codex_app_server_protocol::TurnItemsView::Full,
-            codex_app_server_protocol::TurnItemsView::NotLoaded,
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+        for replay_kind in [
+            ReplayKind::ResumeInitialMessages,
+            ReplayKind::ThreadSnapshot,
         ] {
-            let (mut chat, mut rx, mut op_rx) =
-                make_chatwidget_manual(/*model_override*/ None).await;
-            chat.thread_id = Some(ThreadId::new());
-            chat.replay_thread_turns(
-                vec![AppServerTurn {
-                    items_view,
-                    ..app_server_turn(
-                        "turn-1",
-                        AppServerTurnStatus::InProgress,
-                        /*duration_ms*/ None,
-                        /*error*/ None,
-                    )
-                }],
-                replay_kind,
-            );
+            for items_view in [
+                codex_app_server_protocol::TurnItemsView::Full,
+                codex_app_server_protocol::TurnItemsView::NotLoaded,
+            ] {
+                let (mut chat, mut rx, mut op_rx) =
+                    make_chatwidget_manual(/*model_override*/ None).await;
+                chat.thread_id = Some(ThreadId::new());
+                chat.replay_thread_turns(
+                    vec![AppServerTurn {
+                        items_view,
+                        ..app_server_turn(
+                            "turn-1",
+                            AppServerTurnStatus::InProgress,
+                            /*duration_ms*/ None,
+                            /*error*/ None,
+                        )
+                    }],
+                    replay_kind,
+                );
 
-            assert!(drain_insert_history(&mut rx).is_empty());
-            assert_eq!(
-                (
-                    chat.bottom_pane.is_task_running(),
-                    chat.turn_lifecycle.last_turn_id.as_deref(),
-                ),
-                (true, Some("turn-1")),
-            );
-            assert_chatwidget_snapshot!(
-                "replayed_in_progress_turn",
-                normalize_snapshot_paths(render_bottom_popup(&chat, /*width*/ 80)),
-            );
+                assert!(drain_insert_history(&mut rx).is_empty());
+                assert_eq!(
+                    (
+                        chat.bottom_pane.is_task_running(),
+                        chat.turn_lifecycle.last_turn_id.as_deref(),
+                    ),
+                    (true, Some("turn-1")),
+                );
+                assert_chatwidget_snapshot!(
+                    "replayed_in_progress_turn",
+                    normalize_snapshot_paths(render_bottom_popup(&chat, /*width*/ 80)),
+                );
 
-            chat.handle_key_event(KeyEvent::new(KeyCode::Char('c'), KeyModifiers::CONTROL));
-            assert_matches!(op_rx.try_recv(), Ok(Op::Interrupt));
-            assert!(
-                std::iter::from_fn(|| rx.try_recv().ok())
-                    .all(|event| !matches!(event, AppEvent::Exit(_)))
-            );
+                chat.handle_key_event(KeyEvent::new(KeyCode::Char('c'), KeyModifiers::CONTROL));
+                assert_matches!(op_rx.try_recv(), Ok(Op::Interrupt));
+                assert!(
+                    std::iter::from_fn(|| rx.try_recv().ok())
+                        .all(|event| !matches!(event, AppEvent::Exit(_)))
+                );
+            }
         }
-    }
+    })
+    .await;
 }
 
 #[tokio::test]

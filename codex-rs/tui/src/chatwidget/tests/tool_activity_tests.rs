@@ -2,6 +2,8 @@ use super::*;
 
 #[tokio::test]
 async fn image_result_live_and_replay_render_in_the_owning_call() {
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+
     let item: AppServerThreadItem = serde_json::from_value(json!({
         "type": "mcpToolCall", "id": "image", "server": "node_repl", "tool": "js",
         "status": "completed", "arguments": {"title": "Inspect screenshot", "code": "showImage()"},
@@ -31,4 +33,6 @@ async fn image_result_live_and_replay_render_in_the_owning_call() {
     }
     assert_eq!(outputs[0], outputs[1]);
     insta::assert_snapshot!(outputs[0]);
+
+    }).await;
 }

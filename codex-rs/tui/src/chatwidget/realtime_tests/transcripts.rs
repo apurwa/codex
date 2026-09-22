@@ -268,31 +268,34 @@ async fn unexpected_voice_close_preserves_partial_transcripts_once() {
 
 #[tokio::test]
 async fn interleaved_partial_transcripts_survive_voice_close() {
-    let (mut chat, _sender, mut events, _ops) = make_chatwidget_manual_with_sender().await;
-    activate_voice(&mut chat);
-    seed_interleaved_partials(&mut chat);
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+        let (mut chat, _sender, mut events, _ops) = make_chatwidget_manual_with_sender().await;
+        activate_voice(&mut chat);
+        seed_interleaved_partials(&mut chat);
 
-    chat.on_realtime_conversation_closed(/*reason*/ None);
-    chat.on_realtime_transcript_done("user".into(), "Correction".into());
-    chat.on_realtime_transcript_done("assistant".into(), "First answer".into());
+        chat.on_realtime_conversation_closed(/*reason*/ None);
+        chat.on_realtime_transcript_done("user".into(), "Correction".into());
+        chat.on_realtime_transcript_done("assistant".into(), "First answer".into());
 
-    commit_realtime_history_events(&mut chat, &mut events);
-    let rendered = std::iter::from_fn(|| events.try_recv().ok())
-        .filter_map(|event| match event {
-            AppEvent::InsertHistoryCell(cell) => Some(
-                cell.display_lines(/*width*/ 80)
-                    .into_iter()
-                    .map(|line| line.to_string())
-                    .collect::<Vec<_>>()
-                    .join("\n"),
-            ),
-            _ => None,
-        })
-        .collect::<Vec<_>>()
-        .join("\n");
-    assert_eq!(rendered.matches("Correction").count(), 1);
-    assert_eq!(rendered.matches("First answer").count(), 1);
-    insta::assert_snapshot!("interleaved_partials_on_close", rendered);
+        commit_realtime_history_events(&mut chat, &mut events);
+        let rendered = std::iter::from_fn(|| events.try_recv().ok())
+            .filter_map(|event| match event {
+                AppEvent::InsertHistoryCell(cell) => Some(
+                    cell.display_lines(/*width*/ 80)
+                        .into_iter()
+                        .map(|line| line.to_string())
+                        .collect::<Vec<_>>()
+                        .join("\n"),
+                ),
+                _ => None,
+            })
+            .collect::<Vec<_>>()
+            .join("\n");
+        assert_eq!(rendered.matches("Correction").count(), 1);
+        assert_eq!(rendered.matches("First answer").count(), 1);
+        insta::assert_snapshot!("interleaved_partials_on_close", rendered);
+    })
+    .await;
 }
 
 #[tokio::test]
@@ -314,30 +317,33 @@ async fn interleaved_partials_transfer_once_on_thread_switch() {
 
 #[tokio::test]
 async fn intentional_stop_preserves_both_interleaved_partials_once() {
-    let (mut chat, _sender, mut events, _ops) = make_chatwidget_manual_with_sender().await;
-    activate_voice(&mut chat);
-    seed_interleaved_partials(&mut chat);
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+        let (mut chat, _sender, mut events, _ops) = make_chatwidget_manual_with_sender().await;
+        activate_voice(&mut chat);
+        seed_interleaved_partials(&mut chat);
 
-    chat.stop_realtime_conversation();
-    chat.on_realtime_conversation_closed(/*reason*/ None);
+        chat.stop_realtime_conversation();
+        chat.on_realtime_conversation_closed(/*reason*/ None);
 
-    commit_realtime_history_events(&mut chat, &mut events);
-    let rendered = std::iter::from_fn(|| events.try_recv().ok())
-        .filter_map(|event| match event {
-            AppEvent::InsertHistoryCell(cell) => Some(
-                cell.display_lines(/*width*/ 80)
-                    .into_iter()
-                    .map(|line| line.to_string())
-                    .collect::<Vec<_>>()
-                    .join("\n"),
-            ),
-            _ => None,
-        })
-        .collect::<Vec<_>>()
-        .join("\n");
-    assert_eq!(rendered.matches("Correction").count(), 1);
-    assert_eq!(rendered.matches("First answer").count(), 1);
-    insta::assert_snapshot!("interleaved_partials_on_stop", rendered);
+        commit_realtime_history_events(&mut chat, &mut events);
+        let rendered = std::iter::from_fn(|| events.try_recv().ok())
+            .filter_map(|event| match event {
+                AppEvent::InsertHistoryCell(cell) => Some(
+                    cell.display_lines(/*width*/ 80)
+                        .into_iter()
+                        .map(|line| line.to_string())
+                        .collect::<Vec<_>>()
+                        .join("\n"),
+                ),
+                _ => None,
+            })
+            .collect::<Vec<_>>()
+            .join("\n");
+        assert_eq!(rendered.matches("Correction").count(), 1);
+        assert_eq!(rendered.matches("First answer").count(), 1);
+        insta::assert_snapshot!("interleaved_partials_on_stop", rendered);
+    })
+    .await;
 }
 
 #[tokio::test]
@@ -435,48 +441,52 @@ async fn direct_reset_preserves_both_partial_speakers_for_replay() {
 
 #[tokio::test]
 async fn stopping_voice_preserves_the_live_transcript_once() {
-    for command in ["/voice", "/voice stop"] {
-        let (mut chat, _sender, mut events, _ops) = make_chatwidget_manual_with_sender().await;
-        chat.local_settings.tui.animations = true;
-        activate_voice(&mut chat);
-        chat.on_realtime_transcript_done("user".to_string(), "Earlier question".to_string());
-        chat.on_realtime_transcript_done("assistant".to_string(), "Earlier answer".to_string());
-        chat.on_realtime_transcript_delta("assistant".to_string(), "Answer in ".to_string());
-        chat.on_realtime_transcript_delta("assistant".to_string(), "progress".to_string());
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+        for command in ["/voice", "/voice stop"] {
+            let (mut chat, _sender, mut events, _ops) = make_chatwidget_manual_with_sender().await;
+            chat.local_settings.tui.animations = true;
+            activate_voice(&mut chat);
+            chat.on_realtime_transcript_done("user".to_string(), "Earlier question".to_string());
+            chat.on_realtime_transcript_done("assistant".to_string(), "Earlier answer".to_string());
+            chat.on_realtime_transcript_delta("assistant".to_string(), "Answer in ".to_string());
+            chat.on_realtime_transcript_delta("assistant".to_string(), "progress".to_string());
 
-        if command == "/voice" {
-            chat.handle_slash_command_dispatch(crate::slash_command::SlashCommand::Voice);
-        } else {
-            chat.handle_slash_command_with_args_dispatch(
-                crate::slash_command::SlashCommand::Voice,
-                "stop".to_string(),
-                Vec::new(),
-            );
-        }
-        chat.on_realtime_transcript_done("assistant".to_string(), "Answer in progress".to_string());
-        chat.on_realtime_conversation_closed(/*reason*/ None);
-        chat.stop_realtime_conversation();
-
-        assert_eq!(
-            chat.realtime_conversation.phase,
-            RealtimeConversationPhase::Inactive
-        );
-        commit_realtime_history_events(&mut chat, &mut events);
-        assert!(chat.active_cell_render_key().is_none());
-        let mut rendered = Vec::new();
-        commit_realtime_history_events(&mut chat, &mut events);
-        while let Ok(event) = events.try_recv() {
-            if let AppEvent::InsertHistoryCell(cell) = event {
-                assert!(cell.transcript_animation_tick().is_none());
-                rendered.extend(
-                    cell.display_lines(/*width*/ 80)
-                        .into_iter()
-                        .map(|line| line.to_string()),
+            if command == "/voice" {
+                chat.handle_slash_command_dispatch(crate::slash_command::SlashCommand::Voice);
+            } else {
+                chat.handle_slash_command_with_args_dispatch(
+                    crate::slash_command::SlashCommand::Voice,
+                    "stop".to_string(),
+                    Vec::new(),
                 );
             }
-        }
-        insta::allow_duplicates! {
-            insta::assert_snapshot!(rendered.join("\n"), @"
+            chat.on_realtime_transcript_done(
+                "assistant".to_string(),
+                "Answer in progress".to_string(),
+            );
+            chat.on_realtime_conversation_closed(/*reason*/ None);
+            chat.stop_realtime_conversation();
+
+            assert_eq!(
+                chat.realtime_conversation.phase,
+                RealtimeConversationPhase::Inactive
+            );
+            commit_realtime_history_events(&mut chat, &mut events);
+            assert!(chat.active_cell_render_key().is_none());
+            let mut rendered = Vec::new();
+            commit_realtime_history_events(&mut chat, &mut events);
+            while let Ok(event) = events.try_recv() {
+                if let AppEvent::InsertHistoryCell(cell) = event {
+                    assert!(cell.transcript_animation_tick().is_none());
+                    rendered.extend(
+                        cell.display_lines(/*width*/ 80)
+                            .into_iter()
+                            .map(|line| line.to_string()),
+                    );
+                }
+            }
+            insta::allow_duplicates! {
+                insta::assert_snapshot!(rendered.join("\n"), @"
             ───────────────────────────────────────────────────────────────────────────────
             YOU
             │ Earlier question
@@ -484,60 +494,65 @@ async fn stopping_voice_preserves_the_live_transcript_once() {
             • Earlier answer
             • Answer in progress
             ");
+            }
         }
-    }
+    })
+    .await;
 }
 
 #[tokio::test]
 async fn transcript_completion_waits_for_normal_agent_stream_consolidation() {
-    let (mut chat, _sender, mut events, _ops) = make_chatwidget_manual_with_sender().await;
-    activate_voice(&mut chat);
-    chat.on_agent_message_delta("normal typed output".to_string());
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+        let (mut chat, _sender, mut events, _ops) = make_chatwidget_manual_with_sender().await;
+        activate_voice(&mut chat);
+        chat.on_agent_message_delta("normal typed output".to_string());
 
-    chat.on_realtime_transcript_done("assistant".to_string(), "voice output".to_string());
-    chat.on_realtime_transcript_delta(
-        "assistant".to_string(),
-        "unfinished voice output".to_string(),
-    );
-    chat.stop_realtime_conversation();
+        chat.on_realtime_transcript_done("assistant".to_string(), "voice output".to_string());
+        chat.on_realtime_transcript_delta(
+            "assistant".to_string(),
+            "unfinished voice output".to_string(),
+        );
+        chat.stop_realtime_conversation();
 
-    assert_eq!(chat.realtime_conversation.pending_history_cells.len(), 2);
-    commit_realtime_history_events(&mut chat, &mut events);
-    while let Ok(event) = events.try_recv() {
-        if let AppEvent::InsertHistoryCell(cell) = event {
-            assert!(
-                cell.display_lines(/*width*/ 80)
-                    .iter()
-                    .all(|line| !line.to_string().contains("voice output"))
-            );
+        assert_eq!(chat.realtime_conversation.pending_history_cells.len(), 2);
+        commit_realtime_history_events(&mut chat, &mut events);
+        while let Ok(event) = events.try_recv() {
+            if let AppEvent::InsertHistoryCell(cell) = event {
+                assert!(
+                    cell.display_lines(/*width*/ 80)
+                        .iter()
+                        .all(|line| !line.to_string().contains("voice output"))
+                );
+            }
         }
-    }
 
-    chat.finalize_completed_assistant_message(Some("normal typed output"), /*phase*/ None);
-    chat.note_stream_consolidation_completed();
-    chat.flush_realtime_transcript_history();
+        chat.finalize_completed_assistant_message(Some("normal typed output"), /*phase*/ None);
+        chat.note_stream_consolidation_completed();
+        chat.flush_realtime_transcript_history();
 
-    let mut rendered = Vec::new();
-    commit_realtime_history_events(&mut chat, &mut events);
-    while let Ok(event) = events.try_recv() {
-        if let AppEvent::InsertHistoryCell(cell) = event {
-            rendered.extend(
-                cell.display_lines(/*width*/ 80)
-                    .into_iter()
-                    .map(|line| line.to_string()),
-            );
+        let mut rendered = Vec::new();
+        commit_realtime_history_events(&mut chat, &mut events);
+        while let Ok(event) = events.try_recv() {
+            if let AppEvent::InsertHistoryCell(cell) = event {
+                rendered.extend(
+                    cell.display_lines(/*width*/ 80)
+                        .into_iter()
+                        .map(|line| line.to_string()),
+                );
+            }
         }
-    }
-    assert_eq!(
-        rendered,
-        [
-            "",
-            "CODEX",
-            "  normal typed output",
-            "• voice output",
-            "• unfinished voice output"
-        ]
-    );
+        assert_eq!(
+            rendered,
+            [
+                "",
+                "CODEX",
+                "  normal typed output",
+                "• voice output",
+                "• unfinished voice output"
+            ]
+        );
+    })
+    .await;
 }
 
 #[tokio::test]
@@ -670,33 +685,36 @@ async fn transcript_deltas_keep_a_bounded_utf8_suffix() {
 
 #[tokio::test]
 async fn completed_transcript_is_added_to_history_and_clears_the_caption() {
-    let (mut chat, _sender, mut events, _ops) = make_chatwidget_manual_with_sender().await;
-    chat.realtime_conversation.phase = RealtimeConversationPhase::Active;
-    chat.on_realtime_transcript_delta("assistant".to_string(), "Hello".to_string());
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+        let (mut chat, _sender, mut events, _ops) = make_chatwidget_manual_with_sender().await;
+        chat.realtime_conversation.phase = RealtimeConversationPhase::Active;
+        chat.on_realtime_transcript_delta("assistant".to_string(), "Hello".to_string());
 
-    chat.on_realtime_transcript_done("assistant".to_string(), "Hello there".to_string());
-    chat.on_realtime_transcript_done("user".to_string(), "Can you hear me?".to_string());
+        chat.on_realtime_transcript_done("assistant".to_string(), "Hello there".to_string());
+        chat.on_realtime_transcript_done("user".to_string(), "Can you hear me?".to_string());
 
-    let mut rendered = Vec::new();
-    commit_realtime_history_events(&mut chat, &mut events);
-    while let Ok(event) = events.try_recv() {
-        if let AppEvent::InsertHistoryCell(cell) = event {
-            rendered.extend(
-                cell.display_lines(/*width*/ 80)
-                    .into_iter()
-                    .map(|line| line.to_string()),
-            );
+        let mut rendered = Vec::new();
+        commit_realtime_history_events(&mut chat, &mut events);
+        while let Ok(event) = events.try_recv() {
+            if let AppEvent::InsertHistoryCell(cell) = event {
+                rendered.extend(
+                    cell.display_lines(/*width*/ 80)
+                        .into_iter()
+                        .map(|line| line.to_string()),
+                );
+            }
         }
-    }
 
-    assert_eq!(
-        (
-            chat.realtime_conversation.transcript_role.as_deref(),
-            chat.realtime_conversation.transcript.as_str(),
-        ),
-        (None, "")
-    );
-    insta::assert_snapshot!(rendered.join("\n"));
+        assert_eq!(
+            (
+                chat.realtime_conversation.transcript_role.as_deref(),
+                chat.realtime_conversation.transcript.as_str(),
+            ),
+            (None, "")
+        );
+        insta::assert_snapshot!(rendered.join("\n"));
+    })
+    .await;
 }
 
 #[tokio::test]
@@ -751,49 +769,52 @@ async fn live_voice_split_flap_animates_without_changing_final_history() {
 
 #[tokio::test]
 async fn spoken_user_transcript_preserves_red_chevron_and_canonical_history() {
-    let (mut chat, _sender, mut events, _ops) = make_chatwidget_manual_with_sender().await;
-    activate_voice(&mut chat);
-    chat.on_realtime_transcript_delta("user".to_string(), " hello".to_string());
-    let marker = chat
-        .realtime_conversation
-        .live_transcript_cell
-        .as_ref()
-        .unwrap()
-        .display_lines(/*width*/ 32)
-        .into_iter()
-        .flat_map(|line| line.spans)
-        .find(|span| span.content.trim_end() == "│")
-        .expect("genuine spoken user marker");
-    assert_eq!(marker.style.fg, Some(ratatui::style::Color::Red));
-    assert!(
-        marker
-            .style
-            .add_modifier
-            .contains(ratatui::style::Modifier::BOLD)
-    );
-    chat.local_settings.tui.animations = false;
-    chat.on_realtime_transcript_delta("user".to_string(), " world".to_string());
-    assert!(
-        chat.realtime_conversation
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+        let (mut chat, _sender, mut events, _ops) = make_chatwidget_manual_with_sender().await;
+        activate_voice(&mut chat);
+        chat.on_realtime_transcript_delta("user".to_string(), " hello".to_string());
+        let marker = chat
+            .realtime_conversation
             .live_transcript_cell
             .as_ref()
             .unwrap()
             .display_lines(/*width*/ 32)
-            .iter()
-            .any(|line| line.to_string() == "│ hello world")
-    );
-    chat.on_realtime_transcript_done("user".to_string(), " hello world".to_string());
-    commit_realtime_history_events(&mut chat, &mut events);
-    let Ok(AppEvent::InsertHistoryCell(cell)) = events.try_recv() else {
-        panic!("completed voice transcript should retain its ordinary history cell");
-    };
-    assert!(cell.as_any().is::<crate::history_cell::UserHistoryCell>());
-    assert_eq!(cell.raw_lines()[0].to_string(), " hello world");
-    assert!(
-        cell.display_lines(/*width*/ 32)
-            .iter()
-            .any(|line| line.to_string() == "│ hello world")
-    );
+            .into_iter()
+            .flat_map(|line| line.spans)
+            .find(|span| span.content.trim_end() == "│")
+            .expect("genuine spoken user marker");
+        assert_eq!(marker.style.fg, Some(ratatui::style::Color::Red));
+        assert!(
+            marker
+                .style
+                .add_modifier
+                .contains(ratatui::style::Modifier::BOLD)
+        );
+        chat.local_settings.tui.animations = false;
+        chat.on_realtime_transcript_delta("user".to_string(), " world".to_string());
+        assert!(
+            chat.realtime_conversation
+                .live_transcript_cell
+                .as_ref()
+                .unwrap()
+                .display_lines(/*width*/ 32)
+                .iter()
+                .any(|line| line.to_string() == "│ hello world")
+        );
+        chat.on_realtime_transcript_done("user".to_string(), " hello world".to_string());
+        commit_realtime_history_events(&mut chat, &mut events);
+        let Ok(AppEvent::InsertHistoryCell(cell)) = events.try_recv() else {
+            panic!("completed voice transcript should retain its ordinary history cell");
+        };
+        assert!(cell.as_any().is::<crate::history_cell::UserHistoryCell>());
+        assert_eq!(cell.raw_lines()[0].to_string(), " hello world");
+        assert!(
+            cell.display_lines(/*width*/ 32)
+                .iter()
+                .any(|line| line.to_string() == "│ hello world")
+        );
+    })
+    .await;
 }
 
 #[tokio::test]
@@ -852,6 +873,8 @@ async fn new_voice_turn_interrupts_uncaptioned_queued_speech() {
 
 #[tokio::test]
 async fn completed_user_caption_stays_visible_until_history_commit() {
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+
     let (mut chat, _sender, mut events, _ops) = make_chatwidget_manual_with_sender().await;
     activate_voice(&mut chat);
     chat.local_settings.tui.animations = false;
@@ -892,49 +915,56 @@ async fn completed_user_caption_stays_visible_until_history_commit() {
         .join("\n");
     assert_eq!(history.matches("Keep these words visible.").count(), 1);
     assert!(!render_bottom_popup(&chat, /*width*/ 80).contains("Keep these words visible."));
+
+    }).await;
 }
 
 #[tokio::test]
 async fn animated_interleaved_captions_keep_settled_words_visible() {
-    let words = "Keep these words visible";
-    let mut settled = Vec::new();
-    for (first, second) in [("user", "assistant"), ("assistant", "user")] {
-        let (mut chat, _sender, _events, _ops) = make_chatwidget_manual_with_sender().await;
-        activate_voice(&mut chat);
-        chat.local_settings.tui.animations = true;
-        chat.on_realtime_transcript_delta(first.into(), words.into());
-        // Let the real animation settle before the other speaker's packets arrive.
-        tokio::time::sleep(std::time::Duration::from_millis(/*millis*/ 750)).await;
-        for (role, delta) in [(second, "Other speaker"), (first, " please"), (second, ".")] {
-            chat.on_realtime_transcript_delta(role.into(), delta.into());
-            assert!(render_bottom_popup(&chat, /*width*/ 80).contains(words));
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+        let words = "Keep these words visible";
+        let mut settled = Vec::new();
+        for (first, second) in [("user", "assistant"), ("assistant", "user")] {
+            let (mut chat, _sender, _events, _ops) = make_chatwidget_manual_with_sender().await;
+            activate_voice(&mut chat);
+            chat.local_settings.tui.animations = true;
+            chat.on_realtime_transcript_delta(first.into(), words.into());
+            // Let the real animation settle before the other speaker's packets arrive.
+            tokio::time::sleep(std::time::Duration::from_millis(/*millis*/ 750)).await;
+            for (role, delta) in [(second, "Other speaker"), (first, " please"), (second, ".")] {
+                chat.on_realtime_transcript_delta(role.into(), delta.into());
+                assert!(render_bottom_popup(&chat, /*width*/ 80).contains(words));
+                let overlay = chat.active_cell_transcript_lines(/*width*/ 80).unwrap();
+                assert!(overlay.iter().any(|line| line.to_string().contains(words)));
+                let key = chat.active_cell_render_key().unwrap();
+                assert!(key.animation_tick.is_some());
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(/*millis*/ 750)).await;
             let overlay = chat.active_cell_transcript_lines(/*width*/ 80).unwrap();
-            assert!(overlay.iter().any(|line| line.to_string().contains(words)));
-            let key = chat.active_cell_render_key().unwrap();
-            assert!(key.animation_tick.is_some());
+            settled.push(format!(
+                "{first} first:\n{}",
+                overlay
+                    .iter()
+                    .map(|line| line.to_string().trim_end().to_string())
+                    .collect::<Vec<_>>()
+                    .join("\n")
+            ));
+            chat.on_realtime_transcript_done(
+                first.into(),
+                "Keep these words visible please".into(),
+            );
+            assert!(
+                render_bottom_popup(&chat, /*width*/ 80)
+                    .contains("Keep these words visible please")
+            );
+            chat.on_realtime_transcript_done(second.into(), "Other speaker.".into());
+            let live_count = chat.realtime_conversation.live_transcript_cells().count();
+            assert_eq!(live_count, 0);
+            let history = chat.take_realtime_transcript_history();
+            assert_eq!(history.len(), 2);
+            assert!(chat.active_cell_render_key().is_none());
         }
-        tokio::time::sleep(std::time::Duration::from_millis(/*millis*/ 750)).await;
-        let overlay = chat.active_cell_transcript_lines(/*width*/ 80).unwrap();
-        settled.push(format!(
-            "{first} first:\n{}",
-            overlay
-                .iter()
-                .map(|line| line.to_string().trim_end().to_string())
-                .collect::<Vec<_>>()
-                .join("\n")
-        ));
-        chat.on_realtime_transcript_done(first.into(), "Keep these words visible please".into());
-        assert!(
-            render_bottom_popup(&chat, /*width*/ 80).contains("Keep these words visible please")
-        );
-        chat.on_realtime_transcript_done(second.into(), "Other speaker.".into());
-        let live_count = chat.realtime_conversation.live_transcript_cells().count();
-        assert_eq!(live_count, 0);
-        let history = chat.take_realtime_transcript_history();
-        assert_eq!(history.len(), 2);
-        assert!(chat.active_cell_render_key().is_none());
-    }
-    insta::assert_snapshot!(settled.join("\n"), @"
+        insta::assert_snapshot!(settled.join("\n"), @"
     user first:
     ───────────────────────────────────────────────────────────────────────────────
     YOU
@@ -950,33 +980,38 @@ async fn animated_interleaved_captions_keep_settled_words_visible() {
 
     • Keep these words visible please
     ");
+    })
+    .await;
 }
 
 #[tokio::test]
 async fn empty_interleaved_caption_completion_invalidates_overlay() {
-    for phase in [
-        RealtimeConversationPhase::Active,
-        RealtimeConversationPhase::Stopping,
-    ] {
-        let (mut chat, _sender, _events, _ops) = make_chatwidget_manual_with_sender().await;
-        activate_voice(&mut chat);
-        chat.local_settings.tui.animations = false;
-        chat.on_realtime_transcript_delta("assistant".into(), "Discard this caption".into());
-        chat.on_realtime_transcript_delta("user".into(), "Keep this caption".into());
-        chat.realtime_conversation.phase = phase;
-        let previous_key = chat.active_cell_render_key().unwrap();
-        chat.on_realtime_transcript_done("assistant".into(), String::new());
-        let current_key = chat.active_cell_render_key().unwrap();
-        assert_ne!(previous_key, current_key);
-        let visible = chat.active_cell_transcript_lines(/*width*/ 80).unwrap();
-        assert_eq!(
-            visible.iter().map(ToString::to_string).collect::<Vec<_>>(),
-            vec![
-                "─".repeat(79),
-                "YOU".into(),
-                "│ Keep this caption".into(),
-                "─".repeat(79)
-            ]
-        );
-    }
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+        for phase in [
+            RealtimeConversationPhase::Active,
+            RealtimeConversationPhase::Stopping,
+        ] {
+            let (mut chat, _sender, _events, _ops) = make_chatwidget_manual_with_sender().await;
+            activate_voice(&mut chat);
+            chat.local_settings.tui.animations = false;
+            chat.on_realtime_transcript_delta("assistant".into(), "Discard this caption".into());
+            chat.on_realtime_transcript_delta("user".into(), "Keep this caption".into());
+            chat.realtime_conversation.phase = phase;
+            let previous_key = chat.active_cell_render_key().unwrap();
+            chat.on_realtime_transcript_done("assistant".into(), String::new());
+            let current_key = chat.active_cell_render_key().unwrap();
+            assert_ne!(previous_key, current_key);
+            let visible = chat.active_cell_transcript_lines(/*width*/ 80).unwrap();
+            assert_eq!(
+                visible.iter().map(ToString::to_string).collect::<Vec<_>>(),
+                vec![
+                    "─".repeat(79),
+                    "YOU".into(),
+                    "│ Keep this caption".into(),
+                    "─".repeat(79)
+                ]
+            );
+        }
+    })
+    .await;
 }

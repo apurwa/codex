@@ -3501,33 +3501,36 @@ async fn raw_slash_command_reports_usage_for_invalid_arg() {
 
 #[tokio::test]
 async fn compact_queues_user_messages_snapshot() {
-    let (mut chat, _rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
-    chat.thread_id = Some(ThreadId::new());
-    handle_turn_started(&mut chat, "turn-1");
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+        let (mut chat, _rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
+        chat.thread_id = Some(ThreadId::new());
+        handle_turn_started(&mut chat, "turn-1");
 
-    chat.submit_user_message(UserMessage::from(
-        "Steer submitted while /compact was running.".to_string(),
-    ));
-    handle_error(
-        &mut chat,
-        "cannot steer a compact turn",
-        Some(CodexErrorInfo::ActiveTurnNotSteerable {
-            turn_kind: NonSteerableTurnKind::Compact,
-        }),
-    );
+        chat.submit_user_message(UserMessage::from(
+            "Steer submitted while /compact was running.".to_string(),
+        ));
+        handle_error(
+            &mut chat,
+            "cannot steer a compact turn",
+            Some(CodexErrorInfo::ActiveTurnNotSteerable {
+                turn_kind: NonSteerableTurnKind::Compact,
+            }),
+        );
 
-    let width: u16 = 80;
-    let height: u16 = 18;
-    let backend = VT100Backend::new(width, height);
-    let mut term = crate::custom_terminal::Terminal::with_options(backend).expect("terminal");
-    let desired_height = chat.desired_height(width).min(height);
-    term.set_viewport_area(Rect::new(0, height - desired_height, width, desired_height));
-    term.draw(|f| {
-        chat.render(f.area(), f.buffer_mut());
+        let width: u16 = 80;
+        let height: u16 = 18;
+        let backend = VT100Backend::new(width, height);
+        let mut term = crate::custom_terminal::Terminal::with_options(backend).expect("terminal");
+        let desired_height = chat.desired_height(width).min(height);
+        term.set_viewport_area(Rect::new(0, height - desired_height, width, desired_height));
+        term.draw(|f| {
+            chat.render(f.area(), f.buffer_mut());
+        })
+        .unwrap();
+        assert_chatwidget_snapshot!(
+            "compact_queues_user_messages_snapshot",
+            normalize_snapshot_paths(term.backend().vt100().screen().contents())
+        );
     })
-    .unwrap();
-    assert_chatwidget_snapshot!(
-        "compact_queues_user_messages_snapshot",
-        normalize_snapshot_paths(term.backend().vt100().screen().contents())
-    );
+    .await;
 }

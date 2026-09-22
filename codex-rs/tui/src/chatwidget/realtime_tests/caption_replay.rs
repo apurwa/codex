@@ -5,9 +5,10 @@ use pretty_assertions::assert_eq;
 
 #[tokio::test]
 async fn replay_preserves_typed_updates_before_voice_steers_the_turn() {
-    let (mut chat, _sender, mut events, _ops) = make_chatwidget_manual_with_sender().await;
-    chat.thread_id = Some(ThreadId::new());
-    chat.replay_thread_turns(
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+        let (mut chat, _sender, mut events, _ops) = make_chatwidget_manual_with_sender().await;
+        chat.thread_id = Some(ThreadId::new());
+        chat.replay_thread_turns(
         vec![Turn {
             id: "typed-then-voice".into(),
             items: vec![
@@ -45,28 +46,30 @@ async fn replay_preserves_typed_updates_before_voice_steers_the_turn() {
         }],
         ReplayKind::ThreadSnapshot,
     );
-    chat.flush_answer_stream_with_separator();
-    commit_realtime_history_events(&mut chat, &mut events);
-    let rendered = std::iter::from_fn(|| events.try_recv().ok())
-        .filter_map(|event| match event {
-            AppEvent::InsertHistoryCell(cell) => Some(
-                cell.transcript_lines(/*width*/ 80)
-                    .into_iter()
-                    .map(|line| line.to_string())
-                    .collect::<Vec<_>>()
-                    .join("\n"),
-            ),
-            _ => None,
-        })
-        .collect::<Vec<_>>()
-        .join("\n");
-    assert!(
-        rendered.contains("Checking the typed request"),
-        "{rendered}"
-    );
-    assert!(rendered.contains("Typed reasoning summary"), "{rendered}");
-    assert!(!rendered.contains("Private voice"), "{rendered}");
-    insta::assert_snapshot!("typed_turn_replay_before_voice_steering", rendered);
+        chat.flush_answer_stream_with_separator();
+        commit_realtime_history_events(&mut chat, &mut events);
+        let rendered = std::iter::from_fn(|| events.try_recv().ok())
+            .filter_map(|event| match event {
+                AppEvent::InsertHistoryCell(cell) => Some(
+                    cell.transcript_lines(/*width*/ 80)
+                        .into_iter()
+                        .map(|line| line.to_string())
+                        .collect::<Vec<_>>()
+                        .join("\n"),
+                ),
+                _ => None,
+            })
+            .collect::<Vec<_>>()
+            .join("\n");
+        assert!(
+            rendered.contains("Checking the typed request"),
+            "{rendered}"
+        );
+        assert!(rendered.contains("Typed reasoning summary"), "{rendered}");
+        assert!(!rendered.contains("Private voice"), "{rendered}");
+        insta::assert_snapshot!("typed_turn_replay_before_voice_steering", rendered);
+    })
+    .await;
 }
 
 #[tokio::test]
@@ -330,55 +333,58 @@ async fn captioned_voice_answer_does_not_duplicate_on_close() {
 
 #[tokio::test]
 async fn restored_partial_caption_accepts_late_completion_without_duplicate_history() {
-    let (mut chat, _sender, mut events, _ops) = make_chatwidget_manual_with_sender().await;
-    chat.local_settings.tui.animations = false;
-    chat.restore_realtime_transcript_cells(VecDeque::from([
-        super::super::RealtimeTranscriptRecord {
-            role: "user".into(),
-            text: "last ".into(),
-            complete: false,
-            before_turn_id: None,
-        },
-    ]));
-    let live = chat
-        .realtime_conversation
-        .live_transcript_cell
-        .as_ref()
-        .unwrap();
-    insta::assert_snapshot!(
-        "restored_voice_partial_live",
-        live.display_lines(/*width*/ 80)
-            .into_iter()
-            .map(|line| line.to_string())
-            .collect::<Vec<_>>()
-            .join("\n")
-    );
-    chat.on_realtime_transcript_delta("user".into(), "words".into());
-    let retained = chat.take_realtime_transcript_cells_for_replay();
-    assert_eq!(retained.len(), 1);
-    assert_eq!(retained[0].text, "last words");
-    chat.restore_realtime_transcript_cells(retained);
-    chat.on_realtime_transcript_done("user".into(), "last words".into());
-    assert!(chat.realtime_conversation.live_transcript_cell.is_none());
-    assert_eq!(chat.realtime_conversation.accepted_transcripts.len(), 1);
-    assert_eq!(
-        chat.realtime_conversation.accepted_transcripts[0].text,
-        "last words"
-    );
-    assert!(chat.realtime_conversation.accepted_transcripts[0].complete);
-    commit_realtime_history_events(&mut chat, &mut events);
-    let rendered = std::iter::from_fn(|| events.try_recv().ok())
-        .filter_map(|event| match event {
-            AppEvent::InsertHistoryCell(cell) => Some(
-                cell.display_lines(/*width*/ 80)
-                    .into_iter()
-                    .map(|line| line.to_string())
-                    .collect::<String>(),
-            ),
-            _ => None,
-        })
-        .collect::<String>();
-    assert_eq!(rendered.matches("last words").count(), 1);
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+        let (mut chat, _sender, mut events, _ops) = make_chatwidget_manual_with_sender().await;
+        chat.local_settings.tui.animations = false;
+        chat.restore_realtime_transcript_cells(VecDeque::from([
+            super::super::RealtimeTranscriptRecord {
+                role: "user".into(),
+                text: "last ".into(),
+                complete: false,
+                before_turn_id: None,
+            },
+        ]));
+        let live = chat
+            .realtime_conversation
+            .live_transcript_cell
+            .as_ref()
+            .unwrap();
+        insta::assert_snapshot!(
+            "restored_voice_partial_live",
+            live.display_lines(/*width*/ 80)
+                .into_iter()
+                .map(|line| line.to_string())
+                .collect::<Vec<_>>()
+                .join("\n")
+        );
+        chat.on_realtime_transcript_delta("user".into(), "words".into());
+        let retained = chat.take_realtime_transcript_cells_for_replay();
+        assert_eq!(retained.len(), 1);
+        assert_eq!(retained[0].text, "last words");
+        chat.restore_realtime_transcript_cells(retained);
+        chat.on_realtime_transcript_done("user".into(), "last words".into());
+        assert!(chat.realtime_conversation.live_transcript_cell.is_none());
+        assert_eq!(chat.realtime_conversation.accepted_transcripts.len(), 1);
+        assert_eq!(
+            chat.realtime_conversation.accepted_transcripts[0].text,
+            "last words"
+        );
+        assert!(chat.realtime_conversation.accepted_transcripts[0].complete);
+        commit_realtime_history_events(&mut chat, &mut events);
+        let rendered = std::iter::from_fn(|| events.try_recv().ok())
+            .filter_map(|event| match event {
+                AppEvent::InsertHistoryCell(cell) => Some(
+                    cell.display_lines(/*width*/ 80)
+                        .into_iter()
+                        .map(|line| line.to_string())
+                        .collect::<String>(),
+                ),
+                _ => None,
+            })
+            .collect::<String>();
+        assert_eq!(rendered.matches("last words").count(), 1);
+    })
+    .await;
 }
 
 #[tokio::test]

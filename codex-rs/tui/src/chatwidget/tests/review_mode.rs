@@ -1196,24 +1196,27 @@ async fn custom_prompt_enter_empty_does_not_send() {
 // marker (replacing the spinner) and flushes it into history.
 #[tokio::test]
 async fn interrupt_exec_marks_failed_snapshot() {
-    let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+        let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
 
-    // Begin a long-running command so we have an active exec cell with a spinner.
-    begin_exec(&mut chat, "call-int", "sleep 1");
+        // Begin a long-running command so we have an active exec cell with a spinner.
+        begin_exec(&mut chat, "call-int", "sleep 1");
 
-    // Simulate the task being aborted (as if ESC was pressed), which should
-    // cause the active exec cell to be finalized as failed and flushed.
-    handle_turn_interrupted(&mut chat, "turn-1");
+        // Simulate the task being aborted (as if ESC was pressed), which should
+        // cause the active exec cell to be finalized as failed and flushed.
+        handle_turn_interrupted(&mut chat, "turn-1");
 
-    let cells = drain_insert_history(&mut rx);
-    assert!(
-        !cells.is_empty(),
-        "expected finalized exec cell to be inserted into history"
-    );
+        let cells = drain_insert_history(&mut rx);
+        assert!(
+            !cells.is_empty(),
+            "expected finalized exec cell to be inserted into history"
+        );
 
-    // The first inserted cell should be the finalized exec; snapshot its text.
-    let exec_blob = lines_to_single_string(&cells[0]);
-    assert_chatwidget_snapshot!("interrupt_exec_marks_failed", exec_blob);
+        // The first inserted cell should be the finalized exec; snapshot its text.
+        let exec_blob = lines_to_single_string(&cells[0]);
+        assert_chatwidget_snapshot!("interrupt_exec_marks_failed", exec_blob);
+    })
+    .await;
 }
 
 // Snapshot test: after an interrupted turn, a gentle error message is inserted
@@ -1472,36 +1475,39 @@ async fn enter_submits_steer_while_review_is_running() {
 
 #[tokio::test]
 async fn review_queues_user_messages_snapshot() {
-    let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
-    chat.thread_id = Some(ThreadId::new());
-    handle_turn_started(&mut chat, "turn-1");
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+        let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
+        chat.thread_id = Some(ThreadId::new());
+        handle_turn_started(&mut chat, "turn-1");
 
-    handle_entered_review_mode(&mut chat, "current changes");
-    let _ = drain_insert_history(&mut rx);
+        handle_entered_review_mode(&mut chat, "current changes");
+        let _ = drain_insert_history(&mut rx);
 
-    chat.submit_user_message(UserMessage::from(
-        "Steer submitted while /review was running.".to_string(),
-    ));
-    handle_error(
-        &mut chat,
-        "cannot steer a review turn",
-        Some(CodexErrorInfo::ActiveTurnNotSteerable {
-            turn_kind: NonSteerableTurnKind::Review,
-        }),
-    );
+        chat.submit_user_message(UserMessage::from(
+            "Steer submitted while /review was running.".to_string(),
+        ));
+        handle_error(
+            &mut chat,
+            "cannot steer a review turn",
+            Some(CodexErrorInfo::ActiveTurnNotSteerable {
+                turn_kind: NonSteerableTurnKind::Review,
+            }),
+        );
 
-    let width: u16 = 80;
-    let height: u16 = 18;
-    let backend = VT100Backend::new(width, height);
-    let mut term = crate::custom_terminal::Terminal::with_options(backend).expect("terminal");
-    let desired_height = chat.desired_height(width).min(height);
-    term.set_viewport_area(Rect::new(0, height - desired_height, width, desired_height));
-    term.draw(|f| {
-        chat.render(f.area(), f.buffer_mut());
+        let width: u16 = 80;
+        let height: u16 = 18;
+        let backend = VT100Backend::new(width, height);
+        let mut term = crate::custom_terminal::Terminal::with_options(backend).expect("terminal");
+        let desired_height = chat.desired_height(width).min(height);
+        term.set_viewport_area(Rect::new(0, height - desired_height, width, desired_height));
+        term.draw(|f| {
+            chat.render(f.area(), f.buffer_mut());
+        })
+        .unwrap();
+        assert_chatwidget_snapshot!(
+            "review_queues_user_messages_snapshot",
+            normalize_snapshot_paths(term.backend().vt100().screen().contents())
+        );
     })
-    .unwrap();
-    assert_chatwidget_snapshot!(
-        "review_queues_user_messages_snapshot",
-        normalize_snapshot_paths(term.backend().vt100().screen().contents())
-    );
+    .await;
 }

@@ -723,39 +723,42 @@ async fn live_app_server_user_message_item_completed_does_not_duplicate_rendered
 
 #[tokio::test]
 async fn live_app_server_user_message_omits_unsupported_media() {
-    let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+        let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
 
-    chat.handle_server_notification(
-        ServerNotification::ItemCompleted(ItemCompletedNotification {
-            thread_id: "thread-1".to_string(),
-            turn_id: "turn-1".to_string(),
-            completed_at_ms: 0,
-            item: AppServerThreadItem::UserMessage {
-                id: "user-1".to_string(),
-                client_id: None,
-                content: vec![
-                    AppServerUserInput::Text {
-                        text: "Please inspect the attachments.".to_string(),
-                        text_elements: Vec::new(),
-                    },
-                    AppServerUserInput::Audio {
-                        url: "https://example.com/one.wav".to_string(),
-                    },
-                    AppServerUserInput::LocalAudio {
-                        path: test_path_buf("/tmp/two.wav"),
-                    },
-                ],
-            },
-        }),
-        /*replay_kind*/ None,
-    );
+        chat.handle_server_notification(
+            ServerNotification::ItemCompleted(ItemCompletedNotification {
+                thread_id: "thread-1".to_string(),
+                turn_id: "turn-1".to_string(),
+                completed_at_ms: 0,
+                item: AppServerThreadItem::UserMessage {
+                    id: "user-1".to_string(),
+                    client_id: None,
+                    content: vec![
+                        AppServerUserInput::Text {
+                            text: "Please inspect the attachments.".to_string(),
+                            text_elements: Vec::new(),
+                        },
+                        AppServerUserInput::Audio {
+                            url: "https://example.com/one.wav".to_string(),
+                        },
+                        AppServerUserInput::LocalAudio {
+                            path: test_path_buf("/tmp/two.wav"),
+                        },
+                    ],
+                },
+            }),
+            /*replay_kind*/ None,
+        );
 
-    let inserted = drain_insert_history(&mut rx);
-    assert_eq!(inserted.len(), 1);
-    assert_chatwidget_snapshot!(
-        "live_app_server_user_message_omits_unsupported_media",
-        lines_to_single_string(&inserted[0]),
-    );
+        let inserted = drain_insert_history(&mut rx);
+        assert_eq!(inserted.len(), 1);
+        assert_chatwidget_snapshot!(
+            "live_app_server_user_message_omits_unsupported_media",
+            lines_to_single_string(&inserted[0]),
+        );
+    })
+    .await;
 }
 
 #[tokio::test]
@@ -1070,124 +1073,130 @@ async fn live_app_server_file_change_item_started_preserves_changes() {
 
 #[tokio::test]
 async fn live_app_server_command_execution_strips_shell_wrapper() {
-    let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
-    let script = r#"python3 -c 'print("Hello, world!")'"#;
-    let command =
-        shlex::try_join(["/bin/zsh", "-lc", script]).expect("round-trippable shell wrapper");
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+        let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
+        let script = r#"python3 -c 'print("Hello, world!")'"#;
+        let command =
+            shlex::try_join(["/bin/zsh", "-lc", script]).expect("round-trippable shell wrapper");
 
-    chat.handle_server_notification(
-        ServerNotification::ItemStarted(ItemStartedNotification {
-            thread_id: "thread-1".to_string(),
-            turn_id: "turn-1".to_string(),
-            started_at_ms: 0,
-            item: AppServerThreadItem::CommandExecution {
-                model_context: None,
-                id: "cmd-1".to_string(),
-                command: command.clone(),
-                cwd: test_path_buf("/tmp").abs().into(),
-                process_id: None,
-                plugin_id: None,
-                script_path: None,
-                source: AppServerCommandExecutionSource::UserShell,
-                status: AppServerCommandExecutionStatus::InProgress,
-                command_actions: vec![AppServerCommandAction::Unknown {
-                    command: script.to_string(),
-                }],
-                aggregated_output: None,
-                exit_code: None,
-                duration_ms: None,
-            },
-        }),
-        /*replay_kind*/ None,
-    );
-    chat.handle_server_notification(
-        ServerNotification::ItemCompleted(ItemCompletedNotification {
-            thread_id: "thread-1".to_string(),
-            turn_id: "turn-1".to_string(),
-            completed_at_ms: 0,
-            item: AppServerThreadItem::CommandExecution {
-                model_context: None,
-                id: "cmd-1".to_string(),
-                command,
-                cwd: test_path_buf("/tmp").abs().into(),
-                process_id: None,
-                plugin_id: None,
-                script_path: None,
-                source: AppServerCommandExecutionSource::UserShell,
-                status: AppServerCommandExecutionStatus::Completed,
-                command_actions: vec![AppServerCommandAction::Unknown {
-                    command: script.to_string(),
-                }],
-                aggregated_output: Some("Hello, world!\n".to_string()),
-                exit_code: Some(0),
-                duration_ms: Some(5),
-            },
-        }),
-        /*replay_kind*/ None,
-    );
+        chat.handle_server_notification(
+            ServerNotification::ItemStarted(ItemStartedNotification {
+                thread_id: "thread-1".to_string(),
+                turn_id: "turn-1".to_string(),
+                started_at_ms: 0,
+                item: AppServerThreadItem::CommandExecution {
+                    model_context: None,
+                    id: "cmd-1".to_string(),
+                    command: command.clone(),
+                    cwd: test_path_buf("/tmp").abs().into(),
+                    process_id: None,
+                    plugin_id: None,
+                    script_path: None,
+                    source: AppServerCommandExecutionSource::UserShell,
+                    status: AppServerCommandExecutionStatus::InProgress,
+                    command_actions: vec![AppServerCommandAction::Unknown {
+                        command: script.to_string(),
+                    }],
+                    aggregated_output: None,
+                    exit_code: None,
+                    duration_ms: None,
+                },
+            }),
+            /*replay_kind*/ None,
+        );
+        chat.handle_server_notification(
+            ServerNotification::ItemCompleted(ItemCompletedNotification {
+                thread_id: "thread-1".to_string(),
+                turn_id: "turn-1".to_string(),
+                completed_at_ms: 0,
+                item: AppServerThreadItem::CommandExecution {
+                    model_context: None,
+                    id: "cmd-1".to_string(),
+                    command,
+                    cwd: test_path_buf("/tmp").abs().into(),
+                    process_id: None,
+                    plugin_id: None,
+                    script_path: None,
+                    source: AppServerCommandExecutionSource::UserShell,
+                    status: AppServerCommandExecutionStatus::Completed,
+                    command_actions: vec![AppServerCommandAction::Unknown {
+                        command: script.to_string(),
+                    }],
+                    aggregated_output: Some("Hello, world!\n".to_string()),
+                    exit_code: Some(0),
+                    duration_ms: Some(5),
+                },
+            }),
+            /*replay_kind*/ None,
+        );
 
-    let cells = drain_insert_history(&mut rx);
-    assert_eq!(
-        cells.len(),
-        1,
-        "expected one completed command history cell"
-    );
-    let blob = lines_to_single_string(cells.first().expect("command cell"));
-    assert_chatwidget_snapshot!(
-        "live_app_server_command_execution_strips_shell_wrapper",
-        blob
-    );
+        let cells = drain_insert_history(&mut rx);
+        assert_eq!(
+            cells.len(),
+            1,
+            "expected one completed command history cell"
+        );
+        let blob = lines_to_single_string(cells.first().expect("command cell"));
+        assert_chatwidget_snapshot!(
+            "live_app_server_command_execution_strips_shell_wrapper",
+            blob
+        );
+    })
+    .await;
 }
 
 #[tokio::test]
 async fn live_app_server_command_output_delta_transcript_snapshot() {
-    let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
-    chat.on_task_started();
-    begin_exec(&mut chat, "cmd-1", "printf 'stdout\\nstderr\\n'");
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+        let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
+        chat.on_task_started();
+        begin_exec(&mut chat, "cmd-1", "printf 'stdout\\nstderr\\n'");
 
-    for delta in ["stdout\n", "stderr\n"] {
-        chat.handle_server_notification(
-            ServerNotification::CommandExecutionOutputDelta(
-                codex_app_server_protocol::CommandExecutionOutputDeltaNotification {
-                    thread_id: "thread-1".to_string(),
-                    turn_id: "turn-1".to_string(),
-                    item_id: "cmd-1".to_string(),
-                    delta: delta.to_string(),
-                },
-            ),
-            /*replay_kind*/ None,
+        for delta in ["stdout\n", "stderr\n"] {
+            chat.handle_server_notification(
+                ServerNotification::CommandExecutionOutputDelta(
+                    codex_app_server_protocol::CommandExecutionOutputDeltaNotification {
+                        thread_id: "thread-1".to_string(),
+                        turn_id: "turn-1".to_string(),
+                        item_id: "cmd-1".to_string(),
+                        delta: delta.to_string(),
+                    },
+                ),
+                /*replay_kind*/ None,
+            );
+        }
+
+        let active = active_blob(&chat);
+        assert_chatwidget_snapshot!("live_app_server_command_output_delta_active", active);
+
+        let transcript = chat
+            .active_cell_transcript_lines(/*width*/ 80)
+            .expect("active exec transcript lines");
+        assert_chatwidget_snapshot!(
+            "live_app_server_command_output_delta_transcript",
+            lines_to_single_string(&transcript)
         );
-    }
 
-    let active = active_blob(&chat);
-    assert_chatwidget_snapshot!("live_app_server_command_output_delta_active", active);
-
-    let transcript = chat
-        .active_cell_transcript_lines(/*width*/ 80)
-        .expect("active exec transcript lines");
-    assert_chatwidget_snapshot!(
-        "live_app_server_command_output_delta_transcript",
-        lines_to_single_string(&transcript)
-    );
-
-    handle_turn_interrupted(&mut chat, "turn-1");
-    let mut completed = None;
-    while let Ok(event) = rx.try_recv() {
-        if let AppEvent::InsertHistoryCell(cell) = event {
-            let transcript = lines_to_single_string(&cell.transcript_lines(/*width*/ 80));
-            if transcript.contains("printf 'stdout\\nstderr\\n'") {
-                completed = Some(transcript);
+        handle_turn_interrupted(&mut chat, "turn-1");
+        let mut completed = None;
+        while let Ok(event) = rx.try_recv() {
+            if let AppEvent::InsertHistoryCell(cell) = event {
+                let transcript = lines_to_single_string(&cell.transcript_lines(/*width*/ 80));
+                if transcript.contains("printf 'stdout\\nstderr\\n'") {
+                    completed = Some(transcript);
+                }
             }
         }
-    }
-    let completed = completed.expect("expected the interrupted command in history");
-    let completed = regex_lite::Regex::new(r"(?m) • (?:\d+ms|\d+\.\d+s|\d+m \d+s)$")
-        .expect("valid duration regex")
-        .replace(&completed, " • <duration>");
-    assert_chatwidget_snapshot!(
-        "live_app_server_command_output_delta_interrupted",
-        completed
-    );
+        let completed = completed.expect("expected the interrupted command in history");
+        let completed = regex_lite::Regex::new(r"(?m) • (?:\d+ms|\d+\.\d+s|\d+m \d+s)$")
+            .expect("valid duration regex")
+            .replace(&completed, " • <duration>");
+        assert_chatwidget_snapshot!(
+            "live_app_server_command_output_delta_interrupted",
+            completed
+        );
+    })
+    .await;
 }
 
 #[tokio::test]
@@ -1227,156 +1236,162 @@ async fn live_app_server_sub_agent_activity_renders_once() {
 
 #[tokio::test]
 async fn live_app_server_collab_wait_items_render_history() {
-    let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
-    let sender_thread_id =
-        ThreadId::from_string("019cff70-2599-75e2-af72-b90000000001").expect("valid thread id");
-    let receiver_thread_id =
-        ThreadId::from_string("019cff70-2599-75e2-af72-b958ce5dc1cc").expect("valid thread id");
-    let other_receiver_thread_id =
-        ThreadId::from_string("019cff70-2599-75e2-af72-b96db334332d").expect("valid thread id");
-    chat.set_collab_agent_metadata(
-        receiver_thread_id,
-        Some("Robie".to_string()),
-        Some("explorer".to_string()),
-    );
-    chat.set_collab_agent_metadata(
-        other_receiver_thread_id,
-        Some("Ada".to_string()),
-        Some("reviewer".to_string()),
-    );
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+        let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
+        let sender_thread_id =
+            ThreadId::from_string("019cff70-2599-75e2-af72-b90000000001").expect("valid thread id");
+        let receiver_thread_id =
+            ThreadId::from_string("019cff70-2599-75e2-af72-b958ce5dc1cc").expect("valid thread id");
+        let other_receiver_thread_id =
+            ThreadId::from_string("019cff70-2599-75e2-af72-b96db334332d").expect("valid thread id");
+        chat.set_collab_agent_metadata(
+            receiver_thread_id,
+            Some("Robie".to_string()),
+            Some("explorer".to_string()),
+        );
+        chat.set_collab_agent_metadata(
+            other_receiver_thread_id,
+            Some("Ada".to_string()),
+            Some("reviewer".to_string()),
+        );
 
-    chat.handle_server_notification(
-        ServerNotification::ItemStarted(ItemStartedNotification {
-            thread_id: "thread-1".to_string(),
-            turn_id: "turn-1".to_string(),
-            started_at_ms: 0,
-            item: AppServerThreadItem::CollabAgentToolCall {
-                id: "wait-1".to_string(),
-                tool: AppServerCollabAgentTool::Wait,
-                status: AppServerCollabAgentToolCallStatus::InProgress,
-                sender_thread_id: sender_thread_id.to_string(),
-                receiver_thread_ids: vec![
-                    receiver_thread_id.to_string(),
-                    other_receiver_thread_id.to_string(),
-                ],
-                prompt: None,
-                model: None,
-                reasoning_effort: None,
-                agents_states: HashMap::new(),
-            },
-        }),
-        /*replay_kind*/ None,
-    );
-
-    chat.handle_server_notification(
-        ServerNotification::ItemCompleted(ItemCompletedNotification {
-            thread_id: "thread-1".to_string(),
-            turn_id: "turn-1".to_string(),
-            completed_at_ms: 0,
-            item: AppServerThreadItem::CollabAgentToolCall {
-                id: "wait-1".to_string(),
-                tool: AppServerCollabAgentTool::Wait,
-                status: AppServerCollabAgentToolCallStatus::Completed,
-                sender_thread_id: sender_thread_id.to_string(),
-                receiver_thread_ids: vec![
-                    receiver_thread_id.to_string(),
-                    other_receiver_thread_id.to_string(),
-                ],
-                prompt: None,
-                model: None,
-                reasoning_effort: None,
-                agents_states: HashMap::from([
-                    (
+        chat.handle_server_notification(
+            ServerNotification::ItemStarted(ItemStartedNotification {
+                thread_id: "thread-1".to_string(),
+                turn_id: "turn-1".to_string(),
+                started_at_ms: 0,
+                item: AppServerThreadItem::CollabAgentToolCall {
+                    id: "wait-1".to_string(),
+                    tool: AppServerCollabAgentTool::Wait,
+                    status: AppServerCollabAgentToolCallStatus::InProgress,
+                    sender_thread_id: sender_thread_id.to_string(),
+                    receiver_thread_ids: vec![
                         receiver_thread_id.to_string(),
-                        AppServerCollabAgentState {
-                            status: AppServerCollabAgentStatus::Completed,
-                            message: Some("Done".to_string()),
-                        },
-                    ),
-                    (
                         other_receiver_thread_id.to_string(),
-                        AppServerCollabAgentState {
-                            status: AppServerCollabAgentStatus::Running,
-                            message: None,
-                        },
-                    ),
-                ]),
-            },
-        }),
-        /*replay_kind*/ None,
-    );
+                    ],
+                    prompt: None,
+                    model: None,
+                    reasoning_effort: None,
+                    agents_states: HashMap::new(),
+                },
+            }),
+            /*replay_kind*/ None,
+        );
 
-    let combined = drain_insert_history(&mut rx)
-        .into_iter()
-        .map(|lines| lines_to_single_string(&lines))
-        .collect::<Vec<_>>()
-        .join("\n");
-    assert_chatwidget_snapshot!("app_server_collab_wait_items_render_history", combined);
+        chat.handle_server_notification(
+            ServerNotification::ItemCompleted(ItemCompletedNotification {
+                thread_id: "thread-1".to_string(),
+                turn_id: "turn-1".to_string(),
+                completed_at_ms: 0,
+                item: AppServerThreadItem::CollabAgentToolCall {
+                    id: "wait-1".to_string(),
+                    tool: AppServerCollabAgentTool::Wait,
+                    status: AppServerCollabAgentToolCallStatus::Completed,
+                    sender_thread_id: sender_thread_id.to_string(),
+                    receiver_thread_ids: vec![
+                        receiver_thread_id.to_string(),
+                        other_receiver_thread_id.to_string(),
+                    ],
+                    prompt: None,
+                    model: None,
+                    reasoning_effort: None,
+                    agents_states: HashMap::from([
+                        (
+                            receiver_thread_id.to_string(),
+                            AppServerCollabAgentState {
+                                status: AppServerCollabAgentStatus::Completed,
+                                message: Some("Done".to_string()),
+                            },
+                        ),
+                        (
+                            other_receiver_thread_id.to_string(),
+                            AppServerCollabAgentState {
+                                status: AppServerCollabAgentStatus::Running,
+                                message: None,
+                            },
+                        ),
+                    ]),
+                },
+            }),
+            /*replay_kind*/ None,
+        );
+
+        let combined = drain_insert_history(&mut rx)
+            .into_iter()
+            .map(|lines| lines_to_single_string(&lines))
+            .collect::<Vec<_>>()
+            .join("\n");
+        assert_chatwidget_snapshot!("app_server_collab_wait_items_render_history", combined);
+    })
+    .await;
 }
 
 #[tokio::test]
 async fn live_app_server_collab_spawn_completed_renders_requested_model_and_effort() {
-    let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
-    let sender_thread_id =
-        ThreadId::from_string("019cff70-2599-75e2-af72-b90000000002").expect("valid thread id");
-    let spawned_thread_id =
-        ThreadId::from_string("019cff70-2599-75e2-af72-b91781b41a8e").expect("valid thread id");
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+        let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
+        let sender_thread_id =
+            ThreadId::from_string("019cff70-2599-75e2-af72-b90000000002").expect("valid thread id");
+        let spawned_thread_id =
+            ThreadId::from_string("019cff70-2599-75e2-af72-b91781b41a8e").expect("valid thread id");
 
-    chat.handle_server_notification(
-        ServerNotification::ItemStarted(ItemStartedNotification {
-            thread_id: "thread-1".to_string(),
-            turn_id: "turn-1".to_string(),
-            started_at_ms: 0,
-            item: AppServerThreadItem::CollabAgentToolCall {
-                id: "spawn-1".to_string(),
-                tool: AppServerCollabAgentTool::SpawnAgent,
-                status: AppServerCollabAgentToolCallStatus::InProgress,
-                sender_thread_id: sender_thread_id.to_string(),
-                receiver_thread_ids: Vec::new(),
-                prompt: Some("Explore the repo".to_string()),
-                model: Some("gpt-5".to_string()),
-                reasoning_effort: Some(ReasoningEffortConfig::High),
-                agents_states: HashMap::new(),
-            },
-        }),
-        /*replay_kind*/ None,
-    );
+        chat.handle_server_notification(
+            ServerNotification::ItemStarted(ItemStartedNotification {
+                thread_id: "thread-1".to_string(),
+                turn_id: "turn-1".to_string(),
+                started_at_ms: 0,
+                item: AppServerThreadItem::CollabAgentToolCall {
+                    id: "spawn-1".to_string(),
+                    tool: AppServerCollabAgentTool::SpawnAgent,
+                    status: AppServerCollabAgentToolCallStatus::InProgress,
+                    sender_thread_id: sender_thread_id.to_string(),
+                    receiver_thread_ids: Vec::new(),
+                    prompt: Some("Explore the repo".to_string()),
+                    model: Some("gpt-5".to_string()),
+                    reasoning_effort: Some(ReasoningEffortConfig::High),
+                    agents_states: HashMap::new(),
+                },
+            }),
+            /*replay_kind*/ None,
+        );
 
-    chat.handle_server_notification(
-        ServerNotification::ItemCompleted(ItemCompletedNotification {
-            thread_id: "thread-1".to_string(),
-            turn_id: "turn-1".to_string(),
-            completed_at_ms: 0,
-            item: AppServerThreadItem::CollabAgentToolCall {
-                id: "spawn-1".to_string(),
-                tool: AppServerCollabAgentTool::SpawnAgent,
-                status: AppServerCollabAgentToolCallStatus::Completed,
-                sender_thread_id: sender_thread_id.to_string(),
-                receiver_thread_ids: vec![spawned_thread_id.to_string()],
-                prompt: Some("Explore the repo".to_string()),
-                model: Some("gpt-5".to_string()),
-                reasoning_effort: Some(ReasoningEffortConfig::High),
-                agents_states: HashMap::from([(
-                    spawned_thread_id.to_string(),
-                    AppServerCollabAgentState {
-                        status: AppServerCollabAgentStatus::PendingInit,
-                        message: None,
-                    },
-                )]),
-            },
-        }),
-        /*replay_kind*/ None,
-    );
+        chat.handle_server_notification(
+            ServerNotification::ItemCompleted(ItemCompletedNotification {
+                thread_id: "thread-1".to_string(),
+                turn_id: "turn-1".to_string(),
+                completed_at_ms: 0,
+                item: AppServerThreadItem::CollabAgentToolCall {
+                    id: "spawn-1".to_string(),
+                    tool: AppServerCollabAgentTool::SpawnAgent,
+                    status: AppServerCollabAgentToolCallStatus::Completed,
+                    sender_thread_id: sender_thread_id.to_string(),
+                    receiver_thread_ids: vec![spawned_thread_id.to_string()],
+                    prompt: Some("Explore the repo".to_string()),
+                    model: Some("gpt-5".to_string()),
+                    reasoning_effort: Some(ReasoningEffortConfig::High),
+                    agents_states: HashMap::from([(
+                        spawned_thread_id.to_string(),
+                        AppServerCollabAgentState {
+                            status: AppServerCollabAgentStatus::PendingInit,
+                            message: None,
+                        },
+                    )]),
+                },
+            }),
+            /*replay_kind*/ None,
+        );
 
-    let combined = drain_insert_history(&mut rx)
-        .into_iter()
-        .map(|lines| lines_to_single_string(&lines))
-        .collect::<Vec<_>>()
-        .join("\n");
-    assert_chatwidget_snapshot!(
-        "app_server_collab_spawn_completed_renders_requested_model_and_effort",
-        combined
-    );
+        let combined = drain_insert_history(&mut rx)
+            .into_iter()
+            .map(|lines| lines_to_single_string(&lines))
+            .collect::<Vec<_>>()
+            .join("\n");
+        assert_chatwidget_snapshot!(
+            "app_server_collab_spawn_completed_renders_requested_model_and_effort",
+            combined
+        );
+    })
+    .await;
 }
 
 #[tokio::test]
@@ -1792,37 +1807,40 @@ async fn live_app_server_invalid_thread_name_update_is_ignored() {
 
 #[tokio::test]
 async fn live_app_server_manual_thread_name_updates_status_surfaces() {
-    let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
-    let thread_id =
-        ThreadId::from_string("123e4567-e89b-12d3-a456-426614174000").expect("thread id");
-    chat.thread_id = Some(thread_id);
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+        let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
+        let thread_id =
+            ThreadId::from_string("123e4567-e89b-12d3-a456-426614174000").expect("thread id");
+        chat.thread_id = Some(thread_id);
 
-    chat.expect_manual_thread_name(thread_id, "review-fix".to_string());
+        chat.expect_manual_thread_name(thread_id, "review-fix".to_string());
 
-    chat.handle_server_notification(
-        ServerNotification::ThreadNameUpdated(
-            codex_app_server_protocol::ThreadNameUpdatedNotification {
-                thread_id: thread_id.to_string(),
-                thread_name: Some("review-fix".to_string()),
-            },
-        ),
-        /*replay_kind*/ None,
-    );
+        chat.handle_server_notification(
+            ServerNotification::ThreadNameUpdated(
+                codex_app_server_protocol::ThreadNameUpdatedNotification {
+                    thread_id: thread_id.to_string(),
+                    thread_name: Some("review-fix".to_string()),
+                },
+            ),
+            /*replay_kind*/ None,
+        );
 
-    assert_eq!(chat.thread_name, Some("review-fix".to_string()));
-    let cells = drain_insert_history(&mut rx);
-    let transcript = cells
-        .iter()
-        .map(|lines| lines_to_single_string(lines))
-        .collect::<String>();
-    let footer = render_bottom_popup(&chat, /*width*/ 80);
-    let title = chat.last_terminal_title.as_deref().unwrap();
-    assert_chatwidget_snapshot!(
-        "manual_thread_name_status_surfaces",
-        normalize_snapshot_paths(format!(
-            "transcript:\n{transcript}\nfooter:\n{footer}\ntitle: {title}"
-        ))
-    );
+        assert_eq!(chat.thread_name, Some("review-fix".to_string()));
+        let cells = drain_insert_history(&mut rx);
+        let transcript = cells
+            .iter()
+            .map(|lines| lines_to_single_string(lines))
+            .collect::<String>();
+        let footer = render_bottom_popup(&chat, /*width*/ 80);
+        let title = chat.last_terminal_title.as_deref().unwrap();
+        assert_chatwidget_snapshot!(
+            "manual_thread_name_status_surfaces",
+            normalize_snapshot_paths(format!(
+                "transcript:\n{transcript}\nfooter:\n{footer}\ntitle: {title}"
+            ))
+        );
+    })
+    .await;
 }
 
 #[tokio::test]

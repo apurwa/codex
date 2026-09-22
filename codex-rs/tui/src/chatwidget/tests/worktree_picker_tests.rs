@@ -5,6 +5,8 @@ use pretty_assertions::assert_eq;
 
 #[tokio::test]
 async fn slash_new_and_fork_offer_checkout_choices_inside_local_git_repository() {
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+
     let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
     chat.set_feature_enabled(Feature::Worktrees, /*enabled*/ false);
     let checkout = tempdir().expect("temporary checkout");
@@ -67,6 +69,8 @@ async fn slash_new_and_fork_offer_checkout_choices_inside_local_git_repository()
         assert_chatwidget_snapshot!(snapshot, popup);
         assert_eq!(popup.contains("/worktree"), available);
     }
+
+    }).await;
 }
 
 #[tokio::test]

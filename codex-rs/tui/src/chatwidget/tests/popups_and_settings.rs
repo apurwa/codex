@@ -2197,125 +2197,128 @@ async fn apps_popup_stays_loading_until_final_snapshot_updates() {
 
 #[tokio::test]
 async fn apps_notification_update_excludes_inaccessible_apps_from_mentions() {
-    let (mut chat, _rx, mut op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
-    chat.thread_id = Some(ThreadId::new());
-    set_chatgpt_auth(&mut chat);
-    chat.config
-        .features
-        .enable(Feature::Apps)
-        .expect("test config should allow feature update");
-    chat.bottom_pane.set_connectors_enabled(/*enabled*/ true);
-    chat.bottom_pane
-        .set_composer_text("$".to_string(), Vec::new(), Vec::new());
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+        let (mut chat, _rx, mut op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
+        chat.thread_id = Some(ThreadId::new());
+        set_chatgpt_auth(&mut chat);
+        chat.config
+            .features
+            .enable(Feature::Apps)
+            .expect("test config should allow feature update");
+        chat.bottom_pane.set_connectors_enabled(/*enabled*/ true);
+        chat.bottom_pane
+            .set_composer_text("$".to_string(), Vec::new(), Vec::new());
 
-    chat.on_connectors_loaded(
-        Ok(ConnectorsSnapshot {
-            connectors: vec![
-                AppInfo {
-                    id: "google_drive".to_string(),
-                    name: "Google Drive".to_string(),
-                    description: Some("Connected files".to_string()),
-                    logo_url: None,
-                    logo_url_dark: None,
-                    icon_assets: None,
-                    icon_dark_assets: None,
-                    distribution_channel: None,
-                    branding: None,
-                    app_metadata: None,
-                    labels: None,
-                    install_url: Some("https://example.test/google-drive".to_string()),
-                    is_accessible: true,
-                    is_enabled: true,
-                    plugin_display_names: Vec::new(),
-                },
-                AppInfo {
-                    id: "arabica_uae".to_string(),
-                    name: "% Arabica UAE".to_string(),
-                    description: Some("Directory-only app".to_string()),
-                    logo_url: None,
-                    logo_url_dark: None,
-                    icon_assets: None,
-                    icon_dark_assets: None,
-                    distribution_channel: None,
-                    branding: None,
-                    app_metadata: None,
-                    labels: None,
-                    install_url: Some("https://example.test/arabica".to_string()),
-                    is_accessible: true,
-                    is_enabled: true,
-                    plugin_display_names: Vec::new(),
-                },
-            ],
-        }),
-        /*is_final*/ false,
-    );
-
-    assert!(chat.connectors_for_mentions().is_none());
-
-    let mut installed = chat
-        .connectors
-        .partial_snapshot
-        .as_ref()
-        .expect("directory notification should remain available to /apps")
-        .connectors
-        .clone();
-    installed[1].is_enabled = false;
-    chat.on_connector_mentions_loaded(
-        chat.connector_scope_generation(),
-        Ok(ConnectorsSnapshot {
-            connectors: installed,
-        }),
-    );
-
-    let popup = render_bottom_popup(&chat, /*width*/ 80);
-    assert!(
-        popup.contains("Google Drive"),
-        "expected callable installed apps to appear in the mention popup, got:\n{popup}"
-    );
-    assert!(
-        !popup.contains("% Arabica UAE"),
-        "directory accessibility must not make an app callable, got:\n{popup}"
-    );
-    chat.handle_key_event(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
-    chat.insert_str("$arabica-uae ");
-    chat.handle_key_event(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
-    assert_matches!(
-        next_submit_op(&mut op_rx),
-        Op::UserTurn { items, .. }
-            if matches!(items.as_slice(), [
-                UserInput::Text { .. },
-                UserInput::Mention { name, path },
-            ] if name == "Google Drive" && path == "app://google_drive")
-    );
-
-    chat.connectors.partial_snapshot = None;
-    assert_matches!(&chat.connectors.cache, ConnectorsCacheState::Uninitialized);
-    for (app_id, app_name) in [
-        ("arabica_uae", "% Arabica UAE"),
-        ("google_drive", "Google Drive"),
-    ] {
-        chat.on_plugin_install_loaded(
-            chat.config.cwd.to_path_buf(),
-            crate::app_event::PluginLocation::Remote {
-                marketplace_name: "marketplace".to_string(),
-            },
-            "plugin".to_string(),
-            "Plugin".to_string(),
-            Ok(serde_json::from_value(serde_json::json!({
-                "authPolicy": "ON_INSTALL",
-                "appsNeedingAuth": [{ "id": app_id, "name": app_name }],
-            }))
-            .expect("valid plugin installation response")),
+        chat.on_connectors_loaded(
+            Ok(ConnectorsSnapshot {
+                connectors: vec![
+                    AppInfo {
+                        id: "google_drive".to_string(),
+                        name: "Google Drive".to_string(),
+                        description: Some("Connected files".to_string()),
+                        logo_url: None,
+                        logo_url_dark: None,
+                        icon_assets: None,
+                        icon_dark_assets: None,
+                        distribution_channel: None,
+                        branding: None,
+                        app_metadata: None,
+                        labels: None,
+                        install_url: Some("https://example.test/google-drive".to_string()),
+                        is_accessible: true,
+                        is_enabled: true,
+                        plugin_display_names: Vec::new(),
+                    },
+                    AppInfo {
+                        id: "arabica_uae".to_string(),
+                        name: "% Arabica UAE".to_string(),
+                        description: Some("Directory-only app".to_string()),
+                        logo_url: None,
+                        logo_url_dark: None,
+                        icon_assets: None,
+                        icon_dark_assets: None,
+                        distribution_channel: None,
+                        branding: None,
+                        app_metadata: None,
+                        labels: None,
+                        install_url: Some("https://example.test/arabica".to_string()),
+                        is_accessible: true,
+                        is_enabled: true,
+                        plugin_display_names: Vec::new(),
+                    },
+                ],
+            }),
+            /*is_final*/ false,
         );
-        let auth_popup = render_bottom_popup(&chat, /*width*/ 80);
-        assert!(auth_popup.contains("Already installed") && auth_popup.contains("Continue"));
-        if app_id == "arabica_uae" {
-            let snapshot = normalize_snapshot_paths(format!(
-                "{popup}\n\n--- plugin authentication ---\n{auth_popup}"
-            ));
-            assert_chatwidget_snapshot!("apps_mentions_only_callable_installed", snapshot);
+
+        assert!(chat.connectors_for_mentions().is_none());
+
+        let mut installed = chat
+            .connectors
+            .partial_snapshot
+            .as_ref()
+            .expect("directory notification should remain available to /apps")
+            .connectors
+            .clone();
+        installed[1].is_enabled = false;
+        chat.on_connector_mentions_loaded(
+            chat.connector_scope_generation(),
+            Ok(ConnectorsSnapshot {
+                connectors: installed,
+            }),
+        );
+
+        let popup = render_bottom_popup(&chat, /*width*/ 80);
+        assert!(
+            popup.contains("Google Drive"),
+            "expected callable installed apps to appear in the mention popup, got:\n{popup}"
+        );
+        assert!(
+            !popup.contains("% Arabica UAE"),
+            "directory accessibility must not make an app callable, got:\n{popup}"
+        );
+        chat.handle_key_event(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+        chat.insert_str("$arabica-uae ");
+        chat.handle_key_event(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+        assert_matches!(
+            next_submit_op(&mut op_rx),
+            Op::UserTurn { items, .. }
+                if matches!(items.as_slice(), [
+                    UserInput::Text { .. },
+                    UserInput::Mention { name, path },
+                ] if name == "Google Drive" && path == "app://google_drive")
+        );
+
+        chat.connectors.partial_snapshot = None;
+        assert_matches!(&chat.connectors.cache, ConnectorsCacheState::Uninitialized);
+        for (app_id, app_name) in [
+            ("arabica_uae", "% Arabica UAE"),
+            ("google_drive", "Google Drive"),
+        ] {
+            chat.on_plugin_install_loaded(
+                chat.config.cwd.to_path_buf(),
+                crate::app_event::PluginLocation::Remote {
+                    marketplace_name: "marketplace".to_string(),
+                },
+                "plugin".to_string(),
+                "Plugin".to_string(),
+                Ok(serde_json::from_value(serde_json::json!({
+                    "authPolicy": "ON_INSTALL",
+                    "appsNeedingAuth": [{ "id": app_id, "name": app_name }],
+                }))
+                .expect("valid plugin installation response")),
+            );
+            let auth_popup = render_bottom_popup(&chat, /*width*/ 80);
+            assert!(auth_popup.contains("Already installed") && auth_popup.contains("Continue"));
+            if app_id == "arabica_uae" {
+                let snapshot = normalize_snapshot_paths(format!(
+                    "{popup}\n\n--- plugin authentication ---\n{auth_popup}"
+                ));
+                assert_chatwidget_snapshot!("apps_mentions_only_callable_installed", snapshot);
+            }
         }
-    }
+    })
+    .await;
 }
 
 #[tokio::test]
@@ -3473,27 +3476,30 @@ async fn model_picker_refresh_preserves_highlight() {
 
 #[tokio::test]
 async fn model_picker_refreshes_service_tier_controls() {
-    let (mut chat, _rx, _op_rx) = make_chatwidget_manual(Some("gpt-5.4")).await;
-    chat.thread_id = Some(ThreadId::new());
-    set_fast_mode_test_catalog(&mut chat);
-    chat.set_feature_enabled(Feature::FastMode, /*enabled*/ true);
-    chat.set_service_tier(Some(ServiceTier::Fast.request_value().to_string()));
-    let mut refreshed = chat.model_catalog.try_list_models().unwrap();
-    refreshed
-        .iter_mut()
-        .for_each(|model| model.service_tiers.clear());
-    chat.open_model_popup();
-    chat.handle_key_event(KeyEvent::from(KeyCode::Esc));
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+        let (mut chat, _rx, _op_rx) = make_chatwidget_manual(Some("gpt-5.4")).await;
+        chat.thread_id = Some(ThreadId::new());
+        set_fast_mode_test_catalog(&mut chat);
+        chat.set_feature_enabled(Feature::FastMode, /*enabled*/ true);
+        chat.set_service_tier(Some(ServiceTier::Fast.request_value().to_string()));
+        let mut refreshed = chat.model_catalog.try_list_models().unwrap();
+        refreshed
+            .iter_mut()
+            .for_each(|model| model.service_tiers.clear());
+        chat.open_model_popup();
+        chat.handle_key_event(KeyEvent::from(KeyCode::Esc));
 
-    apply_model_list_response(&mut chat, refreshed);
+        apply_model_list_response(&mut chat, refreshed);
 
-    assert_eq!(chat.current_service_tier(), None);
-    chat.bottom_pane
-        .set_composer_text("/fast".to_string(), Vec::new(), Vec::new());
-    assert_chatwidget_snapshot!(
-        "model_picker_refreshes_service_tier_controls",
-        normalize_snapshot_paths(render_bottom_popup(&chat, /*width*/ 80))
-    );
+        assert_eq!(chat.current_service_tier(), None);
+        chat.bottom_pane
+            .set_composer_text("/fast".to_string(), Vec::new(), Vec::new());
+        assert_chatwidget_snapshot!(
+            "model_picker_refreshes_service_tier_controls",
+            normalize_snapshot_paths(render_bottom_popup(&chat, /*width*/ 80))
+        );
+    })
+    .await;
 }
 
 #[tokio::test]
@@ -4260,28 +4266,31 @@ async fn reasoning_popup_escape_returns_to_model_popup() {
 
 #[tokio::test]
 async fn account_change_dismisses_the_previous_app_directory_snapshot() {
-    let (mut chat, _rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
-    chat.thread_id = Some(ThreadId::new());
-    set_chatgpt_auth(&mut chat);
-    chat.on_connectors_loaded(
-        Ok(ConnectorsSnapshot {
-            connectors: vec![serde_json::from_str(
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+        let (mut chat, _rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
+        chat.thread_id = Some(ThreadId::new());
+        set_chatgpt_auth(&mut chat);
+        chat.on_connectors_loaded(
+            Ok(ConnectorsSnapshot {
+                connectors: vec![serde_json::from_str(
                 r#"{"id":"previous-account","name":"Previous Account App","isAccessible":true}"#,
             )
             .expect("valid app")],
-        }),
-        /*is_final*/ true,
-    );
-    chat.add_connectors_output();
-    let before = render_bottom_popup(&chat, /*width*/ 80);
+            }),
+            /*is_final*/ true,
+        );
+        chat.add_connectors_output();
+        let before = render_bottom_popup(&chat, /*width*/ 80);
 
-    chat.update_account_state(
-        /*status_account_display*/ None, /*plan_type*/ None,
-        /*has_chatgpt_account*/ true, /*has_codex_backend_auth*/ true,
-    );
-    let after = normalize_snapshot_paths(render_bottom_popup(&chat, /*width*/ 80));
-    assert_chatwidget_snapshot!(
-        "connector_scope_invalidation",
-        format!("Before account change:\n{before}\n\nAfter account change:\n{after}")
-    );
+        chat.update_account_state(
+            /*status_account_display*/ None, /*plan_type*/ None,
+            /*has_chatgpt_account*/ true, /*has_codex_backend_auth*/ true,
+        );
+        let after = normalize_snapshot_paths(render_bottom_popup(&chat, /*width*/ 80));
+        assert_chatwidget_snapshot!(
+            "connector_scope_invalidation",
+            format!("Before account change:\n{before}\n\nAfter account change:\n{after}")
+        );
+    })
+    .await;
 }

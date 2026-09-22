@@ -97,54 +97,58 @@ fn render_bottom_pane(widget: &ChatWidget, width: u16) -> String {
 
 #[tokio::test]
 async fn composer_shows_right_aligned_truncated_session_title() {
-    let (mut widget, _sender, _events, _operations) = make_chatwidget_manual_with_sender().await;
-    let thread_id = ThreadId::new();
-    widget.thread_id = Some(thread_id);
-    widget.on_thread_name_updated(thread_id, Some("Roadmap cleanup".to_string()));
-    let wide = render_bottom_pane(&widget, /*width*/ 36);
-    let renderable = widget.bottom_pane_renderable();
-    let area = Rect::new(0, 0, 36, renderable.desired_height(36));
-    let mut buffer = Buffer::empty(area);
-    renderable.render(area, &mut buffer);
-    let border_rows = buffer
-        .content
-        .chunks(36)
-        .filter(|row| row[0].symbol() == "─" && row[35].symbol() == "─")
-        .collect::<Vec<_>>();
-    assert_eq!(border_rows.len(), 2);
-    for row in border_rows {
-        for cell in row.iter().filter(|cell| cell.symbol() == "─") {
-            assert_eq!(cell.fg, ratatui::style::Color::Rgb(0, 95, 135));
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+        let (mut widget, _sender, _events, _operations) =
+            make_chatwidget_manual_with_sender().await;
+        let thread_id = ThreadId::new();
+        widget.thread_id = Some(thread_id);
+        widget.on_thread_name_updated(thread_id, Some("Roadmap cleanup".to_string()));
+        let wide = render_bottom_pane(&widget, /*width*/ 36);
+        let renderable = widget.bottom_pane_renderable();
+        let area = Rect::new(0, 0, 36, renderable.desired_height(36));
+        let mut buffer = Buffer::empty(area);
+        renderable.render(area, &mut buffer);
+        let border_rows = buffer
+            .content
+            .chunks(36)
+            .filter(|row| row[0].symbol() == "─" && row[35].symbol() == "─")
+            .collect::<Vec<_>>();
+        assert_eq!(border_rows.len(), 2);
+        for row in border_rows {
+            for cell in row.iter().filter(|cell| cell.symbol() == "─") {
+                assert_eq!(cell.fg, ratatui::style::Color::Rgb(0, 95, 135));
+            }
         }
-    }
-    let title_cell = buffer
-        .content
-        .chunks(36)
-        .find_map(|row| {
-            let text: String = row.iter().map(ratatui::buffer::Cell::symbol).collect();
-            text.find("Roadmap cleanup")
-                .map(|x| &row[text[..x].chars().count()])
-        })
-        .expect("session title is rendered");
-    assert_eq!(title_cell.fg, ratatui::style::Color::Rgb(0, 95, 135));
-    assert!(title_cell.modifier.contains(ratatui::style::Modifier::BOLD));
-    assert!(!title_cell.modifier.contains(ratatui::style::Modifier::DIM));
-    insta::assert_snapshot!(
-        "composer_session_title_color",
-        format!("{:?}", title_cell.style())
-    );
-    drop(renderable);
+        let title_cell = buffer
+            .content
+            .chunks(36)
+            .find_map(|row| {
+                let text: String = row.iter().map(ratatui::buffer::Cell::symbol).collect();
+                text.find("Roadmap cleanup")
+                    .map(|x| &row[text[..x].chars().count()])
+            })
+            .expect("session title is rendered");
+        assert_eq!(title_cell.fg, ratatui::style::Color::Rgb(0, 95, 135));
+        assert!(title_cell.modifier.contains(ratatui::style::Modifier::BOLD));
+        assert!(!title_cell.modifier.contains(ratatui::style::Modifier::DIM));
+        insta::assert_snapshot!(
+            "composer_session_title_color",
+            format!("{:?}", title_cell.style())
+        );
+        drop(renderable);
 
-    widget.on_thread_name_updated(
-        thread_id,
-        Some("Investigate pinned composer session title".to_string()),
-    );
-    let narrow = render_bottom_pane(&widget, /*width*/ 24);
+        widget.on_thread_name_updated(
+            thread_id,
+            Some("Investigate pinned composer session title".to_string()),
+        );
+        let narrow = render_bottom_pane(&widget, /*width*/ 24);
 
-    insta::assert_snapshot!(
-        "composer_session_title",
-        format!("wide:\n{wide}\n\nnarrow:\n{narrow}")
-    );
+        insta::assert_snapshot!(
+            "composer_session_title",
+            format!("wide:\n{wide}\n\nnarrow:\n{narrow}")
+        );
+    })
+    .await;
 }
 
 #[tokio::test]
@@ -203,43 +207,44 @@ async fn external_writer_notice_uses_current_transcript_shortcut() {
 
 #[test]
 fn active_transcript_preserves_clipped_markdown_hyperlinks() {
-    let cell = history_cell::AgentMarkdownCell::new(
-        "Earlier content\n\n[OSC8 label](https://example.com/)".to_string(),
-        std::path::Path::new("/tmp"),
-    );
-    let renderable = TranscriptAreaRenderable {
-        child: &cell,
-        top: 1,
-        right: 2,
-        persistent_layout: None,
-    };
-    let area = Rect::new(
-        /*x*/ 2, /*y*/ 1, /*width*/ 40, /*height*/ 3,
-    );
-    let mut buffer = Buffer::empty(area);
-    renderable.render(area, &mut buffer);
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
+        let cell = history_cell::AgentMarkdownCell::new(
+            "Earlier content\n\n[OSC8 label](https://example.com/)".to_string(),
+            std::path::Path::new("/tmp"),
+        );
+        let renderable = TranscriptAreaRenderable {
+            child: &cell,
+            top: 1,
+            right: 2,
+            persistent_layout: None,
+        };
+        let area = Rect::new(
+            /*x*/ 2, /*y*/ 1, /*width*/ 40, /*height*/ 3,
+        );
+        let mut buffer = Buffer::empty(area);
+        renderable.render(area, &mut buffer);
 
-    let linked_text = buffer
-        .content
-        .iter()
-        .map(ratatui::buffer::Cell::symbol)
-        .filter(|symbol| symbol.starts_with("\x1b]8;;https://example.com/\x07"))
-        .map(crate::terminal_hyperlinks::strip_osc8)
-        .collect::<String>();
-    assert_eq!(linked_text, "OSC8 labelhttps://example.com/");
+        let linked_text = buffer
+            .content
+            .iter()
+            .map(ratatui::buffer::Cell::symbol)
+            .filter(|symbol| symbol.starts_with("\x1b]8;;https://example.com/\x07"))
+            .map(crate::terminal_hyperlinks::strip_osc8)
+            .collect::<String>();
+        assert_eq!(linked_text, "OSC8 labelhttps://example.com/");
 
-    let visible_rows = buffer
-        .content
-        .chunks(usize::from(area.width))
-        .map(|row| {
-            row.iter()
-                .map(|cell| crate::terminal_hyperlinks::strip_osc8(cell.symbol()))
-                .collect::<String>()
-                .trim_end()
-                .to_string()
-        })
-        .collect::<Vec<_>>();
-    insta::assert_debug_snapshot!(visible_rows, @r#"
+        let visible_rows = buffer
+            .content
+            .chunks(usize::from(area.width))
+            .map(|row| {
+                row.iter()
+                    .map(|cell| crate::terminal_hyperlinks::strip_osc8(cell.symbol()))
+                    .collect::<String>()
+                    .trim_end()
+                    .to_string()
+            })
+            .collect::<Vec<_>>();
+        insta::assert_debug_snapshot!(visible_rows, @r#"
     [
         "",
         "  OSC8 label (https://example.com/)",
@@ -247,25 +252,28 @@ fn active_transcript_preserves_clipped_markdown_hyperlinks() {
     ]
     "#);
 
-    let size = ratatui::layout::Size::new(/*width*/ 44, /*height*/ 5);
-    let mut terminal =
-        crate::custom_terminal::Terminal::with_screen_size_and_cursor_position_for_test(
-            ratatui::backend::CrosstermBackend::new(Vec::new()),
-            size,
-            area.as_position(),
+        let size = ratatui::layout::Size::new(/*width*/ 44, /*height*/ 5);
+        let mut terminal =
+            crate::custom_terminal::Terminal::with_screen_size_and_cursor_position_for_test(
+                ratatui::backend::CrosstermBackend::new(Vec::new()),
+                size,
+                area.as_position(),
+            );
+        terminal.set_viewport_area(Rect::new(
+            /*x*/ 0,
+            /*y*/ 0,
+            size.width,
+            size.height,
+        ));
+        terminal
+            .draw_with_size(size, |frame| renderable.render(area, frame.buffer_mut()))
+            .expect("render terminal frame");
+        let output = String::from_utf8(terminal.backend().writer().clone()).expect("UTF-8 output");
+        assert!(output.contains("\x1b]8;;https://example.com/\x07OSC8 label\x1b]8;;\x07"));
+        assert!(
+            output.contains("\x1b]8;;https://example.com/\x07https://example.com/\x1b]8;;\x07")
         );
-    terminal.set_viewport_area(Rect::new(
-        /*x*/ 0,
-        /*y*/ 0,
-        size.width,
-        size.height,
-    ));
-    terminal
-        .draw_with_size(size, |frame| renderable.render(area, frame.buffer_mut()))
-        .expect("render terminal frame");
-    let output = String::from_utf8(terminal.backend().writer().clone()).expect("UTF-8 output");
-    assert!(output.contains("\x1b]8;;https://example.com/\x07OSC8 label\x1b]8;;\x07"));
-    assert!(output.contains("\x1b]8;;https://example.com/\x07https://example.com/\x1b]8;;\x07"));
+    });
 }
 
 #[tokio::test]

@@ -258,53 +258,54 @@ async fn reasoning_status_accepts_plain_lines_and_ignores_empty_sections() {
 
 #[tokio::test]
 async fn completed_reasoning_stays_in_expanded_transcript_for_live_and_replay() {
-    let mut renders = Vec::new();
-    for replay in [false, true] {
-        let (mut chat, mut rx, _ops) = make_chatwidget_manual(/*model_override*/ None).await;
-        chat.on_task_started();
-        for (id, summary) in [
-            ("first", "**Inspecting repository structure**"),
-            ("second", "Mapping the app structure"),
-            (
-                "third",
-                "**Tracing terminal components**\n\nThe playback clock preserves elapsed time.",
-            ),
-        ] {
-            if replay {
-                chat.handle_thread_item(
-                    AppServerThreadItem::Reasoning {
-                        id: id.to_string(),
-                        summary: vec![summary.to_string()],
-                        content: Vec::new(),
-                    },
-                    "turn-1".to_string(),
-                    ThreadItemRenderSource::Replay(ReplayKind::ThreadSnapshot),
-                );
-            } else {
-                handle_agent_reasoning_started(&mut chat, id);
-                delta(&mut chat, id, summary);
-                complete(&mut chat, id);
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+        let mut renders = Vec::new();
+        for replay in [false, true] {
+            let (mut chat, mut rx, _ops) = make_chatwidget_manual(/*model_override*/ None).await;
+            chat.on_task_started();
+            for (id, summary) in [
+                ("first", "**Inspecting repository structure**"),
+                ("second", "Mapping the app structure"),
+                (
+                    "third",
+                    "**Tracing terminal components**\n\nThe playback clock preserves elapsed time.",
+                ),
+            ] {
+                if replay {
+                    chat.handle_thread_item(
+                        AppServerThreadItem::Reasoning {
+                            id: id.to_string(),
+                            summary: vec![summary.to_string()],
+                            content: Vec::new(),
+                        },
+                        "turn-1".to_string(),
+                        ThreadItemRenderSource::Replay(ReplayKind::ThreadSnapshot),
+                    );
+                } else {
+                    handle_agent_reasoning_started(&mut chat, id);
+                    delta(&mut chat, id, summary);
+                    complete(&mut chat, id);
+                }
             }
-        }
-        let mut compact = Vec::new();
-        let mut expanded = Vec::new();
-        while let Ok(event) = rx.try_recv() {
-            if let AppEvent::InsertHistoryCell(cell) = event {
-                compact.extend(cell.display_lines(/*width*/ 80));
-                expanded.extend(cell.transcript_lines(/*width*/ 80));
-                assert!(cell.raw_lines().is_empty());
+            let mut compact = Vec::new();
+            let mut expanded = Vec::new();
+            while let Ok(event) = rx.try_recv() {
+                if let AppEvent::InsertHistoryCell(cell) = event {
+                    compact.extend(cell.display_lines(/*width*/ 80));
+                    expanded.extend(cell.transcript_lines(/*width*/ 80));
+                    assert!(cell.raw_lines().is_empty());
+                }
             }
+            let rendered = format!(
+                "Compact history:\n{}\nLive status:\n{}\nExpanded transcript:\n{}",
+                ratatui::text::Text::from(compact),
+                chat.bottom_pane.status_widget().unwrap().header(),
+                ratatui::text::Text::from(expanded),
+            );
+            renders.push(rendered);
         }
-        let rendered = format!(
-            "Compact history:\n{}\nLive status:\n{}\nExpanded transcript:\n{}",
-            ratatui::text::Text::from(compact),
-            chat.bottom_pane.status_widget().unwrap().header(),
-            ratatui::text::Text::from(expanded),
-        );
-        renders.push(rendered);
-    }
-    assert_eq!(renders[0], renders[1]);
-    insta::assert_snapshot!(renders[0], @"
+        assert_eq!(renders[0], renders[1]);
+        insta::assert_snapshot!(renders[0], @"
     Compact history:
 
     Live status:
@@ -314,4 +315,6 @@ async fn completed_reasoning_stays_in_expanded_transcript_for_live_and_replay() 
     ┊ Mapping the app structure
     ┊ The playback clock preserves elapsed time.
     ");
+    })
+    .await;
 }

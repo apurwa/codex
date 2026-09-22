@@ -428,28 +428,30 @@ mod tests {
 
     #[test]
     fn user_approval_uses_user_message_band_and_heading() {
-        let cell = approved_command(ApprovalDecisionActor::User);
-        let rendered = cell
-            .display_lines(/*width*/ 36)
-            .into_iter()
-            .map(|line| line.to_string())
-            .collect::<Vec<_>>();
+        crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
+            let cell = approved_command(ApprovalDecisionActor::User);
+            let rendered = cell
+                .display_lines(/*width*/ 36)
+                .into_iter()
+                .map(|line| line.to_string())
+                .collect::<Vec<_>>();
 
-        assert_eq!(
-            rendered.first().map(String::as_str),
-            Some("───────────────────────────────────")
-        );
-        assert_eq!(rendered.get(1).map(String::as_str), Some("YOU"));
-        assert!(
-            rendered
-                .iter()
-                .any(|line| line.starts_with("│ ✔ You approved"))
-        );
-        assert_eq!(rendered.last(), rendered.first());
-        assert_eq!(
-            cell.background_style(),
-            Some(transcript_user_message_style())
-        );
+            assert_eq!(
+                rendered.first().map(String::as_str),
+                Some("───────────────────────────────────")
+            );
+            assert_eq!(rendered.get(1).map(String::as_str), Some("YOU"));
+            assert!(
+                rendered
+                    .iter()
+                    .any(|line| line.starts_with("│ ✔ You approved"))
+            );
+            assert_eq!(rendered.last(), rendered.first());
+            assert_eq!(
+                cell.background_style(),
+                Some(transcript_user_message_style())
+            );
+        });
     }
 
     #[test]

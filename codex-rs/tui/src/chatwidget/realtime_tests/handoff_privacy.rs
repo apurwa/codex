@@ -68,57 +68,60 @@ async fn typed_turn_remains_a_normal_text_response_while_voice_is_active() {
 
 #[tokio::test]
 async fn typed_steering_restores_normal_output_for_an_existing_voice_item() {
-    let (mut chat, _sender, mut events, mut ops) = make_chatwidget_manual_with_sender().await;
-    let thread_id = activate_voice(&mut chat);
-    let turn_id = "shared-turn";
-    start_item(
-        &mut chat,
-        thread_id,
-        turn_id,
-        user_item("<realtime_delegation><input>earlier voice</input></realtime_delegation>"),
-    );
-    let answer = agent_item(
-        "shared-answer",
-        "typed answer",
-        Some(MessagePhase::FinalAnswer),
-    );
-    start_item(&mut chat, thread_id, turn_id, answer.clone());
-    let private = agent_item(
-        "private-commentary",
-        "private voice commentary",
-        Some(MessagePhase::Commentary),
-    );
-    start_item(&mut chat, thread_id, turn_id, private.clone());
-    start_item(
-        &mut chat,
-        thread_id,
-        turn_id,
-        user_item("new typed question"),
-    );
-    complete_item(&mut chat, thread_id, turn_id, private);
-    complete_item(&mut chat, thread_id, turn_id, answer.clone());
-    finish_turn(
-        &mut chat,
-        thread_id,
-        turn_id,
-        vec![answer],
-        TurnStatus::Completed,
-    );
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+        let (mut chat, _sender, mut events, mut ops) = make_chatwidget_manual_with_sender().await;
+        let thread_id = activate_voice(&mut chat);
+        let turn_id = "shared-turn";
+        start_item(
+            &mut chat,
+            thread_id,
+            turn_id,
+            user_item("<realtime_delegation><input>earlier voice</input></realtime_delegation>"),
+        );
+        let answer = agent_item(
+            "shared-answer",
+            "typed answer",
+            Some(MessagePhase::FinalAnswer),
+        );
+        start_item(&mut chat, thread_id, turn_id, answer.clone());
+        let private = agent_item(
+            "private-commentary",
+            "private voice commentary",
+            Some(MessagePhase::Commentary),
+        );
+        start_item(&mut chat, thread_id, turn_id, private.clone());
+        start_item(
+            &mut chat,
+            thread_id,
+            turn_id,
+            user_item("new typed question"),
+        );
+        complete_item(&mut chat, thread_id, turn_id, private);
+        complete_item(&mut chat, thread_id, turn_id, answer.clone());
+        finish_turn(
+            &mut chat,
+            thread_id,
+            turn_id,
+            vec![answer],
+            TurnStatus::Completed,
+        );
 
-    let mut rendered = String::new();
-    while let Ok(event) = events.try_recv() {
-        if let AppEvent::InsertHistoryCell(cell) = event
-            && !cell.as_any().is::<FinalMessageSeparator>()
-        {
-            for line in cell.display_lines(/*width*/ 80) {
-                rendered.push_str(&line.to_string());
+        let mut rendered = String::new();
+        while let Ok(event) = events.try_recv() {
+            if let AppEvent::InsertHistoryCell(cell) = event
+                && !cell.as_any().is::<FinalMessageSeparator>()
+            {
+                for line in cell.display_lines(/*width*/ 80) {
+                    rendered.push_str(&line.to_string());
+                }
             }
         }
-    }
-    assert!(rendered.contains("typed answer"), "{rendered}");
-    assert!(!rendered.contains("private voice commentary"), "{rendered}");
-    insta::assert_snapshot!("typed_steering_keeps_voice_commentary_private", rendered);
-    assert!(ops.try_recv().is_err());
+        assert!(rendered.contains("typed answer"), "{rendered}");
+        assert!(!rendered.contains("private voice commentary"), "{rendered}");
+        insta::assert_snapshot!("typed_steering_keeps_voice_commentary_private", rendered);
+        assert!(ops.try_recv().is_err());
+    })
+    .await;
 }
 
 #[tokio::test]
@@ -170,104 +173,107 @@ async fn newer_voice_steering_an_existing_typed_turn_is_spoken_once() {
 
 #[tokio::test]
 async fn voice_handoff_preserves_started_typed_reasoning_but_hides_new_reasoning() {
-    let (mut chat, _sender, mut events, _ops) = make_chatwidget_manual_with_sender().await;
-    let thread_id = activate_voice(&mut chat);
-    let turn_id = "mixed-reasoning-turn";
-    start_item(&mut chat, thread_id, turn_id, user_item("typed task"));
-    start_item(
-        &mut chat,
-        thread_id,
-        turn_id,
-        ThreadItem::Reasoning {
-            id: "typed-reasoning".into(),
-            summary: Vec::new(),
-            content: Vec::new(),
-        },
-    );
-    chat.handle_server_notification(
-        ServerNotification::ReasoningSummaryTextDelta(ReasoningSummaryTextDeltaNotification {
-            thread_id: thread_id.to_string(),
-            turn_id: turn_id.into(),
-            item_id: "typed-reasoning".into(),
-            delta: "Typed beginning ".into(),
-            summary_index: 0,
-        }),
-        /*replay_kind*/ None,
-    );
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+        let (mut chat, _sender, mut events, _ops) = make_chatwidget_manual_with_sender().await;
+        let thread_id = activate_voice(&mut chat);
+        let turn_id = "mixed-reasoning-turn";
+        start_item(&mut chat, thread_id, turn_id, user_item("typed task"));
+        start_item(
+            &mut chat,
+            thread_id,
+            turn_id,
+            ThreadItem::Reasoning {
+                id: "typed-reasoning".into(),
+                summary: Vec::new(),
+                content: Vec::new(),
+            },
+        );
+        chat.handle_server_notification(
+            ServerNotification::ReasoningSummaryTextDelta(ReasoningSummaryTextDeltaNotification {
+                thread_id: thread_id.to_string(),
+                turn_id: turn_id.into(),
+                item_id: "typed-reasoning".into(),
+                delta: "Typed beginning ".into(),
+                summary_index: 0,
+            }),
+            /*replay_kind*/ None,
+        );
 
-    let delegation =
-        user_item("<realtime_delegation><input>spoken follow-up</input></realtime_delegation>");
-    start_item(&mut chat, thread_id, turn_id, delegation);
-    chat.handle_server_notification(
-        ServerNotification::ReasoningSummaryTextDelta(ReasoningSummaryTextDeltaNotification {
-            thread_id: thread_id.to_string(),
-            turn_id: turn_id.into(),
-            item_id: "typed-reasoning".into(),
-            delta: "and typed tail".into(),
-            summary_index: 0,
-        }),
-        /*replay_kind*/ None,
-    );
-    complete_item(
-        &mut chat,
-        thread_id,
-        turn_id,
-        ThreadItem::Reasoning {
-            id: "typed-reasoning".into(),
-            summary: vec!["Typed beginning and typed tail".into()],
-            content: Vec::new(),
-        },
-    );
-    start_item(
-        &mut chat,
-        thread_id,
-        turn_id,
-        ThreadItem::Reasoning {
-            id: "private-reasoning".into(),
-            summary: Vec::new(),
-            content: Vec::new(),
-        },
-    );
-    chat.handle_server_notification(
-        ServerNotification::ReasoningSummaryTextDelta(ReasoningSummaryTextDeltaNotification {
-            thread_id: thread_id.to_string(),
-            turn_id: turn_id.into(),
-            item_id: "private-reasoning".into(),
-            delta: "private after handoff".into(),
-            summary_index: 0,
-        }),
-        /*replay_kind*/ None,
-    );
-    complete_item(
-        &mut chat,
-        thread_id,
-        turn_id,
-        ThreadItem::Reasoning {
-            id: "private-reasoning".into(),
-            summary: vec!["private after handoff".into()],
-            content: Vec::new(),
-        },
-    );
+        let delegation =
+            user_item("<realtime_delegation><input>spoken follow-up</input></realtime_delegation>");
+        start_item(&mut chat, thread_id, turn_id, delegation);
+        chat.handle_server_notification(
+            ServerNotification::ReasoningSummaryTextDelta(ReasoningSummaryTextDeltaNotification {
+                thread_id: thread_id.to_string(),
+                turn_id: turn_id.into(),
+                item_id: "typed-reasoning".into(),
+                delta: "and typed tail".into(),
+                summary_index: 0,
+            }),
+            /*replay_kind*/ None,
+        );
+        complete_item(
+            &mut chat,
+            thread_id,
+            turn_id,
+            ThreadItem::Reasoning {
+                id: "typed-reasoning".into(),
+                summary: vec!["Typed beginning and typed tail".into()],
+                content: Vec::new(),
+            },
+        );
+        start_item(
+            &mut chat,
+            thread_id,
+            turn_id,
+            ThreadItem::Reasoning {
+                id: "private-reasoning".into(),
+                summary: Vec::new(),
+                content: Vec::new(),
+            },
+        );
+        chat.handle_server_notification(
+            ServerNotification::ReasoningSummaryTextDelta(ReasoningSummaryTextDeltaNotification {
+                thread_id: thread_id.to_string(),
+                turn_id: turn_id.into(),
+                item_id: "private-reasoning".into(),
+                delta: "private after handoff".into(),
+                summary_index: 0,
+            }),
+            /*replay_kind*/ None,
+        );
+        complete_item(
+            &mut chat,
+            thread_id,
+            turn_id,
+            ThreadItem::Reasoning {
+                id: "private-reasoning".into(),
+                summary: vec!["private after handoff".into()],
+                content: Vec::new(),
+            },
+        );
 
-    let rendered = std::iter::from_fn(|| events.try_recv().ok())
-        .filter_map(|event| match event {
-            AppEvent::InsertHistoryCell(cell) => Some(
-                cell.transcript_lines(/*width*/ 80)
-                    .into_iter()
-                    .map(|line| line.to_string())
-                    .collect::<Vec<_>>()
-                    .join("\n"),
-            ),
-            _ => None,
-        })
-        .collect::<Vec<_>>()
-        .join("\n");
-    assert!(
-        rendered.contains("Typed beginning and typed tail"),
-        "{rendered}"
-    );
-    assert!(!rendered.contains("private after handoff"), "{rendered}");
-    insta::assert_snapshot!("typed_reasoning_through_voice_handoff", rendered);
+        let rendered = std::iter::from_fn(|| events.try_recv().ok())
+            .filter_map(|event| match event {
+                AppEvent::InsertHistoryCell(cell) => Some(
+                    cell.transcript_lines(/*width*/ 80)
+                        .into_iter()
+                        .map(|line| line.to_string())
+                        .collect::<Vec<_>>()
+                        .join("\n"),
+                ),
+                _ => None,
+            })
+            .collect::<Vec<_>>()
+            .join("\n");
+        assert!(
+            rendered.contains("Typed beginning and typed tail"),
+            "{rendered}"
+        );
+        assert!(!rendered.contains("private after handoff"), "{rendered}");
+        insta::assert_snapshot!("typed_reasoning_through_voice_handoff", rendered);
+    })
+    .await;
 }
 
 #[tokio::test]

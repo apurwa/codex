@@ -107,110 +107,117 @@ async fn luna_reserve_selector_supports_arrows_enter_shortcuts_and_escape_withou
 
 #[tokio::test]
 async fn luna_reserve_status_tracks_the_active_model() {
-    let (mut chat, _rx, _ops) = make_chatwidget_manual(Some("gpt-5.6-sol")).await;
-    chat.has_chatgpt_account = true;
-    chat.on_rate_limit_snapshot(Some(reserve_snapshot(
-        /*primary_used*/ 25, /*weekly_used*/ 60,
-    )));
-    assert!(
-        !normalize_snapshot_paths(render_bottom_popup(&chat, /*width*/ 80))
-            .contains("Luna Reserve")
-    );
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+        let (mut chat, _rx, _ops) = make_chatwidget_manual(Some("gpt-5.6-sol")).await;
+        chat.has_chatgpt_account = true;
+        chat.on_rate_limit_snapshot(Some(reserve_snapshot(
+            /*primary_used*/ 25, /*weekly_used*/ 60,
+        )));
+        assert!(
+            !normalize_snapshot_paths(render_bottom_popup(&chat, /*width*/ 80))
+                .contains("Luna Reserve")
+        );
 
-    chat.set_model("gpt-reserve");
-    let rendered = normalize_snapshot_paths(render_bottom_popup(&chat, /*width*/ 80));
-    assert!(rendered.contains("Luna Reserve default"));
-    insta::assert_snapshot!("luna_reserve_usage_wide", rendered);
-    insta::assert_snapshot!(
-        "luna_reserve_usage_narrow",
-        normalize_snapshot_paths(render_bottom_popup(&chat, /*width*/ 34))
-    );
+        chat.set_model("gpt-reserve");
+        let rendered = normalize_snapshot_paths(render_bottom_popup(&chat, /*width*/ 80));
+        assert!(rendered.contains("Luna Reserve default"));
+        insta::assert_snapshot!("luna_reserve_usage_wide", rendered);
+        insta::assert_snapshot!(
+            "luna_reserve_usage_narrow",
+            normalize_snapshot_paths(render_bottom_popup(&chat, /*width*/ 34))
+        );
 
-    chat.set_model("gpt-5.6-sol");
-    assert!(
-        !normalize_snapshot_paths(render_bottom_popup(&chat, /*width*/ 80))
-            .contains("Luna Reserve")
-    );
-    chat.set_model("gpt-reserve");
-    assert!(
-        normalize_snapshot_paths(render_bottom_popup(&chat, /*width*/ 80)).contains("Luna Reserve")
-    );
+        chat.set_model("gpt-5.6-sol");
+        assert!(
+            !normalize_snapshot_paths(render_bottom_popup(&chat, /*width*/ 80))
+                .contains("Luna Reserve")
+        );
+        chat.set_model("gpt-reserve");
+        assert!(
+            normalize_snapshot_paths(render_bottom_popup(&chat, /*width*/ 80))
+                .contains("Luna Reserve")
+        );
+    })
+    .await;
 }
 
 #[tokio::test]
 async fn luna_reserve_usage_survives_banner_dismissal_and_typing_during_a_turn() {
-    let (mut chat, _rx, _ops) = make_chatwidget_manual(Some("gpt-reserve")).await;
-    chat.has_chatgpt_account = true;
-    chat.on_rate_limit_snapshot(Some(reserve_snapshot(
-        /*primary_used*/ 48, /*weekly_used*/ 20,
-    )));
-    let response = codex_app_server_protocol::GetAccountRateLimitsResponse {
-        ordinary_usage_allowed: Some(false),
-        account_id: Some("account-preview".into()),
-        rate_limits: snapshot(/*percent*/ 100.0),
-        rate_limits_by_limit_id: None,
-        rate_limit_reset_credits: None,
-        rate_limit_upsell: Some(json!({
-            "banner_type": "luna_reserve", "presentation": "dismissible",
-            "title": "You’re now using Luna, a faster model for simpler tasks.",
-            "description": "Add credits or upgrade to continue using the most advanced models.",
-            "ctas": [
-                {"action": "add_credits", "label": "Add credits"},
-                {"action": "open_pricing_dialog", "label": "Upgrade"}
-            ]
-        })),
-    };
-    chat.update_backend_banner(&response);
-    for colors in [
-        DefaultColors {
-            fg: (230, 230, 230),
-            bg: (20, 20, 20),
-        },
-        DefaultColors {
-            fg: (25, 25, 25),
-            bg: (255, 255, 255),
-        },
-    ] {
-        with_test_default_colors(colors, || {
-            let area = Rect::new(0, 0, 80, chat.bottom_pane.desired_height(/*width*/ 80));
-            let mut buffer = Buffer::empty(area);
-            chat.bottom_pane.render(area, &mut buffer);
-            // Do not rely on the terminal's bold default foreground or dim important copy.
-            for (y, text) in buffer
-                .content
-                .chunks(80)
-                .enumerate()
-                .filter_map(|(y, row)| {
-                    let text: String = row.iter().map(ratatui::buffer::Cell::symbol).collect();
-                    (text.contains("You’re now using Luna")
-                        || text.contains("Add credits or upgrade"))
-                    .then_some((y as u16, text))
-                })
-            {
-                let copy = &buffer[(2, y)];
-                assert_eq!(copy.fg, crate::terminal_palette::rgb_color(colors.fg));
-                assert!(
-                    !copy.modifier.contains(ratatui::style::Modifier::DIM),
-                    "{text}"
-                );
-            }
-        });
-    }
-    insta::assert_snapshot!(
-        "luna_reserve_usage_with_upsell",
-        normalize_snapshot_paths(render_bottom_popup(&chat, /*width*/ 80))
-    );
-    chat.handle_key_event(KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE));
-    assert!(
-        !normalize_snapshot_paths(render_bottom_popup(&chat, /*width*/ 80))
-            .contains("You’re now using Luna")
-    );
-    chat.bottom_pane.set_task_running(/*running*/ true);
-    chat.handle_key_event(KeyEvent::new(KeyCode::Char('x'), KeyModifiers::NONE));
-    chat.handle_key_event(KeyEvent::new(KeyCode::Left, KeyModifiers::NONE));
-    let rendered = normalize_snapshot_paths(render_bottom_popup(&chat, /*width*/ 80));
-    assert_eq!(chat.composer_text_with_pending(), "x");
-    insta::assert_snapshot!("luna_reserve_usage_running", rendered);
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+        let (mut chat, _rx, _ops) = make_chatwidget_manual(Some("gpt-reserve")).await;
+        chat.has_chatgpt_account = true;
+        chat.on_rate_limit_snapshot(Some(reserve_snapshot(
+            /*primary_used*/ 48, /*weekly_used*/ 20,
+        )));
+        let response = codex_app_server_protocol::GetAccountRateLimitsResponse {
+            ordinary_usage_allowed: Some(false),
+            account_id: Some("account-preview".into()),
+            rate_limits: snapshot(/*percent*/ 100.0),
+            rate_limits_by_limit_id: None,
+            rate_limit_reset_credits: None,
+            rate_limit_upsell: Some(json!({
+                "banner_type": "luna_reserve", "presentation": "dismissible",
+                "title": "You’re now using Luna, a faster model for simpler tasks.",
+                "description": "Add credits or upgrade to continue using the most advanced models.",
+                "ctas": [
+                    {"action": "add_credits", "label": "Add credits"},
+                    {"action": "open_pricing_dialog", "label": "Upgrade"}
+                ]
+            })),
+        };
+        chat.update_backend_banner(&response);
+        for colors in [
+            DefaultColors {
+                fg: (230, 230, 230),
+                bg: (20, 20, 20),
+            },
+            DefaultColors {
+                fg: (25, 25, 25),
+                bg: (255, 255, 255),
+            },
+        ] {
+            with_test_default_colors(colors, || {
+                let area = Rect::new(0, 0, 80, chat.bottom_pane.desired_height(/*width*/ 80));
+                let mut buffer = Buffer::empty(area);
+                chat.bottom_pane.render(area, &mut buffer);
+                // Do not rely on the terminal's bold default foreground or dim important copy.
+                for (y, text) in buffer
+                    .content
+                    .chunks(80)
+                    .enumerate()
+                    .filter_map(|(y, row)| {
+                        let text: String = row.iter().map(ratatui::buffer::Cell::symbol).collect();
+                        (text.contains("You’re now using Luna")
+                            || text.contains("Add credits or upgrade"))
+                        .then_some((y as u16, text))
+                    })
+                {
+                    let copy = &buffer[(2, y)];
+                    assert_eq!(copy.fg, crate::terminal_palette::rgb_color(colors.fg));
+                    assert!(
+                        !copy.modifier.contains(ratatui::style::Modifier::DIM),
+                        "{text}"
+                    );
+                }
+            });
+        }
+        insta::assert_snapshot!(
+            "luna_reserve_usage_with_upsell",
+            normalize_snapshot_paths(render_bottom_popup(&chat, /*width*/ 80))
+        );
+        chat.handle_key_event(KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE));
+        assert!(
+            !normalize_snapshot_paths(render_bottom_popup(&chat, /*width*/ 80))
+                .contains("You’re now using Luna")
+        );
+        chat.bottom_pane.set_task_running(/*running*/ true);
+        chat.handle_key_event(KeyEvent::new(KeyCode::Char('x'), KeyModifiers::NONE));
+        chat.handle_key_event(KeyEvent::new(KeyCode::Left, KeyModifiers::NONE));
+        let rendered = normalize_snapshot_paths(render_bottom_popup(&chat, /*width*/ 80));
+        assert_eq!(chat.composer_text_with_pending(), "x");
+        insta::assert_snapshot!("luna_reserve_usage_running", rendered);
+    })
+    .await;
 }
 
 #[tokio::test]

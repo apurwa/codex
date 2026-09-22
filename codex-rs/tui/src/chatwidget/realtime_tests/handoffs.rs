@@ -286,58 +286,63 @@ async fn delegated_item_that_becomes_final_at_turn_completion_is_recoverable() {
 
 #[tokio::test]
 async fn explicit_final_answer_can_explain_private_channel_markers() {
-    let (mut chat, _sender, mut events, mut ops) = make_chatwidget_manual_with_sender().await;
-    let thread_id = activate_voice(&mut chat);
-    let turn_id = "marker-final-turn";
-    start_item(
-        &mut chat,
-        thread_id,
-        turn_id,
-        user_item("<realtime_delegation><input>explain markers</input></realtime_delegation>"),
-    );
-    let answer = agent_item(
-        "marker-final",
-        "[COMMENTARY] is a label in the documentation.",
-        Some(MessagePhase::FinalAnswer),
-    );
-    start_item(&mut chat, thread_id, turn_id, answer.clone());
-    complete_item(&mut chat, thread_id, turn_id, answer.clone());
-    finish_turn(
-        &mut chat,
-        thread_id,
-        turn_id,
-        vec![answer],
-        TurnStatus::Completed,
-    );
-    let AppCommand::RealtimeConversationSpeech {
-        delivery_id, text, ..
-    } = ops.try_recv().expect("final answer should be delivered")
-    else {
-        panic!("expected speech delivery");
-    };
-    assert_eq!(
-        text.as_str(),
-        "[COMMENTARY] is a label in the documentation."
-    );
-    assert!(ops.try_recv().is_err());
-    chat.restore_undelivered_realtime_speech(delivery_id);
-    commit_realtime_history_events(&mut chat, &mut events);
-    let rendered = std::iter::from_fn(|| events.try_recv().ok())
-        .filter_map(|event| match event {
-            AppEvent::InsertHistoryCell(cell) if !cell.as_any().is::<FinalMessageSeparator>() => {
-                Some(
-                    cell.transcript_lines(/*width*/ 80)
-                        .into_iter()
-                        .map(|line| line.to_string())
-                        .collect::<Vec<_>>()
-                        .join("\n"),
-                )
-            }
-            _ => None,
-        })
-        .collect::<Vec<_>>()
-        .join("\n");
-    insta::assert_snapshot!("explicit_final_answer_with_channel_marker", rendered);
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+        let (mut chat, _sender, mut events, mut ops) = make_chatwidget_manual_with_sender().await;
+        let thread_id = activate_voice(&mut chat);
+        let turn_id = "marker-final-turn";
+        start_item(
+            &mut chat,
+            thread_id,
+            turn_id,
+            user_item("<realtime_delegation><input>explain markers</input></realtime_delegation>"),
+        );
+        let answer = agent_item(
+            "marker-final",
+            "[COMMENTARY] is a label in the documentation.",
+            Some(MessagePhase::FinalAnswer),
+        );
+        start_item(&mut chat, thread_id, turn_id, answer.clone());
+        complete_item(&mut chat, thread_id, turn_id, answer.clone());
+        finish_turn(
+            &mut chat,
+            thread_id,
+            turn_id,
+            vec![answer],
+            TurnStatus::Completed,
+        );
+        let AppCommand::RealtimeConversationSpeech {
+            delivery_id, text, ..
+        } = ops.try_recv().expect("final answer should be delivered")
+        else {
+            panic!("expected speech delivery");
+        };
+        assert_eq!(
+            text.as_str(),
+            "[COMMENTARY] is a label in the documentation."
+        );
+        assert!(ops.try_recv().is_err());
+        chat.restore_undelivered_realtime_speech(delivery_id);
+        commit_realtime_history_events(&mut chat, &mut events);
+        let rendered = std::iter::from_fn(|| events.try_recv().ok())
+            .filter_map(|event| match event {
+                AppEvent::InsertHistoryCell(cell)
+                    if !cell.as_any().is::<FinalMessageSeparator>() =>
+                {
+                    Some(
+                        cell.transcript_lines(/*width*/ 80)
+                            .into_iter()
+                            .map(|line| line.to_string())
+                            .collect::<Vec<_>>()
+                            .join("\n"),
+                    )
+                }
+                _ => None,
+            })
+            .collect::<Vec<_>>()
+            .join("\n");
+        insta::assert_snapshot!("explicit_final_answer_with_channel_marker", rendered);
+    })
+    .await;
 }
 
 #[tokio::test]

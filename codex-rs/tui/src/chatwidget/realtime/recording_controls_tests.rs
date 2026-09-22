@@ -90,85 +90,88 @@ async fn voice_mute_keymap_updates_the_active_handler_and_composer_hint() {
 
 #[tokio::test]
 async fn voice_composer_preserves_normal_colors_across_microphone_states() {
-    use crate::render::renderable::Renderable;
-    use ratatui::prelude::Buffer;
-    use ratatui::prelude::Color;
-    use ratatui::prelude::Rect;
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+        use crate::render::renderable::Renderable;
+        use ratatui::prelude::Buffer;
+        use ratatui::prelude::Color;
+        use ratatui::prelude::Rect;
 
-    let (mut chat, _sender, _events, _ops) = make_chatwidget_manual_with_sender().await;
-    let thread_id = activate_voice(&mut chat);
-    chat.bottom_pane
-        .set_composer_text("typed".to_string(), Vec::new(), Vec::new());
-    let check = |chat: &mut ChatWidget, recording| {
-        chat.update_realtime_footer();
-        let area = Rect::new(
-            /*x*/ 0,
-            /*y*/ 0,
-            /*width*/ 47,
-            chat.bottom_pane.desired_height(/*width*/ 47),
-        );
-        let mut buffer = Buffer::empty(area);
-        chat.bottom_pane.render(area, &mut buffer);
-        assert_eq!(chat.realtime_microphone_is_listening(), recording);
-        assert!(buffer.content.iter().all(|cell| cell.bg != Color::Red));
-        if recording {
-            let marker = buffer
-                .content
-                .iter()
-                .find(|cell| cell.symbol() == "●")
-                .expect("actual capture must show a recording marker");
-            assert_eq!(marker.fg, Color::Red);
-            assert_ne!(marker.bg, Color::Red);
-        }
-        if recording && chat.local_settings.tui.animations {
-            let rows = buffer
-                .content
-                .chunks(/*chunk_size*/ 47)
-                .take(/*n*/ 5)
-                .enumerate()
-                .map(|(index, cells)| {
-                    let row = cells
-                        .iter()
-                        .map(ratatui::buffer::Cell::symbol)
-                        .collect::<String>();
-                    format!("{index}: {}", row.trim_end())
-                        .trim_end()
-                        .to_string()
-                })
-                .collect::<Vec<_>>()
-                .join("\n");
-            insta::assert_snapshot!(rows, @"
+        let (mut chat, _sender, _events, _ops) = make_chatwidget_manual_with_sender().await;
+        let thread_id = activate_voice(&mut chat);
+        chat.bottom_pane
+            .set_composer_text("typed".to_string(), Vec::new(), Vec::new());
+        let check = |chat: &mut ChatWidget, recording| {
+            chat.update_realtime_footer();
+            let area = Rect::new(
+                /*x*/ 0,
+                /*y*/ 0,
+                /*width*/ 47,
+                chat.bottom_pane.desired_height(/*width*/ 47),
+            );
+            let mut buffer = Buffer::empty(area);
+            chat.bottom_pane.render(area, &mut buffer);
+            assert_eq!(chat.realtime_microphone_is_listening(), recording);
+            assert!(buffer.content.iter().all(|cell| cell.bg != Color::Red));
+            if recording {
+                let marker = buffer
+                    .content
+                    .iter()
+                    .find(|cell| cell.symbol() == "●")
+                    .expect("actual capture must show a recording marker");
+                assert_eq!(marker.fg, Color::Red);
+                assert_ne!(marker.bg, Color::Red);
+            }
+            if recording && chat.local_settings.tui.animations {
+                let rows = buffer
+                    .content
+                    .chunks(/*chunk_size*/ 47)
+                    .take(/*n*/ 5)
+                    .enumerate()
+                    .map(|(index, cells)| {
+                        let row = cells
+                            .iter()
+                            .map(ratatui::buffer::Cell::symbol)
+                            .collect::<String>();
+                        format!("{index}: {}", row.trim_end())
+                            .trim_end()
+                            .to_string()
+                    })
+                    .collect::<Vec<_>>()
+                    .join("\n");
+                insta::assert_snapshot!(rows, @"
             0: ───────────────────────────────────────────────
             1:  voice ● listening ctrl+x mute     /voice stop
             2:    mic ▁▁▁▁▁▁  codex ▁▁▁▁▁▁
             3:
             4: › typed
             ");
-        }
-        buffer
-            .content
-            .windows(/*size*/ 5)
-            .find(|cells| {
-                cells
-                    .iter()
-                    .map(ratatui::buffer::Cell::symbol)
-                    .collect::<String>()
-                    == "typed"
-            })
-            .map(|cells| cells[0].fg)
-            .unwrap()
-    };
-    let foreground = check(&mut chat, /*recording*/ true);
-    chat.local_settings.tui.animations = false;
-    assert_eq!(check(&mut chat, /*recording*/ true), foreground);
-    chat.realtime_conversation.microphone_muted = true;
-    assert_eq!(check(&mut chat, /*recording*/ false), foreground);
-    chat.realtime_conversation.microphone_muted = false;
-    chat.thread_id = Some(ThreadId::new());
-    assert_eq!(check(&mut chat, /*recording*/ false), foreground);
-    chat.thread_id = Some(thread_id);
-    chat.realtime_conversation.phase = RealtimeConversationPhase::Stopping;
-    assert_eq!(check(&mut chat, /*recording*/ false), foreground);
+            }
+            buffer
+                .content
+                .windows(/*size*/ 5)
+                .find(|cells| {
+                    cells
+                        .iter()
+                        .map(ratatui::buffer::Cell::symbol)
+                        .collect::<String>()
+                        == "typed"
+                })
+                .map(|cells| cells[0].fg)
+                .unwrap()
+        };
+        let foreground = check(&mut chat, /*recording*/ true);
+        chat.local_settings.tui.animations = false;
+        assert_eq!(check(&mut chat, /*recording*/ true), foreground);
+        chat.realtime_conversation.microphone_muted = true;
+        assert_eq!(check(&mut chat, /*recording*/ false), foreground);
+        chat.realtime_conversation.microphone_muted = false;
+        chat.thread_id = Some(ThreadId::new());
+        assert_eq!(check(&mut chat, /*recording*/ false), foreground);
+        chat.thread_id = Some(thread_id);
+        chat.realtime_conversation.phase = RealtimeConversationPhase::Stopping;
+        assert_eq!(check(&mut chat, /*recording*/ false), foreground);
+    })
+    .await;
 }
 
 #[tokio::test]
@@ -319,101 +322,105 @@ async fn voice_meters_preserve_silence_and_restart_sampling_after_reset() {
 
 #[tokio::test]
 async fn voice_footer_renders_the_main_conversation_states() {
-    let (mut chat, _sender, _events, _ops) = make_chatwidget_manual_with_sender().await;
-    activate_voice(&mut chat);
-    chat.thread_name = Some("status line stays visible".to_string());
-    chat.local_settings.tui.status_line = Some(vec!["thread-title".to_string()]);
-    chat.refresh_status_surfaces();
-    let mut states = Vec::new();
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+        let (mut chat, _sender, _events, _ops) = make_chatwidget_manual_with_sender().await;
+        activate_voice(&mut chat);
+        chat.thread_name = Some("status line stays visible".to_string());
+        chat.local_settings.tui.status_line = Some(vec!["thread-title".to_string()]);
+        chat.refresh_status_surfaces();
+        let mut states = Vec::new();
 
-    for (label, phase, muted, level, speaker_level, role, transcript) in [
-        (
-            "connecting",
-            RealtimeConversationPhase::Starting,
-            false,
-            0,
-            0,
-            None,
-            "",
-        ),
-        (
-            "listening",
-            RealtimeConversationPhase::Active,
-            false,
-            0,
-            0,
-            None,
-            "",
-        ),
-        (
-            "speaking",
-            RealtimeConversationPhase::Active,
-            false,
-            4,
-            5,
-            None,
-            "",
-        ),
-        (
-            "muted",
-            RealtimeConversationPhase::Active,
-            true,
-            4,
-            4,
-            None,
-            "",
-        ),
-        (
-            "transcript",
-            RealtimeConversationPhase::Active,
-            false,
-            2,
-            2,
-            Some("assistant"),
-            "Hello there",
-        ),
-    ] {
-        chat.local_settings.tui.animations = label != "connecting";
-        chat.realtime_conversation.phase = phase;
-        chat.realtime_conversation.microphone_muted = muted;
-        chat.realtime_conversation.microphone_level = level;
-        chat.realtime_conversation.speaker_level = speaker_level;
-        chat.realtime_conversation.microphone_intensity = (level * 255 / 5) as u8;
-        chat.realtime_conversation.speaker_intensity = (speaker_level * 255 / 5) as u8;
-        let intensities = (
-            chat.realtime_conversation.microphone_intensity,
-            chat.realtime_conversation.speaker_intensity,
-        );
-        chat.realtime_conversation.audio_meter_history = [intensities; 4].into();
-        chat.realtime_conversation.microphone_history =
-            super::super::VoiceAmplitudeHistory::default();
-        chat.realtime_conversation.speaker_history = super::super::VoiceAmplitudeHistory::default();
-        for _ in 0..4 {
-            chat.realtime_conversation.microphone_history.push(level);
-            chat.realtime_conversation
-                .speaker_history
-                .push(speaker_level);
+        for (label, phase, muted, level, speaker_level, role, transcript) in [
+            (
+                "connecting",
+                RealtimeConversationPhase::Starting,
+                false,
+                0,
+                0,
+                None,
+                "",
+            ),
+            (
+                "listening",
+                RealtimeConversationPhase::Active,
+                false,
+                0,
+                0,
+                None,
+                "",
+            ),
+            (
+                "speaking",
+                RealtimeConversationPhase::Active,
+                false,
+                4,
+                5,
+                None,
+                "",
+            ),
+            (
+                "muted",
+                RealtimeConversationPhase::Active,
+                true,
+                4,
+                4,
+                None,
+                "",
+            ),
+            (
+                "transcript",
+                RealtimeConversationPhase::Active,
+                false,
+                2,
+                2,
+                Some("assistant"),
+                "Hello there",
+            ),
+        ] {
+            chat.local_settings.tui.animations = label != "connecting";
+            chat.realtime_conversation.phase = phase;
+            chat.realtime_conversation.microphone_muted = muted;
+            chat.realtime_conversation.microphone_level = level;
+            chat.realtime_conversation.speaker_level = speaker_level;
+            chat.realtime_conversation.microphone_intensity = (level * 255 / 5) as u8;
+            chat.realtime_conversation.speaker_intensity = (speaker_level * 255 / 5) as u8;
+            let intensities = (
+                chat.realtime_conversation.microphone_intensity,
+                chat.realtime_conversation.speaker_intensity,
+            );
+            chat.realtime_conversation.audio_meter_history = [intensities; 4].into();
+            chat.realtime_conversation.microphone_history =
+                super::super::VoiceAmplitudeHistory::default();
+            chat.realtime_conversation.speaker_history =
+                super::super::VoiceAmplitudeHistory::default();
+            for _ in 0..4 {
+                chat.realtime_conversation.microphone_history.push(level);
+                chat.realtime_conversation
+                    .speaker_history
+                    .push(speaker_level);
+            }
+            chat.realtime_conversation.transcript_role = role.map(str::to_string);
+            chat.realtime_conversation.transcript = transcript.to_string();
+            chat.update_realtime_footer();
+            let rendered = render_bottom_popup(&chat, /*width*/ 80);
+            assert!(rendered.contains("status line stays visible"));
+            states.push(format!("{label}:\n{rendered}"));
         }
-        chat.realtime_conversation.transcript_role = role.map(str::to_string);
-        chat.realtime_conversation.transcript = transcript.to_string();
+
+        chat.realtime_conversation.speaker_level = 0;
+        chat.realtime_conversation.speaker_intensity = 0;
+        chat.realtime_conversation.speaker_history = super::super::VoiceAmplitudeHistory::default();
+        chat.realtime_conversation.interruption_acknowledged_until =
+            Some(std::time::Instant::now() + super::super::INTERRUPTION_ACKNOWLEDGMENT);
         chat.update_realtime_footer();
-        let rendered = render_bottom_popup(&chat, /*width*/ 80);
-        assert!(rendered.contains("status line stays visible"));
-        states.push(format!("{label}:\n{rendered}"));
-    }
+        states.push(format!(
+            "interrupted:\n{}",
+            render_bottom_popup(&chat, /*width*/ 80)
+        ));
 
-    chat.realtime_conversation.speaker_level = 0;
-    chat.realtime_conversation.speaker_intensity = 0;
-    chat.realtime_conversation.speaker_history = super::super::VoiceAmplitudeHistory::default();
-    chat.realtime_conversation.interruption_acknowledged_until =
-        Some(std::time::Instant::now() + super::super::INTERRUPTION_ACKNOWLEDGMENT);
-    chat.update_realtime_footer();
-    states.push(format!(
-        "interrupted:\n{}",
-        render_bottom_popup(&chat, /*width*/ 80)
-    ));
-
-    insta::assert_snapshot!(states.join("\n\n"));
+        insta::assert_snapshot!(states.join("\n\n"));
+    })
+    .await;
 }
 
 #[tokio::test]

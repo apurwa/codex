@@ -5,6 +5,8 @@ use pretty_assertions::assert_eq;
 
 #[tokio::test]
 async fn completed_replay_preserves_messages_and_draft_across_reconstruction() {
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+
     let mut outputs = Vec::new();
     for _ in 0..2 {
         let (mut chat, mut rx, _ops) = make_chatwidget_manual(/*model_override*/ None).await;
@@ -45,4 +47,6 @@ async fn completed_replay_preserves_messages_and_draft_across_reconstruction() {
 
       Second answer
     ");
+
+    }).await;
 }

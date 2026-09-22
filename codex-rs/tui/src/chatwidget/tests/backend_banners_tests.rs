@@ -27,100 +27,107 @@ fn banner_response(
 
 #[tokio::test]
 async fn backend_banner_presentation_and_cta_do_not_imply_recovery() {
-    for presentation in [None, Some("inline"), Some("dismissible")] {
-        let (mut chat, mut rx, _ops) = make_chatwidget_manual(Some("test-model-a")).await;
-        let response = banner_response(
-            presentation,
-            json!([{"action":"notify_owner","label":"Notify owner"}]),
-        );
-        chat.update_backend_banner(&response);
-        let initial = render_bottom_popup(&chat, /*width*/ 70);
-        assert!(initial.contains("Selected model usage exhausted"));
-        assert_eq!(
-            initial.contains("esc to dismiss"),
-            presentation == Some("dismissible")
-        );
-        chat.handle_key_event(KeyEvent::new(KeyCode::Char('1'), KeyModifiers::NONE));
-        assert!(
-            rx.try_recv()
-                .is_ok_and(|event| matches!(event, AppEvent::SendAddCreditsNudgeEmail { .. }))
-        );
-        assert_eq!(render_bottom_popup(&chat, /*width*/ 70), initial);
-        let request_id = chat
-            .start_add_credits_nudge_email_request(AddCreditsNudgeCreditType::Credits)
-            .expect("start notification");
-        if presentation == Some("inline") {
-            insta::assert_snapshot!(
-                "backend_banner_notification",
-                normalize_snapshot_paths(render_bottom_popup(&chat, /*width*/ 70))
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+        for presentation in [None, Some("inline"), Some("dismissible")] {
+            let (mut chat, mut rx, _ops) = make_chatwidget_manual(Some("test-model-a")).await;
+            let response = banner_response(
+                presentation,
+                json!([{"action":"notify_owner","label":"Notify owner"}]),
+            );
+            chat.update_backend_banner(&response);
+            let initial = render_bottom_popup(&chat, /*width*/ 70);
+            assert!(initial.contains("Selected model usage exhausted"));
+            assert_eq!(
+                initial.contains("esc to dismiss"),
+                presentation == Some("dismissible")
+            );
+            chat.handle_key_event(KeyEvent::new(KeyCode::Char('1'), KeyModifiers::NONE));
+            assert!(
+                rx.try_recv()
+                    .is_ok_and(|event| matches!(event, AppEvent::SendAddCreditsNudgeEmail { .. }))
+            );
+            assert_eq!(render_bottom_popup(&chat, /*width*/ 70), initial);
+            let request_id = chat
+                .start_add_credits_nudge_email_request(AddCreditsNudgeCreditType::Credits)
+                .expect("start notification");
+            if presentation == Some("inline") {
+                insta::assert_snapshot!(
+                    "backend_banner_notification",
+                    normalize_snapshot_paths(render_bottom_popup(&chat, /*width*/ 70))
+                );
+            }
+            chat.handle_key_event(KeyEvent::new(KeyCode::Char('1'), KeyModifiers::NONE));
+            assert!(
+                rx.try_recv()
+                    .is_ok_and(|event| matches!(event, AppEvent::SendAddCreditsNudgeEmail { .. }))
+            );
+            assert_eq!(chat.composer_text_with_pending(), "");
+            assert!(
+                chat.start_add_credits_nudge_email_request(AddCreditsNudgeCreditType::Credits)
+                    .is_none()
+            );
+            chat.finish_add_credits_nudge_email_request(request_id, Err("local failure".into()));
+            chat.update_backend_banner(&response);
+            assert_eq!(render_bottom_popup(&chat, /*width*/ 70), initial);
+            chat.handle_key_event(KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE));
+            assert_eq!(
+                render_bottom_popup(&chat, /*width*/ 70).contains("Selected model usage exhausted"),
+                presentation != Some("dismissible")
+            );
+            chat.set_model("test-model-b");
+            assert!(!chat.has_applicable_backend_banner());
+            assert!(
+                !render_bottom_popup(&chat, /*width*/ 70)
+                    .contains("Selected model usage exhausted")
+            );
+            chat.set_model("test-model-a");
+            assert_eq!(
+                render_bottom_popup(&chat, /*width*/ 70).contains("Selected model usage exhausted"),
+                presentation != Some("dismissible")
             );
         }
-        chat.handle_key_event(KeyEvent::new(KeyCode::Char('1'), KeyModifiers::NONE));
-        assert!(
-            rx.try_recv()
-                .is_ok_and(|event| matches!(event, AppEvent::SendAddCreditsNudgeEmail { .. }))
-        );
-        assert_eq!(chat.composer_text_with_pending(), "");
-        assert!(
-            chat.start_add_credits_nudge_email_request(AddCreditsNudgeCreditType::Credits)
-                .is_none()
-        );
-        chat.finish_add_credits_nudge_email_request(request_id, Err("local failure".into()));
-        chat.update_backend_banner(&response);
-        assert_eq!(render_bottom_popup(&chat, /*width*/ 70), initial);
-        chat.handle_key_event(KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE));
-        assert_eq!(
-            render_bottom_popup(&chat, /*width*/ 70).contains("Selected model usage exhausted"),
-            presentation != Some("dismissible")
-        );
-        chat.set_model("test-model-b");
-        assert!(!chat.has_applicable_backend_banner());
-        assert!(
-            !render_bottom_popup(&chat, /*width*/ 70).contains("Selected model usage exhausted")
-        );
-        chat.set_model("test-model-a");
-        assert_eq!(
-            render_bottom_popup(&chat, /*width*/ 70).contains("Selected model usage exhausted"),
-            presentation != Some("dismissible")
-        );
-    }
+    })
+    .await;
 }
 
 #[tokio::test]
 async fn backend_banner_zero_actions_preserve_guidance_and_composer_input() {
-    for presentation in [None, Some("inline"), Some("dismissible")] {
-        for ctas in [
-            json!([]),
-            json!([{"action":"future_action","label":"Unsupported"}]),
-        ] {
-            let (mut chat, _rx, _ops) = make_chatwidget_manual(Some("test-model-a")).await;
-            chat.update_backend_banner(&banner_response(presentation, ctas));
-            let rendered = render_bottom_popup(&chat, /*width*/ 70);
-            assert!(rendered.contains("Selected model usage exhausted"));
-            assert!(rendered.contains("switch to another model"));
-            assert!(!rendered.to_lowercase().contains("no matches"));
-            assert!(!rendered.contains("Press a number"));
-            assert_eq!(
-                rendered.contains("esc to dismiss"),
-                presentation == Some("dismissible")
-            );
-            if presentation == Some("dismissible") {
-                insta::assert_snapshot!(
-                    "backend_banner_information_dismissible",
-                    normalize_snapshot_paths(rendered)
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+        for presentation in [None, Some("inline"), Some("dismissible")] {
+            for ctas in [
+                json!([]),
+                json!([{"action":"future_action","label":"Unsupported"}]),
+            ] {
+                let (mut chat, _rx, _ops) = make_chatwidget_manual(Some("test-model-a")).await;
+                chat.update_backend_banner(&banner_response(presentation, ctas));
+                let rendered = render_bottom_popup(&chat, /*width*/ 70);
+                assert!(rendered.contains("Selected model usage exhausted"));
+                assert!(rendered.contains("switch to another model"));
+                assert!(!rendered.to_lowercase().contains("no matches"));
+                assert!(!rendered.contains("Press a number"));
+                assert_eq!(
+                    rendered.contains("esc to dismiss"),
+                    presentation == Some("dismissible")
                 );
-            } else {
-                insta::assert_snapshot!(
-                    "backend_banner_information_only",
-                    normalize_snapshot_paths(rendered)
-                );
+                if presentation == Some("dismissible") {
+                    insta::assert_snapshot!(
+                        "backend_banner_information_dismissible",
+                        normalize_snapshot_paths(rendered)
+                    );
+                } else {
+                    insta::assert_snapshot!(
+                        "backend_banner_information_only",
+                        normalize_snapshot_paths(rendered)
+                    );
+                }
+                chat.handle_key_event(KeyEvent::new(KeyCode::Char('1'), KeyModifiers::NONE));
+                // An ordinary navigation key flushes the composer's pending first-character buffer.
+                chat.handle_key_event(KeyEvent::new(KeyCode::Left, KeyModifiers::NONE));
+                assert_eq!(chat.composer_text_with_pending(), "1");
             }
-            chat.handle_key_event(KeyEvent::new(KeyCode::Char('1'), KeyModifiers::NONE));
-            // An ordinary navigation key flushes the composer's pending first-character buffer.
-            chat.handle_key_event(KeyEvent::new(KeyCode::Left, KeyModifiers::NONE));
-            assert_eq!(chat.composer_text_with_pending(), "1");
         }
-    }
+    })
+    .await;
 }
 
 #[tokio::test]

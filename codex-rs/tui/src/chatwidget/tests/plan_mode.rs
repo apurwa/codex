@@ -65,31 +65,37 @@ fn assert_literal_plan_prompt(chat: &ChatWidget, op: Result<Op, TryRecvError>, p
 
 #[tokio::test]
 async fn plan_draft_footer_snapshot() {
-    let (mut chat, _rx, _op_rx) = make_chatwidget_manual(Some("gpt-5")).await;
-    chat.set_token_info(Some(make_token_info(
-        /*total_tokens*/ 50_000, /*context_window*/ 100_000,
-    )));
-    chat.bottom_pane
-        .set_composer_text("make a plan".to_string(), Vec::new(), Vec::new());
-    chat.pre_draw_tick();
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+        let (mut chat, _rx, _op_rx) = make_chatwidget_manual(Some("gpt-5")).await;
+        chat.set_token_info(Some(make_token_info(
+            /*total_tokens*/ 50_000, /*context_window*/ 100_000,
+        )));
+        chat.bottom_pane
+            .set_composer_text("make a plan".to_string(), Vec::new(), Vec::new());
+        chat.pre_draw_tick();
 
-    assert_chatwidget_snapshot!(
-        "plan_draft_footer",
-        normalize_snapshot_paths(render_bottom_popup(&chat, /*width*/ 80))
-    );
+        assert_chatwidget_snapshot!(
+            "plan_draft_footer",
+            normalize_snapshot_paths(render_bottom_popup(&chat, /*width*/ 80))
+        );
+    })
+    .await;
 }
 
 #[tokio::test]
 async fn plan_draft_footer_narrow_snapshot() {
-    let (mut chat, _rx, _op_rx) = make_chatwidget_manual(Some("gpt-5")).await;
-    chat.bottom_pane
-        .set_composer_text("make a plan".to_string(), Vec::new(), Vec::new());
-    chat.pre_draw_tick();
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+        let (mut chat, _rx, _op_rx) = make_chatwidget_manual(Some("gpt-5")).await;
+        chat.bottom_pane
+            .set_composer_text("make a plan".to_string(), Vec::new(), Vec::new());
+        chat.pre_draw_tick();
 
-    assert_chatwidget_snapshot!(
-        "plan_draft_footer_narrow",
-        normalize_snapshot_paths(render_bottom_popup(&chat, /*width*/ 36))
-    );
+        assert_chatwidget_snapshot!(
+            "plan_draft_footer_narrow",
+            normalize_snapshot_paths(render_bottom_popup(&chat, /*width*/ 36))
+        );
+    })
+    .await;
 }
 
 #[tokio::test]

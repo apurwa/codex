@@ -62,30 +62,33 @@ fn saved_completion_label() -> String {
 
 #[tokio::test]
 async fn completion_follows_plain_and_streamed_tool_answers() {
-    for streamed in [false, true] {
-        let (mut chat, mut rx, _ops) = make_chatwidget_manual(/*model_override*/ None).await;
-        handle_turn_started(&mut chat, "turn-1");
-        if streamed {
-            let command = begin_exec(&mut chat, "command-1", "echo ready");
-            end_exec(&mut chat, command, "ready", "", /*exit_code*/ 0);
-            handle_agent_message_delta(&mut chat, "The change is ready.\n");
-            chat.run_commit_tick();
-        }
-        complete_turn(&mut chat, completed_turn(Some(125_000), Some(COMPLETED_AT)));
-
-        let text = drain_insert_history_normalized(&mut rx)
-            .iter()
-            .map(|lines| lines_to_single_string(lines))
-            .collect::<String>();
-        assert_chatwidget_snapshot!(
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+        for streamed in [false, true] {
+            let (mut chat, mut rx, _ops) = make_chatwidget_manual(/*model_override*/ None).await;
+            handle_turn_started(&mut chat, "turn-1");
             if streamed {
-                "completion_after_streamed_tool_answer"
-            } else {
-                "completion_after_plain_answer"
-            },
-            text,
-        );
-    }
+                let command = begin_exec(&mut chat, "command-1", "echo ready");
+                end_exec(&mut chat, command, "ready", "", /*exit_code*/ 0);
+                handle_agent_message_delta(&mut chat, "The change is ready.\n");
+                chat.run_commit_tick();
+            }
+            complete_turn(&mut chat, completed_turn(Some(125_000), Some(COMPLETED_AT)));
+
+            let text = drain_insert_history_normalized(&mut rx)
+                .iter()
+                .map(|lines| lines_to_single_string(lines))
+                .collect::<String>();
+            assert_chatwidget_snapshot!(
+                if streamed {
+                    "completion_after_streamed_tool_answer"
+                } else {
+                    "completion_after_plain_answer"
+                },
+                text,
+            );
+        }
+    })
+    .await;
 }
 
 #[tokio::test]
