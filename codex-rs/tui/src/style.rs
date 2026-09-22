@@ -37,14 +37,17 @@ pub(crate) fn composer_blue_style() -> Style {
 
 /// Border style for Codex response cards.
 pub(crate) fn codex_response_border_style() -> Style {
-    composer_blue_style().bold()
+    match crate::ui_profile::ui_profile() {
+        crate::ui_profile::UiProfile::CodexDev => Style::default().fg(Color::DarkGray).bold(),
+        crate::ui_profile::UiProfile::Upstream => Style::default(),
+    }
 }
 
 /// Pale cool background that distinguishes Codex responses from user messages.
 pub(crate) fn codex_response_background_style() -> Style {
     match crate::ui_profile::ui_profile() {
         crate::ui_profile::UiProfile::CodexDev => match default_bg() {
-            Some(bg) => Style::default().bg(best_color(codex_response_bg_rgb(bg))),
+            Some(bg) => Style::default().bg(best_color(user_message_bg_rgb(bg))),
             None => Style::default(),
         },
         crate::ui_profile::UiProfile::Upstream => Style::default(),
