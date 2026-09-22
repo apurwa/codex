@@ -28,6 +28,18 @@ use ratatui::layout::Rect;
 use serde_json::json;
 use std::collections::HashMap;
 use std::path::Path;
+
+#[test]
+fn codex_tool_call_group_has_heading_and_single_spacers() {
+    let lines =
+        crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
+            prepend_codex_tool_call_label(vec![Line::from("Explored")])
+        });
+    assert_eq!(
+        lines.iter().map(ToString::to_string).collect::<Vec<_>>(),
+        vec!["", "CODEX · Tool Calls", "", "┊ Explored"]
+    );
+}
 use std::path::PathBuf;
 
 use codex_app_server_protocol::CommandExecutionSource as ExecCommandSource;

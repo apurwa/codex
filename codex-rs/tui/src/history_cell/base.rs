@@ -327,7 +327,7 @@ mod tests {
             assert!(!cell.is_codex_tool_call());
         });
         with_test_ui_profile(UiProfile::CodexDev, || {
-            assert_eq!(cell.display_lines(20).len(), 3);
+            assert_eq!(cell.display_lines(20).len(), 4);
             assert!(cell.is_codex_tool_call());
         });
 
