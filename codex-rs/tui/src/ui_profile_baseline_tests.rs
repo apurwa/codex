@@ -198,3 +198,30 @@ fn upstream_user_cell_has_no_you_band() {
         "codex-dev lost its YOU band: {codex_dev:?}"
     );
 }
+
+/// Under Upstream, the Codex response-card styles are inert (`Style::default()`), so the
+/// gray card / maroon label treatment never reaches the upstream render path. This guards the
+/// surface where a `codex_response_border_style()` refactor once returned
+/// `composer_blue_style().bold()` unconditionally, leaking a BOLD modifier into Upstream.
+///
+/// The CodexDev side only asserts the label and border, not the background: the background
+/// style depends on `default_bg()` terminal detection and is legitimately `Style::default()`
+/// in a headless test when no default background is known.
+#[test]
+fn upstream_codex_card_styles_are_inert() {
+    use crate::style::codex_label_style;
+    use crate::style::codex_response_background_style;
+    use crate::style::codex_response_border_style;
+    use ratatui::style::Style;
+
+    with_test_ui_profile(UiProfile::Upstream, || {
+        assert_eq!(codex_label_style(), Style::default());
+        assert_eq!(codex_response_border_style(), Style::default());
+        assert_eq!(codex_response_background_style(), Style::default());
+    });
+
+    with_test_ui_profile(UiProfile::CodexDev, || {
+        assert_ne!(codex_label_style(), Style::default());
+        assert_ne!(codex_response_border_style(), Style::default());
+    });
+}
