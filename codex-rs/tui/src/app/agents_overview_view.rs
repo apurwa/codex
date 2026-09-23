@@ -167,10 +167,11 @@ pub(super) enum AgentsOverviewFocus {
 
 impl AgentsOverviewViewState {
     pub(super) fn focus_composer(&mut self) {
+        let Some(composer) = self.composer.as_mut() else {
+            return;
+        };
         self.focus = AgentsOverviewFocus::Composer;
-        if let Some(composer) = self.composer.as_mut() {
-            composer.resume_text_entry();
-        }
+        composer.resume_text_entry();
     }
 
     pub(super) fn editing_metadata(&self) -> bool {
@@ -727,6 +728,16 @@ impl BottomPaneView for AgentsOverviewView {
             return;
         }
         if self.agents_keymap.new_task.is_pressed(key) {
+            if matches!(
+                crate::ui_profile::ui_profile(),
+                crate::ui_profile::UiProfile::Upstream
+            ) {
+                self.app_event_tx.send(AppEvent::NewAgentsOverviewSession {
+                    cwd: self.selected_row().map(|row| row.thread.cwd.clone()),
+                    prompt: None,
+                });
+                return;
+            }
             let selected_project_directory = (self.state().grouping
                 == AgentsOverviewGrouping::Project)
                 .then(|| self.selected_row().map(|row| row.thread.cwd.to_path_buf()))

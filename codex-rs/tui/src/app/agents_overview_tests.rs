@@ -1620,56 +1620,58 @@ async fn clicking_task_row_selects_and_opens_it() {
 #[tokio::test]
 async fn new_task_composer_is_visible_and_clickable() {
     let mut app = make_test_app().await;
-    app.config.disable_paste_burst = true;
-    let (event_tx, mut event_rx) = tokio::sync::mpsc::unbounded_channel();
-    app.app_event_tx = AppEventSender::new(event_tx);
-    let mut view = app.agents_overview_view(Vec::new(), /*selected_thread_id*/ None);
-    let area = Rect::new(
-        /*x*/ 0, /*y*/ 0, /*width*/ 96, /*height*/ 30,
-    );
-    let mut buffer = ratatui::buffer::Buffer::empty(area);
-    view.render(area, &mut buffer);
-    let rendered = buffer
-        .content()
-        .chunks(usize::from(area.width))
-        .map(|cells| {
-            cells
-                .iter()
-                .map(ratatui::buffer::Cell::symbol)
-                .collect::<String>()
-        })
-        .collect::<Vec<_>>();
-    assert!(rendered.iter().any(|line| line.contains("New task")));
-    let composer_row = rendered
-        .iter()
-        .position(|line| line.contains("Describe a new task"))
-        .expect("new-task composer should be visible") as u16;
-    assert_eq!(
-        app.agents_overview.view_state.lock().unwrap().focus,
-        AgentsOverviewFocus::List
-    );
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
+        app.config.disable_paste_burst = true;
+        let (event_tx, mut event_rx) = tokio::sync::mpsc::unbounded_channel();
+        app.app_event_tx = AppEventSender::new(event_tx);
+        let mut view = app.agents_overview_view(Vec::new(), /*selected_thread_id*/ None);
+        let area = Rect::new(
+            /*x*/ 0, /*y*/ 0, /*width*/ 96, /*height*/ 30,
+        );
+        let mut buffer = ratatui::buffer::Buffer::empty(area);
+        view.render(area, &mut buffer);
+        let rendered = buffer
+            .content()
+            .chunks(usize::from(area.width))
+            .map(|cells| {
+                cells
+                    .iter()
+                    .map(ratatui::buffer::Cell::symbol)
+                    .collect::<String>()
+            })
+            .collect::<Vec<_>>();
+        assert!(rendered.iter().any(|line| line.contains("New task")));
+        let composer_row = rendered
+            .iter()
+            .position(|line| line.contains("Describe a new task"))
+            .expect("new-task composer should be visible") as u16;
+        assert_eq!(
+            app.agents_overview.view_state.lock().unwrap().focus,
+            AgentsOverviewFocus::List
+        );
 
-    assert!(view.handle_mouse_event(crossterm::event::MouseEvent {
-        kind: crossterm::event::MouseEventKind::Down(crossterm::event::MouseButton::Left),
-        column: 4,
-        row: composer_row,
-        modifiers: KeyModifiers::NONE,
-    }));
-    assert_eq!(
-        app.agents_overview.view_state.lock().unwrap().focus,
-        AgentsOverviewFocus::Composer
-    );
-    for character in "Create from the composer".chars() {
-        view.handle_key_event(KeyCode::Char(character).into());
-    }
-    view.handle_key_event(KeyCode::Enter.into());
-    assert!(matches!(
-        event_rx.try_recv(),
-        Ok(AppEvent::NewAgentsOverviewSession {
-            cwd: None,
-            prompt: Some(UserMessage { text, .. }),
-        }) if text == "Create from the composer"
-    ));
+        assert!(view.handle_mouse_event(crossterm::event::MouseEvent {
+            kind: crossterm::event::MouseEventKind::Down(crossterm::event::MouseButton::Left),
+            column: 4,
+            row: composer_row,
+            modifiers: KeyModifiers::NONE,
+        }));
+        assert_eq!(
+            app.agents_overview.view_state.lock().unwrap().focus,
+            AgentsOverviewFocus::Composer
+        );
+        for character in "Create from the composer".chars() {
+            view.handle_key_event(KeyCode::Char(character).into());
+        }
+        view.handle_key_event(KeyCode::Enter.into());
+        assert!(matches!(
+            event_rx.try_recv(),
+            Ok(AppEvent::NewAgentsOverviewSession {
+                cwd: Some(_),
+                prompt: Some(UserMessage { text, .. }),
+            }) if text == "Create from the composer"
+        ));
+    });
 }
 
 #[tokio::test]
@@ -3019,57 +3021,60 @@ async fn command_center_escape_cancels_editors_and_never_closes_list() {
 #[tokio::test]
 async fn command_center_new_task_composer_uses_selected_checkout() {
     let mut app = make_test_app().await;
-    app.config.disable_paste_burst = true;
-    app.config.features.enable(Feature::Worktrees).unwrap();
-    let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
-    app.app_event_tx = AppEventSender::new(tx);
-    let id = ThreadId::new();
-    let mut target = overview_thread(
-        id,
-        /*parent_thread_id*/ None,
-        "Task",
-        ThreadStatus::Idle,
-    );
-    target.cwd = test_path_buf("/tmp/checkout/subdir").abs();
-    let mut view = app.agents_overview_view(vec![target.clone()], Some(id));
-    assert_eq!(
-        app.agents_overview.view_state.lock().unwrap().focus,
-        AgentsOverviewFocus::List
-    );
-    view.handle_key_event(KeyCode::Char('n').into());
-    assert_eq!(
-        app.agents_overview.view_state.lock().unwrap().focus,
-        AgentsOverviewFocus::Composer
-    );
-    assert!(rx.try_recv().is_err());
-    for character in "Build the selected checkout".chars() {
-        view.handle_key_event(KeyCode::Char(character).into());
-    }
-    view.handle_key_event(KeyCode::Enter.into());
-    assert!(matches!(
-        rx.try_recv(),
-        Ok(AppEvent::NewAgentsOverviewSession {
-            cwd: Some(cwd),
-            prompt: Some(UserMessage { text, .. }),
-        }) if cwd == target.cwd && text == "Build the selected checkout"
-    ));
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
+        app.config.disable_paste_burst = true;
+        app.config.features.enable(Feature::Worktrees).unwrap();
+        let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
+        app.app_event_tx = AppEventSender::new(tx);
+        let id = ThreadId::new();
+        let mut target = overview_thread(
+            id,
+            /*parent_thread_id*/ None,
+            "Task",
+            ThreadStatus::Idle,
+        );
+        target.cwd = test_path_buf("/tmp/checkout/subdir").abs();
+        let mut view = app.agents_overview_view(vec![target.clone()], Some(id));
+        assert_eq!(
+            app.agents_overview.view_state.lock().unwrap().focus,
+            AgentsOverviewFocus::List
+        );
+        view.handle_key_event(KeyCode::Char('n').into());
+        assert_eq!(
+            app.agents_overview.view_state.lock().unwrap().focus,
+            AgentsOverviewFocus::Composer
+        );
+        assert!(rx.try_recv().is_err());
+        for character in "Build the selected checkout".chars() {
+            view.handle_key_event(KeyCode::Char(character).into());
+        }
+        view.handle_key_event(KeyCode::Enter.into());
+        assert!(matches!(
+            rx.try_recv(),
+            Ok(AppEvent::NewAgentsOverviewSession {
+                cwd: Some(cwd),
+                prompt: Some(UserMessage { text, .. }),
+            }) if cwd == target.cwd && text == "Build the selected checkout"
+        ));
 
-    let mut empty = app.agents_overview_view(Vec::new(), /*selected_thread_id*/ None);
-    empty.handle_key_event(KeyCode::Esc.into());
-    empty.handle_key_event(KeyCode::Char('n').into());
-    for character in "Build without a selected checkout".chars() {
-        empty.handle_key_event(KeyCode::Char(character).into());
-    }
-    empty.handle_key_event(KeyCode::Enter.into());
-    assert!(matches!(
-        rx.try_recv(),
-        Ok(AppEvent::NewAgentsOverviewSession {
-            cwd: None,
-            prompt: Some(UserMessage { text, .. }),
-        }) if text == "Build without a selected checkout"
-    ));
-    app.config.features.disable(Feature::Worktrees).unwrap();
-    let mut disabled = app.agents_overview_view(vec![target], Some(id));
-    disabled.handle_key_event(KeyCode::Char('w').into());
-    assert!(rx.try_recv().is_err());
+        let mut empty = app.agents_overview_view(Vec::new(), /*selected_thread_id*/ None);
+        empty.handle_key_event(KeyCode::Esc.into());
+        empty.handle_key_event(KeyCode::Char('n').into());
+        for character in "Build without a selected checkout".chars() {
+            empty.handle_key_event(KeyCode::Char(character).into());
+        }
+        empty.handle_key_event(KeyCode::Enter.into());
+        assert!(matches!(
+            rx.try_recv(),
+            Ok(AppEvent::NewAgentsOverviewSession {
+                cwd: None,
+                prompt: Some(UserMessage { text, .. }),
+            }) if text == "Build without a selected checkout"
+        ));
+
+        app.config.features.disable(Feature::Worktrees).unwrap();
+        let mut disabled = app.agents_overview_view(vec![target], Some(id));
+        disabled.handle_key_event(KeyCode::Char('w').into());
+        assert!(rx.try_recv().is_err());
+    });
 }

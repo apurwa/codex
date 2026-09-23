@@ -12,6 +12,13 @@ impl App {
             .view_state
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner);
+        if matches!(
+            crate::ui_profile::ui_profile(),
+            crate::ui_profile::UiProfile::Upstream
+        ) {
+            state.composer = None;
+            return;
+        }
         let composer = state.composer.get_or_insert_with(|| {
             let mut composer = ChatComposer::new_with_config(
                 /*has_input_focus*/ true,
