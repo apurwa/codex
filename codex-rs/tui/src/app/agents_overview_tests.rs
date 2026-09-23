@@ -60,75 +60,78 @@ async fn overview_thread_colors_match_footer_and_respect_color_suppression() {
 #[tokio::test]
 async fn selected_overview_row_uses_full_width_theme_aware_background() {
     let app = make_test_app().await;
-    let selected = ThreadId::from_u128(/*value*/ 1);
-    let other = ThreadId::from_u128(/*value*/ 2);
-    let threads = [(selected, "Selected task"), (other, "Other task")].map(|(thread_id, name)| {
-        overview_thread(
-            thread_id,
-            /*parent_thread_id*/ None,
-            name,
-            ThreadStatus::Idle,
-        )
-    });
-    let mut snapshot = Vec::new();
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
+        let selected = ThreadId::from_u128(/*value*/ 1);
+        let other = ThreadId::from_u128(/*value*/ 2);
+        let threads =
+            [(selected, "Selected task"), (other, "Other task")].map(|(thread_id, name)| {
+                overview_thread(
+                    thread_id,
+                    /*parent_thread_id*/ None,
+                    name,
+                    ThreadStatus::Idle,
+                )
+            });
+        let mut snapshot = Vec::new();
 
-    for (theme, colors) in [
-        (
-            "dark",
-            crate::terminal_probe::DefaultColors {
-                fg: (255, 255, 255),
-                bg: (0, 0, 0),
-            },
-        ),
-        (
-            "light",
-            crate::terminal_probe::DefaultColors {
-                fg: (0, 0, 0),
-                bg: (255, 255, 255),
-            },
-        ),
-    ] {
-        crate::terminal_palette::with_test_default_colors(colors, || {
-            let view = app.agents_overview_view(threads.to_vec(), Some(selected));
-            let area = Rect::new(
-                /*x*/ 0, /*y*/ 0, /*width*/ 80, /*height*/ 30,
-            );
-            let mut buffer = ratatui::buffer::Buffer::empty(area);
-            view.render(area, &mut buffer);
-            let selected_y = buffer
-                .content()
-                .chunks(usize::from(area.width))
-                .position(|cells| {
-                    cells
-                        .iter()
-                        .map(ratatui::buffer::Cell::symbol)
-                        .collect::<String>()
-                        .contains("Selected task")
-                })
-                .expect("selected task should be visible") as u16;
-            let other_y = selected_y + 1;
-            assert!((2..area.width - 2).all(|x| {
-                let cell = &buffer[(x, selected_y)];
-                cell.bg == ratatui::style::Color::Rgb(0, 95, 135)
-                    && cell.fg == ratatui::style::Color::Rgb(255, 255, 255)
-                    && !cell.modifier.intersects(
-                        ratatui::style::Modifier::DIM | ratatui::style::Modifier::REVERSED,
-                    )
-            }));
-            assert!(
-                (2..area.width - 2)
-                    .all(|x| { buffer[(x, other_y)].bg != ratatui::style::Color::Rgb(0, 95, 135) })
-            );
-            snapshot.push(format!(
-                "{theme}: selected full-width blue background and white text, other normal"
-            ));
-        });
-    }
+        for (theme, colors) in [
+            (
+                "dark",
+                crate::terminal_probe::DefaultColors {
+                    fg: (255, 255, 255),
+                    bg: (0, 0, 0),
+                },
+            ),
+            (
+                "light",
+                crate::terminal_probe::DefaultColors {
+                    fg: (0, 0, 0),
+                    bg: (255, 255, 255),
+                },
+            ),
+        ] {
+            crate::terminal_palette::with_test_default_colors(colors, || {
+                let view = app.agents_overview_view(threads.to_vec(), Some(selected));
+                let area = Rect::new(
+                    /*x*/ 0, /*y*/ 0, /*width*/ 80, /*height*/ 30,
+                );
+                let mut buffer = ratatui::buffer::Buffer::empty(area);
+                view.render(area, &mut buffer);
+                let selected_y = buffer
+                    .content()
+                    .chunks(usize::from(area.width))
+                    .position(|cells| {
+                        cells
+                            .iter()
+                            .map(ratatui::buffer::Cell::symbol)
+                            .collect::<String>()
+                            .contains("Selected task")
+                    })
+                    .expect("selected task should be visible")
+                    as u16;
+                let other_y = selected_y + 1;
+                assert!((2..area.width - 2).all(|x| {
+                    let cell = &buffer[(x, selected_y)];
+                    cell.bg == ratatui::style::Color::Rgb(0, 95, 135)
+                        && cell.fg == ratatui::style::Color::Rgb(255, 255, 255)
+                        && !cell.modifier.intersects(
+                            ratatui::style::Modifier::DIM | ratatui::style::Modifier::REVERSED,
+                        )
+                }));
+                assert!((2..area.width - 2).all(|x| {
+                    buffer[(x, other_y)].bg != ratatui::style::Color::Rgb(0, 95, 135)
+                }));
+                snapshot.push(format!(
+                    "{theme}: selected full-width blue background and white text, other normal"
+                ));
+            });
+        }
 
-    insta::assert_snapshot!(snapshot.join("\n"), @r"
+        insta::assert_snapshot!(snapshot.join("\n"), @r"
     dark: selected full-width blue background and white text, other normal
     light: selected full-width blue background and white text, other normal
     ");
+    });
 }
 
 #[tokio::test]
@@ -1525,96 +1528,98 @@ async fn filtered_dashboard_actions_use_configured_shortcuts() {
 #[tokio::test]
 async fn clicking_task_row_selects_and_opens_it() {
     let app = make_test_app().await;
-    let first = ThreadId::new();
-    let second = ThreadId::new();
-    let (event_tx, mut event_rx) = tokio::sync::mpsc::unbounded_channel();
-    let mut view = AgentsOverviewView::new(
-        app.agents_overview_view(
-            vec![
-                overview_thread(
-                    first,
-                    /*parent_thread_id*/ None,
-                    "First task",
-                    ThreadStatus::Idle,
-                ),
-                overview_thread(
-                    second,
-                    /*parent_thread_id*/ None,
-                    "Second task",
-                    ThreadStatus::Idle,
-                ),
-            ],
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
+        let first = ThreadId::new();
+        let second = ThreadId::new();
+        let (event_tx, mut event_rx) = tokio::sync::mpsc::unbounded_channel();
+        let mut view = AgentsOverviewView::new(
+            app.agents_overview_view(
+                vec![
+                    overview_thread(
+                        first,
+                        /*parent_thread_id*/ None,
+                        "First task",
+                        ThreadStatus::Idle,
+                    ),
+                    overview_thread(
+                        second,
+                        /*parent_thread_id*/ None,
+                        "Second task",
+                        ThreadStatus::Idle,
+                    ),
+                ],
+                Some(first),
+            )
+            .rows,
             Some(first),
-        )
-        .rows,
-        Some(first),
-        /*worktrees_enabled*/ false,
-        /*use_theme_colors*/ false,
-        crate::app_event_sender::AppEventSender::new(event_tx),
-        app.keymap.clone(),
-        Arc::clone(&app.agents_overview.view_state),
-    );
-    let area = ratatui::layout::Rect::new(
-        /*x*/ 0, /*y*/ 0, /*width*/ 96, /*height*/ 30,
-    );
-    let mut before = ratatui::buffer::Buffer::empty(area);
-    view.render(area, &mut before);
-    let clicked_row = before
-        .content()
-        .chunks(usize::from(area.width))
-        .position(|cells| {
-            cells
-                .iter()
-                .map(ratatui::buffer::Cell::symbol)
-                .collect::<String>()
-                .contains("Second task")
-        })
-        .expect("second task should be visible") as u16;
+            /*worktrees_enabled*/ false,
+            /*use_theme_colors*/ false,
+            crate::app_event_sender::AppEventSender::new(event_tx),
+            app.keymap.clone(),
+            Arc::clone(&app.agents_overview.view_state),
+        );
+        let area = ratatui::layout::Rect::new(
+            /*x*/ 0, /*y*/ 0, /*width*/ 96, /*height*/ 30,
+        );
+        let mut before = ratatui::buffer::Buffer::empty(area);
+        view.render(area, &mut before);
+        let clicked_row = before
+            .content()
+            .chunks(usize::from(area.width))
+            .position(|cells| {
+                cells
+                    .iter()
+                    .map(ratatui::buffer::Cell::symbol)
+                    .collect::<String>()
+                    .contains("Second task")
+            })
+            .expect("second task should be visible") as u16;
 
-    assert!(view.handle_mouse_event(crossterm::event::MouseEvent {
-        kind: crossterm::event::MouseEventKind::Down(crossterm::event::MouseButton::Left),
-        column: 4,
-        row: clicked_row,
-        modifiers: KeyModifiers::NONE,
-    }));
-    assert!(matches!(
-        event_rx.try_recv(),
-        Ok(AppEvent::SelectAgentsOverviewThread { thread_id }) if thread_id == second
-    ));
+        assert!(view.handle_mouse_event(crossterm::event::MouseEvent {
+            kind: crossterm::event::MouseEventKind::Down(crossterm::event::MouseButton::Left),
+            column: 4,
+            row: clicked_row,
+            modifiers: KeyModifiers::NONE,
+        }));
+        assert!(matches!(
+            event_rx.try_recv(),
+            Ok(AppEvent::SelectAgentsOverviewThread { thread_id }) if thread_id == second
+        ));
 
-    let mut after = ratatui::buffer::Buffer::empty(area);
-    view.render(area, &mut after);
-    let highlighted_width = after
-        .content()
-        .chunks(usize::from(area.width))
-        .nth(usize::from(clicked_row))
-        .expect("selected row")
-        .iter()
-        .filter(|cell| {
-            cell.bg == ratatui::style::Color::Rgb(0, 95, 135)
-                && cell.fg == ratatui::style::Color::Rgb(255, 255, 255)
-        })
-        .count();
-    assert!(
-        highlighted_width >= 46,
-        "the selected task should retain a full-width list highlight, got {highlighted_width} cells"
-    );
-    let selected_rows = after
-        .content()
-        .chunks(usize::from(area.width))
-        .map(|cells| {
-            cells
-                .iter()
-                .take(48)
-                .map(ratatui::buffer::Cell::symbol)
-                .collect::<String>()
-                .trim_end()
-                .to_string()
-        })
-        .filter(|line| line.contains("First task") || line.contains("Second task"))
-        .collect::<Vec<_>>()
-        .join("\n");
-    insta::assert_snapshot!("agents_overview_mouse_selection", selected_rows);
+        let mut after = ratatui::buffer::Buffer::empty(area);
+        view.render(area, &mut after);
+        let highlighted_width = after
+            .content()
+            .chunks(usize::from(area.width))
+            .nth(usize::from(clicked_row))
+            .expect("selected row")
+            .iter()
+            .filter(|cell| {
+                cell.bg == ratatui::style::Color::Rgb(0, 95, 135)
+                    && cell.fg == ratatui::style::Color::Rgb(255, 255, 255)
+            })
+            .count();
+        assert!(
+            highlighted_width >= 46,
+            "the selected task should retain a full-width list highlight, got {highlighted_width} cells"
+        );
+        let selected_rows = after
+            .content()
+            .chunks(usize::from(area.width))
+            .map(|cells| {
+                cells
+                    .iter()
+                    .take(48)
+                    .map(ratatui::buffer::Cell::symbol)
+                    .collect::<String>()
+                    .trim_end()
+                    .to_string()
+            })
+            .filter(|line| line.contains("First task") || line.contains("Second task"))
+            .collect::<Vec<_>>()
+            .join("\n");
+        insta::assert_snapshot!("agents_overview_mouse_selection", selected_rows);
+    });
 }
 
 #[tokio::test]
@@ -1677,53 +1682,55 @@ async fn new_task_composer_is_visible_and_clickable() {
 #[tokio::test]
 async fn dashboard_composer_stays_at_terminal_bottom_after_resize() {
     let mut app = make_test_app().await;
-    let view = app.agents_overview_view(Vec::new(), /*selected_thread_id*/ None);
-    app.chat_widget.show_bottom_pane_view(Box::new(view));
-    let mut tui = crate::tui::test_support::make_test_tui().expect("test terminal");
-    let mut snapshot = Vec::new();
-    for (width, height) in [(80, 24), (120, 48), (80, 36)] {
-        let size = ratatui::layout::Size::new(width, height);
-        let area = app
-            .render_chat_widget_frame(&mut tui, size)
-            .expect("render dashboard");
-        assert_eq!(area.height, height);
-        let mut buffer = ratatui::buffer::Buffer::empty(area);
-        app.chat_widget.as_renderable().render(area, &mut buffer);
-        let lines = buffer
-            .content()
-            .chunks(usize::from(width))
-            .map(|cells| {
-                cells
-                    .iter()
-                    .map(ratatui::buffer::Cell::symbol)
-                    .collect::<String>()
-            })
-            .collect::<Vec<_>>();
-        let composer_y = lines
-            .iter()
-            .position(|line| line.contains("Describe a new task"))
-            .expect("composer remains visible");
-        assert!(composer_y >= usize::from(height.saturating_sub(6)));
-        for y in [composer_y - 1, composer_y + 1] {
-            for x in 0..width {
-                let cell = &buffer[(x, y as u16)];
-                assert_eq!(cell.symbol(), "─");
-                assert_eq!(cell.fg, ratatui::style::Color::Rgb(0, 95, 135));
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
+        let view = app.agents_overview_view(Vec::new(), /*selected_thread_id*/ None);
+        app.chat_widget.show_bottom_pane_view(Box::new(view));
+        let mut tui = crate::tui::test_support::make_test_tui().expect("test terminal");
+        let mut snapshot = Vec::new();
+        for (width, height) in [(80, 24), (120, 48), (80, 36)] {
+            let size = ratatui::layout::Size::new(width, height);
+            let area = app
+                .render_chat_widget_frame(&mut tui, size)
+                .expect("render dashboard");
+            assert_eq!(area.height, height);
+            let mut buffer = ratatui::buffer::Buffer::empty(area);
+            app.chat_widget.as_renderable().render(area, &mut buffer);
+            let lines = buffer
+                .content()
+                .chunks(usize::from(width))
+                .map(|cells| {
+                    cells
+                        .iter()
+                        .map(ratatui::buffer::Cell::symbol)
+                        .collect::<String>()
+                })
+                .collect::<Vec<_>>();
+            let composer_y = lines
+                .iter()
+                .position(|line| line.contains("Describe a new task"))
+                .expect("composer remains visible");
+            assert!(composer_y >= usize::from(height.saturating_sub(6)));
+            for y in [composer_y - 1, composer_y + 1] {
+                for x in 0..width {
+                    let cell = &buffer[(x, y as u16)];
+                    assert_eq!(cell.symbol(), "─");
+                    assert_eq!(cell.fg, ratatui::style::Color::Rgb(0, 95, 135));
+                }
             }
+            snapshot.push(format!(
+                "{width}x{height}: composer {} rows from bottom",
+                usize::from(height) - composer_y
+            ));
+            assert_eq!(
+                app.agents_overview.view_state.lock().unwrap().focus,
+                AgentsOverviewFocus::List
+            );
         }
-        snapshot.push(format!(
-            "{width}x{height}: composer {} rows from bottom",
-            usize::from(height) - composer_y
-        ));
-        assert_eq!(
-            app.agents_overview.view_state.lock().unwrap().focus,
-            AgentsOverviewFocus::List
+        insta::assert_snapshot!(
+            "dashboard_composer_bottom_after_resize",
+            snapshot.join("\n")
         );
-    }
-    insta::assert_snapshot!(
-        "dashboard_composer_bottom_after_resize",
-        snapshot.join("\n")
-    );
+    });
 }
 
 #[tokio::test]
