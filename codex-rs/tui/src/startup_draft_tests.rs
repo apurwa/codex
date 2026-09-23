@@ -50,6 +50,7 @@ pub(crate) fn quiet_startup_test_pump() -> StartupDraftPump {
 
 #[test]
 fn startup_draft_renders_full_empty_and_multiline_composer_frames() {
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
     let mut pump = startup_test_pump(std::iter::empty());
     let mut snapshots = Vec::new();
 
@@ -121,6 +122,7 @@ fn startup_draft_renders_full_empty_and_multiline_composer_frames() {
     }
 
     insta::assert_snapshot!("startup_draft_full_frames", snapshots.join("\n---\n"));
+    });
 }
 
 #[tokio::test]
