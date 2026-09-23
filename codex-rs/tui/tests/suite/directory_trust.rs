@@ -151,7 +151,7 @@ async fn connected_trust_cancellation_and_acceptance_control_task_creation() -> 
         } else {
             "Trust and continue"
         };
-        for (expected, input) in [
+        for (step, (expected, input)) in [
             (prompt, b"\x1b".as_slice()),
             ("n new", b"\x1b"),
             ("Launch-folder task", b"\x1b[Bn"),
@@ -165,13 +165,18 @@ async fn connected_trust_cancellation_and_acceptance_control_task_creation() -> 
             ("moved-folder", b"\x1b"),
             ("o resume", b"n"),
             (prompt, b"\r"),
-        ] {
+        ]
+        .into_iter()
+        .enumerate()
+        {
             let is_consent = expected == prompt
                 || matches!(
                     expected,
                     "Open existing task" | "moved-folder" | "You are in"
                 );
-            terminal.wait_for_screen(expected)?;
+            terminal
+                .wait_for_screen(expected)
+                .map_err(|error| anyhow::anyhow!("directory-trust step {step}: {error}"))?;
             if expected == "You are in" {
                 assert_eq!(
                     terminal

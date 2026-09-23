@@ -165,14 +165,10 @@ impl App {
         // Onboarding owns the terminal for the duration of the trust modal. An Agents Overview
         // owned screen must be suspended or its next frame can paint over the modal.
         let owned_screen = self.owned_screen.take();
-        if owned_screen.is_some() {
-            tui.terminal.clear().map_err(|error| {
-                self.add_session_picker_error(format!(
-                    "Unable to clear folder trust screen: {error}"
-                ));
-                AppRunControl::Continue
-            })?;
-        }
+        tui.terminal.clear().map_err(|error| {
+            self.add_session_picker_error(format!("Unable to clear folder trust screen: {error}"));
+            AppRunControl::Continue
+        })?;
         let trust_result = check_directory_trust(
             tui,
             app_server,
