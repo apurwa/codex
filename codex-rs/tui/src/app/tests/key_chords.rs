@@ -94,26 +94,32 @@ async fn vim_buffer_jumps_route_default_chords_in_normal_and_operator_contexts()
 
 #[tokio::test]
 async fn completed_global_chord_reuses_the_existing_action_handler() -> Result<()> {
-    let (mut app, mut tui, mut app_server) = chord_app().await?;
+    return crate::ui_profile::with_test_ui_profile_async(
+        crate::ui_profile::UiProfile::CodexDev,
+        async {
+            let (mut app, mut tui, mut app_server) = chord_app().await?;
 
-    press(&mut app, &mut tui, &mut app_server, ctrl('x')).await?;
-    assert!(app.key_chord_matcher.is_pending());
-    assert!(app.overlay.is_none());
-    insta::assert_snapshot!(
-        render_bottom_popup(&app.chat_widget, /*width*/ 80)
-            .replace(&test_path_display("/tmp/project"), "/tmp/project"),
-        @"
+            press(&mut app, &mut tui, &mut app_server, ctrl('x')).await?;
+            assert!(app.key_chord_matcher.is_pending());
+            assert!(app.overlay.is_none());
+            insta::assert_snapshot!(
+                render_bottom_popup(&app.chat_widget, /*width*/ 80)
+                    .replace(&test_path_display("/tmp/project"), "/tmp/project"),
+                @"
     ────────────────────────────────────────────────────────────────────────────────
     › Ask Codex to do anything
     ────────────────────────────────────────────────────────────────────────────────
        ctrl + x … waiting for next key    esc cancel
     "
-    );
+            );
 
-    press(&mut app, &mut tui, &mut app_server, ctrl('t')).await?;
-    assert!(!app.key_chord_matcher.is_pending());
-    assert!(app.overlay.is_some());
-    Ok(())
+            press(&mut app, &mut tui, &mut app_server, ctrl('t')).await?;
+            assert!(!app.key_chord_matcher.is_pending());
+            assert!(app.overlay.is_some());
+            Ok(())
+        },
+    )
+    .await;
 }
 
 #[tokio::test]

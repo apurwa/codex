@@ -1,6 +1,6 @@
 ---
 source: tui/src/app/agents_overview_tests.rs
-assertion_line: 169
+assertion_line: 187
 expression: "render_bottom_popup(&app.chat_widget, 12)"
 ---
   Service

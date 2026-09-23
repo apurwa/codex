@@ -1,7 +1,9 @@
 ---
 source: tui/src/chatwidget/tests/tool_activity_tests.rs
+assertion_line: 35
 expression: "outputs[0]"
 ---
-• Inspect screenshot
-  └ Screenshot captured
-    Returned image
+
+CODEX · Tool Calls
+
+┊ ✓ node_repl.js

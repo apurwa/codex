@@ -11,6 +11,7 @@ use super::disconnect::serve_reconnect_requests;
 
 #[tokio::test]
 async fn reconnect_restores_history_permissions_and_keeps_old_input_paused() -> Result<()> {
+    return crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
     for (recovered_queue, edit_offline, resume_error_code, deferred_notice, notice_enabled) in [
         (true, false, -32603, false, false),
         (true, false, -32603, false, true),
@@ -418,6 +419,8 @@ async fn reconnect_restores_history_permissions_and_keeps_old_input_paused() -> 
         );
     }
     Ok(())
+
+    }).await;
 }
 
 #[tokio::test]
@@ -569,54 +572,63 @@ async fn reconnect_reconciles_offscreen_pending_profile_before_restoring_permiss
 
 #[tokio::test]
 async fn reconnect_exhaustion_and_unknown_initial_thread_stay_offline() -> Result<()> {
-    let (mut app, _, _) = make_test_app_with_channels().await;
-    let listener = TcpListener::bind("127.0.0.1:0").await?;
-    app.app_server_target = AppServerTarget::Remote {
-        endpoint: crate::resolve_remote_addr(&format!("ws://{}", listener.local_addr()?))?,
-    };
-    drop(listener);
-    tokio::time::pause();
-    let start = tokio::time::Instant::now();
-    for id in [Some(ThreadId::new()), None] {
-        assert!(
-            reconnect(
-                app.app_server_target.clone(),
-                app.config.clone(),
-                app.local_settings.clone(),
-                id,
-                /*remote_cwd*/ None,
-                crate::dynamic_tools_mcp::ThreadToolTransport::Dynamic,
-                ReconnectPresentation::Conversation
-            )
-            .await
-            .is_err()
-        );
-    }
-    assert!((15..=65).contains(&start.elapsed().as_secs()));
-    app.begin_reconnect();
-    app.chat_widget.reconnect_failed();
-    assert_snapshot!(
-        "reconnect_failed",
-        render_bottom_popup(&app.chat_widget, /*width*/ 80)
-    );
-    tokio::time::resume();
-    Ok(())
+    return crate::ui_profile::with_test_ui_profile_async(
+        crate::ui_profile::UiProfile::CodexDev,
+        async {
+            let (mut app, _, _) = make_test_app_with_channels().await;
+            let listener = TcpListener::bind("127.0.0.1:0").await?;
+            app.app_server_target = AppServerTarget::Remote {
+                endpoint: crate::resolve_remote_addr(&format!("ws://{}", listener.local_addr()?))?,
+            };
+            drop(listener);
+            tokio::time::pause();
+            let start = tokio::time::Instant::now();
+            for id in [Some(ThreadId::new()), None] {
+                assert!(
+                    reconnect(
+                        app.app_server_target.clone(),
+                        app.config.clone(),
+                        app.local_settings.clone(),
+                        id,
+                        /*remote_cwd*/ None,
+                        crate::dynamic_tools_mcp::ThreadToolTransport::Dynamic,
+                        ReconnectPresentation::Conversation
+                    )
+                    .await
+                    .is_err()
+                );
+            }
+            assert!((15..=65).contains(&start.elapsed().as_secs()));
+            app.begin_reconnect();
+            app.chat_widget.reconnect_failed();
+            assert_snapshot!(
+                "reconnect_failed",
+                render_bottom_popup(&app.chat_widget, /*width*/ 80)
+            );
+            tokio::time::resume();
+            Ok(())
+        },
+    )
+    .await;
 }
 
 #[tokio::test]
 async fn reconnect_allows_slow_hydration_but_bounds_a_stalled_server() -> Result<()> {
-    for delay in [15, 150] {
-        let (mut app, mut events, _) = make_test_app_with_channels().await;
-        app.config.model = Some("gpt-test".into());
-        let listener = TcpListener::bind("127.0.0.1:0").await?;
-        let endpoint = crate::RemoteAppServerEndpoint::WebSocket {
-            websocket_url: format!("ws://{}", listener.local_addr()?),
-            auth_token: None,
-        };
-        let id = ThreadId::new();
-        let server = tokio::spawn(async move {
-            let (stream, _) = listener.accept().await?;
-            serve_reconnect_requests(
+    return crate::ui_profile::with_test_ui_profile_async(
+        crate::ui_profile::UiProfile::CodexDev,
+        async {
+            for delay in [15, 150] {
+                let (mut app, mut events, _) = make_test_app_with_channels().await;
+                app.config.model = Some("gpt-test".into());
+                let listener = TcpListener::bind("127.0.0.1:0").await?;
+                let endpoint = crate::RemoteAppServerEndpoint::WebSocket {
+                    websocket_url: format!("ws://{}", listener.local_addr()?),
+                    auth_token: None,
+                };
+                let id = ThreadId::new();
+                let server = tokio::spawn(async move {
+                    let (stream, _) = listener.accept().await?;
+                    serve_reconnect_requests(
                 tokio_tungstenite::accept_async(stream).await?,
                 move |request| async move {
                     assert_eq!(request.method, "thread/resume");
@@ -627,86 +639,92 @@ async fn reconnect_allows_slow_hydration_but_bounds_a_stalled_server() -> Result
                 },
             )
             .await
-        });
-        let start = tokio::time::Instant::now();
-        let result = reconnect(
-            AppServerTarget::Remote {
-                endpoint: endpoint.clone(),
-            },
-            app.config.clone(),
-            app.local_settings.clone(),
-            Some(id),
-            /*remote_cwd*/ None,
-            crate::dynamic_tools_mcp::ThreadToolTransport::Dynamic,
-            ReconnectPresentation::Conversation,
-        )
-        .await;
-        let elapsed = start.elapsed().as_secs();
-        if delay == 15 {
-            app.app_server_target = AppServerTarget::Remote { endpoint };
-            app.active_thread_id = Some(id);
-            app.primary_thread_id = Some(id);
-            let cached = test_thread_session(id, app.config.cwd.to_path_buf());
-            app.ensure_thread_channel(id)
-                .store
-                .lock()
-                .await
-                .set_session(cached, Vec::new());
-            app.chat_widget
-                .restore_user_message_to_composer("unavailable draft".into());
-            app.begin_reconnect();
-            let mut session = crate::start_embedded_app_server_for_picker(&app.config).await?;
-            let mut tui = crate::tui::test_support::make_test_tui()?;
-            app.finish_reconnect(
-                &mut tui,
-                &mut session,
-                &mut events,
-                result?,
-                CODEX_CLI_VERSION,
-            )
-            .await?;
-            assert!(app.thread_unavailable(id));
-            app.handle_tui_event(
-                &mut tui,
-                &mut session,
-                TuiEvent::Key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE)),
-            )
-            .await?;
-            assert_eq!(
-                app.chat_widget.composer_text_with_pending(),
-                "unavailable draft"
-            );
-            let history = drain_history(&mut app, &mut tui, &mut session, &mut events).await?;
-            let history = &history[history.find("• This conversation is unavailable").unwrap()..];
-            assert_snapshot!(
-                "unavailable_conversation",
-                format!(
-                    "{history}\n{}",
-                    render_bottom_popup(&app.chat_widget, /*width*/ 80)
+                });
+                let start = tokio::time::Instant::now();
+                let result = reconnect(
+                    AppServerTarget::Remote {
+                        endpoint: endpoint.clone(),
+                    },
+                    app.config.clone(),
+                    app.local_settings.clone(),
+                    Some(id),
+                    /*remote_cwd*/ None,
+                    crate::dynamic_tools_mcp::ThreadToolTransport::Dynamic,
+                    ReconnectPresentation::Conversation,
                 )
-                .replace(
-                    &test_path_buf("/tmp/project").display().to_string(),
-                    "/tmp/project"
-                )
-            );
-            session.shutdown().await?;
-            assert!((15..120).contains(&elapsed), "{elapsed}");
-            let methods = server.await??;
-            assert_eq!(
-                methods
-                    .iter()
-                    .filter(|method| *method == "initialize")
-                    .count(),
-                1
-            );
-        } else {
-            tokio::time::resume();
-            assert!(result.is_err());
-            assert_eq!(elapsed, 120);
-            server.abort();
-        }
-    }
-    Ok(())
+                .await;
+                let elapsed = start.elapsed().as_secs();
+                if delay == 15 {
+                    app.app_server_target = AppServerTarget::Remote { endpoint };
+                    app.active_thread_id = Some(id);
+                    app.primary_thread_id = Some(id);
+                    let cached = test_thread_session(id, app.config.cwd.to_path_buf());
+                    app.ensure_thread_channel(id)
+                        .store
+                        .lock()
+                        .await
+                        .set_session(cached, Vec::new());
+                    app.chat_widget
+                        .restore_user_message_to_composer("unavailable draft".into());
+                    app.begin_reconnect();
+                    let mut session =
+                        crate::start_embedded_app_server_for_picker(&app.config).await?;
+                    let mut tui = crate::tui::test_support::make_test_tui()?;
+                    app.finish_reconnect(
+                        &mut tui,
+                        &mut session,
+                        &mut events,
+                        result?,
+                        CODEX_CLI_VERSION,
+                    )
+                    .await?;
+                    assert!(app.thread_unavailable(id));
+                    app.handle_tui_event(
+                        &mut tui,
+                        &mut session,
+                        TuiEvent::Key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE)),
+                    )
+                    .await?;
+                    assert_eq!(
+                        app.chat_widget.composer_text_with_pending(),
+                        "unavailable draft"
+                    );
+                    let history =
+                        drain_history(&mut app, &mut tui, &mut session, &mut events).await?;
+                    let history =
+                        &history[history.find("• This conversation is unavailable").unwrap()..];
+                    assert_snapshot!(
+                        "unavailable_conversation",
+                        format!(
+                            "{history}\n{}",
+                            render_bottom_popup(&app.chat_widget, /*width*/ 80)
+                        )
+                        .replace(
+                            &test_path_buf("/tmp/project").display().to_string(),
+                            "/tmp/project"
+                        )
+                    );
+                    session.shutdown().await?;
+                    assert!((15..120).contains(&elapsed), "{elapsed}");
+                    let methods = server.await??;
+                    assert_eq!(
+                        methods
+                            .iter()
+                            .filter(|method| *method == "initialize")
+                            .count(),
+                        1
+                    );
+                } else {
+                    tokio::time::resume();
+                    assert!(result.is_err());
+                    assert_eq!(elapsed, 120);
+                    server.abort();
+                }
+            }
+            Ok(())
+        },
+    )
+    .await;
 }
 
 pub(super) async fn drain_history(

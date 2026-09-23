@@ -197,117 +197,125 @@ async fn discarding_side_cancels_verification_and_ignores_late_proof() -> Result
 
 #[tokio::test]
 async fn inactive_thread_user_verification_preserves_foreground_stream() -> Result<()> {
-    let (mut app, mut app_event_rx, _op_rx) = make_test_app_with_channels().await;
-    let foreground_thread_id = ThreadId::new();
-    let thread_id = ThreadId::new();
-    app.primary_thread_id = Some(foreground_thread_id);
-    app.active_thread_id = Some(foreground_thread_id);
-    app.chat_widget.handle_thread_session(test_thread_session(
-        foreground_thread_id,
-        test_path_buf("/tmp/project"),
-    ));
-    while app_event_rx.try_recv().is_ok() {}
-    app.chat_widget.handle_server_notification(
-        agent_message_delta_notification(
-            foreground_thread_id,
-            "turn-foreground",
-            "message-foreground",
-            "The foreground answer",
-        ),
-        /*replay_kind*/ None,
-    );
-    assert!(app.chat_widget.has_active_agent_stream());
+    return crate::ui_profile::with_test_ui_profile_async(
+        crate::ui_profile::UiProfile::CodexDev,
+        async {
+            let (mut app, mut app_event_rx, _op_rx) = make_test_app_with_channels().await;
+            let foreground_thread_id = ThreadId::new();
+            let thread_id = ThreadId::new();
+            app.primary_thread_id = Some(foreground_thread_id);
+            app.active_thread_id = Some(foreground_thread_id);
+            app.chat_widget.handle_thread_session(test_thread_session(
+                foreground_thread_id,
+                test_path_buf("/tmp/project"),
+            ));
+            while app_event_rx.try_recv().is_ok() {}
+            app.chat_widget.handle_server_notification(
+                agent_message_delta_notification(
+                    foreground_thread_id,
+                    "turn-foreground",
+                    "message-foreground",
+                    "The foreground answer",
+                ),
+                /*replay_kind*/ None,
+            );
+            assert!(app.chat_widget.has_active_agent_stream());
 
-    app.enqueue_thread_request(
-        thread_id,
-        user_verification_server_request(thread_id, /*request_id*/ 13),
-    )
-    .await?;
-    assert!(app.chat_widget.has_active_view());
-    assert!(app.chat_widget.has_active_agent_stream());
-    app.chat_widget
-        .handle_key_event(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
-
-    app.chat_widget.handle_server_notification(
-        agent_message_delta_notification(
-            foreground_thread_id,
-            "turn-foreground",
-            "message-foreground",
-            " continues.",
-        ),
-        /*replay_kind*/ None,
-    );
-    app.chat_widget.handle_server_notification(
-        ServerNotification::ItemCompleted(codex_app_server_protocol::ItemCompletedNotification {
-            thread_id: foreground_thread_id.to_string(),
-            turn_id: "turn-foreground".to_string(),
-            completed_at_ms: 0,
-            item: ThreadItem::AgentMessage {
-                id: "message-foreground".to_string(),
-                text: "The foreground answer continues.".to_string(),
-                phase: None,
-                memory_citation: None,
-                delivery: None,
-                questions: None,
-            },
-        }),
-        /*replay_kind*/ None,
-    );
-
-    let mut approved = Vec::new();
-    let mut completed_messages = Vec::new();
-    let mut tui = crate::tui::test_support::make_test_tui()?;
-    while let Ok(event) = app_event_rx.try_recv() {
-        match event {
-            AppEvent::UserVerificationApproved {
+            app.enqueue_thread_request(
                 thread_id,
-                server_name,
-                request_id,
-            } => approved.push((thread_id, server_name, request_id)),
-            AppEvent::InsertHistoryCell(cell) => app.insert_history_cell(&mut tui, cell),
-            AppEvent::ConsolidateAgentMessage {
-                source,
-                phase,
-                cwd,
-                inline_visualization_context,
-                scrollback_reflow,
-                deferred_history_cell,
-            } => {
-                completed_messages.push(source.clone());
-                app.handle_consolidate_agent_message(
-                    &mut tui,
-                    source,
-                    phase,
-                    cwd,
-                    inline_visualization_context,
-                    scrollback_reflow,
-                    deferred_history_cell,
-                )?;
-                app.chat_widget.note_stream_consolidation_completed();
+                user_verification_server_request(thread_id, /*request_id*/ 13),
+            )
+            .await?;
+            assert!(app.chat_widget.has_active_view());
+            assert!(app.chat_widget.has_active_agent_stream());
+            app.chat_widget
+                .handle_key_event(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+
+            app.chat_widget.handle_server_notification(
+                agent_message_delta_notification(
+                    foreground_thread_id,
+                    "turn-foreground",
+                    "message-foreground",
+                    " continues.",
+                ),
+                /*replay_kind*/ None,
+            );
+            app.chat_widget.handle_server_notification(
+                ServerNotification::ItemCompleted(
+                    codex_app_server_protocol::ItemCompletedNotification {
+                        thread_id: foreground_thread_id.to_string(),
+                        turn_id: "turn-foreground".to_string(),
+                        completed_at_ms: 0,
+                        item: ThreadItem::AgentMessage {
+                            id: "message-foreground".to_string(),
+                            text: "The foreground answer continues.".to_string(),
+                            phase: None,
+                            memory_citation: None,
+                            delivery: None,
+                            questions: None,
+                        },
+                    },
+                ),
+                /*replay_kind*/ None,
+            );
+
+            let mut approved = Vec::new();
+            let mut completed_messages = Vec::new();
+            let mut tui = crate::tui::test_support::make_test_tui()?;
+            while let Ok(event) = app_event_rx.try_recv() {
+                match event {
+                    AppEvent::UserVerificationApproved {
+                        thread_id,
+                        server_name,
+                        request_id,
+                    } => approved.push((thread_id, server_name, request_id)),
+                    AppEvent::InsertHistoryCell(cell) => app.insert_history_cell(&mut tui, cell),
+                    AppEvent::ConsolidateAgentMessage {
+                        source,
+                        phase,
+                        cwd,
+                        inline_visualization_context,
+                        scrollback_reflow,
+                        deferred_history_cell,
+                    } => {
+                        completed_messages.push(source.clone());
+                        app.handle_consolidate_agent_message(
+                            &mut tui,
+                            source,
+                            phase,
+                            cwd,
+                            inline_visualization_context,
+                            scrollback_reflow,
+                            deferred_history_cell,
+                        )?;
+                        app.chat_widget.note_stream_consolidation_completed();
+                    }
+                    _ => {}
+                }
             }
-            _ => {}
-        }
-    }
-    assert_eq!(
-        approved,
-        vec![(
-            thread_id,
-            "deployments".to_string(),
-            AppServerRequestId::Integer(13)
-        )]
-    );
-    assert_eq!(completed_messages, vec!["The foreground answer continues."]);
-    assert!(!app.chat_widget.has_active_agent_stream());
-    insta::assert_snapshot!(
-        "inactive_thread_user_verification_foreground_history",
-        app.render_transcript_lines_for_reflow(/*width*/ 80)
-            .lines
-            .iter()
-            .map(rendered_line_text)
-            .collect::<Vec<_>>()
-            .join("\n")
-    );
-    Ok(())
+            assert_eq!(
+                approved,
+                vec![(
+                    thread_id,
+                    "deployments".to_string(),
+                    AppServerRequestId::Integer(13)
+                )]
+            );
+            assert_eq!(completed_messages, vec!["The foreground answer continues."]);
+            assert!(!app.chat_widget.has_active_agent_stream());
+            insta::assert_snapshot!(
+                "inactive_thread_user_verification_foreground_history",
+                app.render_transcript_lines_for_reflow(/*width*/ 80)
+                    .lines
+                    .iter()
+                    .map(rendered_line_text)
+                    .collect::<Vec<_>>()
+                    .join("\n")
+            );
+            Ok(())
+        },
+    )
+    .await;
 }
 
 #[tokio::test]

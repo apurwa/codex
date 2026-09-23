@@ -184,7 +184,11 @@ async fn automatic_thread_title_generates_without_a_provisional_name() -> color_
 
 #[tokio::test]
 async fn manual_rename_cancels_running_thread_title() -> color_eyre::Result<()> {
-    check_thread_title_generation(TitleScenario::ManualRename).await
+    return crate::ui_profile::with_test_ui_profile_async(
+        crate::ui_profile::UiProfile::CodexDev,
+        async { check_thread_title_generation(TitleScenario::ManualRename).await },
+    )
+    .await;
 }
 
 #[tokio::test]

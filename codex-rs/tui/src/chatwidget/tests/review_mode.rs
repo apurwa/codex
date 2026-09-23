@@ -1196,7 +1196,7 @@ async fn custom_prompt_enter_empty_does_not_send() {
 // marker (replacing the spinner) and flushes it into history.
 #[tokio::test]
 async fn interrupt_exec_marks_failed_snapshot() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
 
         // Begin a long-running command so we have an active exec cell with a spinner.
@@ -1475,7 +1475,7 @@ async fn enter_submits_steer_while_review_is_running() {
 
 #[tokio::test]
 async fn review_queues_user_messages_snapshot() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
         chat.thread_id = Some(ThreadId::new());
         handle_turn_started(&mut chat, "turn-1");

@@ -62,7 +62,7 @@ fn saved_completion_label() -> String {
 
 #[tokio::test]
 async fn completion_follows_plain_and_streamed_tool_answers() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         for streamed in [false, true] {
             let (mut chat, mut rx, _ops) = make_chatwidget_manual(/*model_override*/ None).await;
             handle_turn_started(&mut chat, "turn-1");

@@ -1,5 +1,6 @@
 ---
 source: tui/src/app/agents_overview_tests.rs
+assertion_line: 66
 expression: "snapshot.join(\"\\n\")"
 ---
   › ○ Named task  Ready                                   │ | title style: Style::new().fg(Color::Rgb(255, 255, 255)).bg(Color::Rgb(0, 95, 135)).underline_color(Color::Reset)

@@ -1,8 +1,10 @@
 ---
 source: tui/src/chatwidget/tests/exec_flow.rs
+assertion_line: 1292
 expression: active_blob(&chat)
 ---
 
-CODEX · Tool Call
+CODEX · Tool Calls
+
 ┊ • Exploring
 ┊   └ List ls -la

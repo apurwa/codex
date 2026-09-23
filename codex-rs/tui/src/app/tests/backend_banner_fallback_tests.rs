@@ -48,6 +48,7 @@ pub(super) async fn start_fallback_thread(
 
 #[tokio::test]
 async fn backend_banner_fallback_updates_task_settings_and_keeps_notice() -> Result<()> {
+    return crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
     for mode_kind in [ModeKind::Default, ModeKind::Plan] {
         let (mut app, mut events, mut ops) = make_test_app_with_channels().await;
         let (mut server, requests, proxy) = start_fallback_thread(&mut app).await?;
@@ -172,6 +173,8 @@ async fn backend_banner_fallback_updates_task_settings_and_keeps_notice() -> Res
         proxy.await??;
     }
     Ok(())
+
+    }).await;
 }
 
 #[tokio::test]
@@ -226,40 +229,46 @@ async fn backend_banner_fallback_uses_current_task_and_accepted_generation() -> 
 
 #[tokio::test]
 async fn backend_banner_fallback_keeps_existing_recovery_without_candidate() -> Result<()> {
-    let (mut app, _events, _ops) = make_test_app_with_channels().await;
-    let (mut server, requests, proxy) = start_fallback_thread(&mut app).await?;
-    requests.lock().unwrap().clear();
-    for (replacement, expect_legacy_banner) in [
-        (json!([]), true),
-        (json!(["unavailable-model"]), false),
-        (json!(["gpt-5.5"]), false),
-    ] {
-        let mut response = fallback_response();
-        response.rate_limit_upsell.as_mut().unwrap()["fallback_model_slugs"] = replacement;
-        app.chat_widget.update_backend_banner(&response);
-        app.apply_backend_banner_fallback(&mut server).await;
-        assert_eq!(app.chat_widget.current_model(), "gpt-5.5");
-        let rendered = render_bottom_popup(&app.chat_widget, /*width*/ 72);
-        assert_eq!(rendered.contains("View usage"), expect_legacy_banner);
-        if !expect_legacy_banner {
-            insta::assert_snapshot!(
-                "backend_banner_fallback_unavailable",
-                normalize_snapshot_paths(rendered)
+    return crate::ui_profile::with_test_ui_profile_async(
+        crate::ui_profile::UiProfile::CodexDev,
+        async {
+            let (mut app, _events, _ops) = make_test_app_with_channels().await;
+            let (mut server, requests, proxy) = start_fallback_thread(&mut app).await?;
+            requests.lock().unwrap().clear();
+            for (replacement, expect_legacy_banner) in [
+                (json!([]), true),
+                (json!(["unavailable-model"]), false),
+                (json!(["gpt-5.5"]), false),
+            ] {
+                let mut response = fallback_response();
+                response.rate_limit_upsell.as_mut().unwrap()["fallback_model_slugs"] = replacement;
+                app.chat_widget.update_backend_banner(&response);
+                app.apply_backend_banner_fallback(&mut server).await;
+                assert_eq!(app.chat_widget.current_model(), "gpt-5.5");
+                let rendered = render_bottom_popup(&app.chat_widget, /*width*/ 72);
+                assert_eq!(rendered.contains("View usage"), expect_legacy_banner);
+                if !expect_legacy_banner {
+                    insta::assert_snapshot!(
+                        "backend_banner_fallback_unavailable",
+                        normalize_snapshot_paths(rendered)
+                    );
+                }
+            }
+            app.chat_widget.set_model("gpt-5.6-terra");
+            app.chat_widget.update_backend_banner(&fallback_response());
+            app.apply_backend_banner_fallback(&mut server).await;
+            assert_eq!(app.chat_widget.current_model(), "gpt-5.6-terra");
+            assert!(
+                render_bottom_popup(&app.chat_widget, /*width*/ 72)
+                    .contains("Selected model usage exhausted")
             );
-        }
-    }
-    app.chat_widget.set_model("gpt-5.6-terra");
-    app.chat_widget.update_backend_banner(&fallback_response());
-    app.apply_backend_banner_fallback(&mut server).await;
-    assert_eq!(app.chat_widget.current_model(), "gpt-5.6-terra");
-    assert!(
-        render_bottom_popup(&app.chat_widget, /*width*/ 72)
-            .contains("Selected model usage exhausted")
-    );
-    assert!(requests.lock().unwrap().is_empty());
-    server.shutdown().await?;
-    proxy.await??;
-    Ok(())
+            assert!(requests.lock().unwrap().is_empty());
+            server.shutdown().await?;
+            proxy.await??;
+            Ok(())
+        },
+    )
+    .await;
 }
 
 #[tokio::test]

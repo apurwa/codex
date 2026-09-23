@@ -1,14 +1,17 @@
 ---
 source: tui/src/chatwidget/tests/exec_flow.rs
+assertion_line: 890
 expression: snapshot
 ---
 History:
 
-CODEX · Tool Call
-┊ ✓ echo repro-marker · 5ms · 1 lines · Ctrl+T details
+CODEX · Tool Calls
+
+┊ ✓ echo repro-marker
 
 Active:
 
-CODEX · Tool Call
+CODEX · Tool Calls
+
 ┊ • Exploring
 ┊   └ Read null

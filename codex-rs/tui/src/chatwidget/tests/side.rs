@@ -299,7 +299,7 @@ async fn slash_btw_without_args_starts_empty_side_conversation() {
 
 #[tokio::test]
 async fn slash_side_requests_forked_side_question_while_task_running() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut chat, mut rx, mut op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
         let parent_thread_id = ThreadId::new();
         chat.thread_id = Some(parent_thread_id);
@@ -386,7 +386,7 @@ async fn slash_btw_requests_forked_side_question_while_task_running() {
 
 #[tokio::test]
 async fn side_context_label_preserves_status_line_snapshot() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut chat, _rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
         chat.show_welcome_banner = false;
         chat.local_settings.tui.status_line = Some(vec!["model-name".to_string()]);
@@ -412,7 +412,7 @@ async fn side_context_label_preserves_status_line_snapshot() {
 
 #[tokio::test]
 async fn side_context_label_shows_parent_status_snapshot() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut chat, _rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
         chat.show_welcome_banner = false;
         chat.set_side_conversation_active(/*active*/ true);
@@ -434,7 +434,7 @@ async fn side_context_label_shows_parent_status_snapshot() {
 
 #[tokio::test]
 async fn side_context_label_shows_hidden_side_snapshot() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut chat, _rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
         chat.show_welcome_banner = false;
         chat.local_settings.tui.status_line = Some(vec!["model-name".to_string()]);

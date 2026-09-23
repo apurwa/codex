@@ -97,7 +97,7 @@ fn render_bottom_pane(widget: &ChatWidget, width: u16) -> String {
 
 #[tokio::test]
 async fn composer_shows_right_aligned_truncated_session_title() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut widget, _sender, _events, _operations) =
             make_chatwidget_manual_with_sender().await;
         let thread_id = ThreadId::new();
@@ -245,12 +245,12 @@ fn active_transcript_preserves_clipped_markdown_hyperlinks() {
             })
             .collect::<Vec<_>>();
         insta::assert_debug_snapshot!(visible_rows, @r#"
-    [
-        "",
-        "  OSC8 label (https://example.com/)",
-        "",
-    ]
-    "#);
+        [
+            "",
+            "  OSC8 label (https://example.com/)",
+            "─────────────────────────────────────",
+        ]
+        "#);
 
         let size = ratatui::layout::Size::new(/*width*/ 44, /*height*/ 5);
         let mut terminal =

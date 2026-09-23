@@ -83,7 +83,7 @@ async fn hidden_shell_paste_recalled_from_history_submits_literal_prompt() {
 
 #[tokio::test]
 async fn hidden_shell_paste_queued_during_turn_submits_literal_prompt() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         for key in [KeyCode::Tab, KeyCode::Enter] {
             let (mut chat, _rx, mut op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
             chat.thread_id = Some(ThreadId::new());
@@ -1681,7 +1681,7 @@ async fn output_free_esc_interrupt_keeps_prompt_and_opens_blank_composer() {
 
 #[tokio::test]
 async fn output_free_ctrl_c_interrupt_keeps_prompt_and_opens_blank_composer() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut chat, mut rx, mut op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
         let prompt = "revise this prompt";
         chat.thread_id = Some(ThreadId::new());
@@ -2288,7 +2288,7 @@ fn task_and_plugin_mentions_with_same_name_keep_prompt_order() {
 
 #[tokio::test]
 async fn task_mention_submission_and_transcript_preserve_the_visible_title() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         for enabled in [false, true] {
             let (mut chat, mut events, mut ops) =
                 make_chatwidget_manual(/*model_override*/ None).await;

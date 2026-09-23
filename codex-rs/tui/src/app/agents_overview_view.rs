@@ -142,6 +142,8 @@ pub(super) struct AgentsOverviewViewState {
     pub(super) key_chord_hint: Option<Vec<(String, String)>>,
     pub(super) focus: AgentsOverviewFocus,
     pub(super) project_directory: PathBuf,
+    pub(super) project_directory_from_selection: bool,
+    pub(super) has_opened_selected_checkout: bool,
     pub(super) editing_project_directory: bool,
     pub(super) creating_worktree: bool,
     pub(super) refresh_failed: bool,
@@ -738,13 +740,24 @@ impl BottomPaneView for AgentsOverviewView {
                 });
                 return;
             }
-            let selected_project_directory = (self.state().grouping
-                == AgentsOverviewGrouping::Project)
-                .then(|| self.selected_row().map(|row| row.thread.cwd.to_path_buf()))
-                .flatten();
+            // Release the state lock before selected_row() acquires it again. Keeping the
+            // temporary guard alive through `then` can deadlock the synchronous key handler.
+            let grouping = self.state().grouping;
+            let selected_project_directory = if grouping == AgentsOverviewGrouping::Project {
+                self.selected_row().map(|row| row.thread.cwd.to_path_buf())
+            } else {
+                None
+            };
             let mut state = self.state();
             if let Some(directory) = selected_project_directory {
                 state.project_directory = directory;
+                state.project_directory_from_selection = true;
+                state.has_opened_selected_checkout = true;
+            } else {
+                // A composer opened without a selected row represents a fresh task,
+                // so do not carry the previous checkout into its submission.
+                state.project_directory.clear();
+                state.project_directory_from_selection = false;
             }
             state.search.clear();
             state.searching = false;

@@ -100,7 +100,7 @@ fn guardian_write_stdin_notification(status: GuardianApprovalReviewStatus) -> Se
 
 #[tokio::test]
 async fn app_server_guardian_write_stdin_denial_preserves_child_action() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
         let thread_id = ThreadId::new();
         chat.thread_id = Some(thread_id);
@@ -256,7 +256,7 @@ async fn prompt_revert_discards_recent_denial_actions() {
 
 #[tokio::test]
 async fn guardian_denied_exec_renders_warning_and_denied_request() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
 
     let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
     chat.show_welcome_banner = false;
@@ -332,7 +332,7 @@ async fn guardian_denied_exec_renders_warning_and_denied_request() {
 
 #[tokio::test]
 async fn guardian_approved_exec_is_hidden_from_history() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
 
     let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
     chat.show_welcome_banner = false;
@@ -392,7 +392,7 @@ async fn guardian_approved_exec_is_hidden_from_history() {
 
 #[tokio::test]
 async fn guardian_approved_request_permissions_clears_status_without_history() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
         chat.show_welcome_banner = false;
         let action = GuardianAssessmentAction::RequestPermissions {
@@ -481,7 +481,7 @@ async fn guardian_approved_request_permissions_clears_status_without_history() {
 
 #[tokio::test]
 async fn guardian_timed_out_exec_renders_warning_and_timed_out_request() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
         chat.show_welcome_banner = false;
         let action = GuardianAssessmentAction::Command {
@@ -602,7 +602,7 @@ async fn app_server_guardian_review_started_sets_review_status() {
 
 #[tokio::test]
 async fn app_server_guardian_review_denied_renders_denied_request_snapshot() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
         chat.show_welcome_banner = false;
         let action = AppServerGuardianApprovalReviewAction::Command {
@@ -683,7 +683,7 @@ async fn app_server_guardian_review_denied_renders_denied_request_snapshot() {
 
 #[tokio::test]
 async fn app_server_guardian_review_timed_out_renders_timed_out_request_snapshot() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
 
     let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
     chat.show_welcome_banner = false;
@@ -768,7 +768,7 @@ async fn app_server_guardian_review_timed_out_renders_timed_out_request_snapshot
 
 #[tokio::test]
 async fn guardian_parallel_reviews_render_aggregate_status_snapshot() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut chat, _rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
         chat.on_task_started();
 
@@ -829,7 +829,7 @@ async fn guardian_parallel_reviews_keep_remaining_review_visible_after_denial() 
 
 #[tokio::test]
 async fn guardian_cleanup_drops_stale_reviews_and_restores_mcp_status() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut chat, _rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
 
         chat.set_mcp_startup_expected_servers(["alpha".to_string()]);

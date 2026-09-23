@@ -1,5 +1,6 @@
 ---
 source: tui/src/chatwidget/tests/history_replay.rs
+assertion_line: 416
 expression: rendered
 ---
 >> Code review started: current changes <<
@@ -22,7 +23,8 @@ YOU
 
 << Code review finished >>
 
-
+───────────────────────────────────────────────────────────────────────────────
 CODEX · Answer
 
   review result is retained
+───────────────────────────────────────────────────────────────────────────────

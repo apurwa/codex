@@ -216,76 +216,82 @@ async fn analytics_keeps_queued_and_late_startup_history_out_of_the_overlay() ->
 
 #[tokio::test]
 async fn transcript_flag_off_preserves_viewer_and_backtracking() -> Result<()> {
-    let (mut app, mut app_event_rx, _op_rx) = make_test_app_with_channels().await;
-    let keymap_config = toml::from_str("[composer]\nsubmit = [\"ctrl-x enter\"]")?;
-    app.keymap =
-        crate::keymap::RuntimeKeymap::from_config(&keymap_config).expect("valid composer chord");
-    app.chat_widget
-        .apply_keymap_update(keymap_config, &app.keymap);
-    let mut app_server = start_config_write_test_app_server(&app).await?;
-    let mut tui = crate::tui::test_support::make_test_tui()?;
-    let session = test_thread_session(ThreadId::new(), app.config.cwd.to_path_buf());
-    app.chat_widget.handle_thread_session(session);
-    app.transcript_cells = ["first", "second"]
-        .map(|message| {
-            Arc::new(UserHistoryCell {
-                message: message.into(),
-                text_elements: Vec::new(),
-                local_image_paths: Vec::new(),
-                remote_image_urls: Vec::new(),
-                spoken: false,
-            }) as Arc<dyn HistoryCell>
-        })
-        .to_vec();
-    app.chat_widget
-        .apply_external_edit("preserved draft".into());
-    app.open_transcript_overlay(&mut tui);
-    for event in [
-        TuiEvent::Paste("not composer input".into()),
-        TuiEvent::Key(KeyEvent::new(KeyCode::Char('j'), KeyModifiers::NONE)),
-    ] {
-        app.handle_tui_event(&mut tui, &mut app_server, event)
-            .await?;
-    }
-    assert_eq!(
-        app.chat_widget.composer_text_with_pending(),
-        "preserved draft"
-    );
-    let chord_prefix = KeyEvent::new(KeyCode::Char('x'), KeyModifiers::CONTROL);
-    app.handle_tui_event(&mut tui, &mut app_server, TuiEvent::Key(chord_prefix))
-        .await?;
-    assert!(!app.key_chord_matcher.is_pending());
-    assert!(!app.backtrack.overlay_preview_active);
-    let area = Rect::new(
-        /*x*/ 0, /*y*/ 0, /*width*/ 100, /*height*/ 12,
-    );
-    let mut buffer = ratatui::buffer::Buffer::empty(area);
-    let Some(Overlay::Transcript(overlay)) = &mut app.overlay else {
-        panic!("viewer closed")
-    };
-    overlay.render(area, &mut buffer);
-    insta::assert_snapshot!("transcript_flag_off_viewer", buffer_text(&buffer));
-    for (key, selected) in [
-        (KeyCode::Esc, 1),
-        (KeyCode::Esc, 0),
-        (KeyCode::Right, 1),
-        (KeyCode::Right, 1),
-    ] {
-        press_key(&mut app, &mut tui, &mut app_server, key).await?;
-        assert_eq!(app.backtrack.nth_user_message, selected);
-    }
-    press_key(&mut app, &mut tui, &mut app_server, KeyCode::Enter).await?;
-    assert!(app.overlay.is_none());
-    assert!(
-        std::iter::from_fn(|| app_event_rx.try_recv().ok()).any(|event| matches!(
-            event,
-            AppEvent::RevertSessionForPromptEdit {
-                nth_user_message: 1,
-                ..
+    return crate::ui_profile::with_test_ui_profile_async(
+        crate::ui_profile::UiProfile::CodexDev,
+        async {
+            let (mut app, mut app_event_rx, _op_rx) = make_test_app_with_channels().await;
+            let keymap_config = toml::from_str("[composer]\nsubmit = [\"ctrl-x enter\"]")?;
+            app.keymap = crate::keymap::RuntimeKeymap::from_config(&keymap_config)
+                .expect("valid composer chord");
+            app.chat_widget
+                .apply_keymap_update(keymap_config, &app.keymap);
+            let mut app_server = start_config_write_test_app_server(&app).await?;
+            let mut tui = crate::tui::test_support::make_test_tui()?;
+            let session = test_thread_session(ThreadId::new(), app.config.cwd.to_path_buf());
+            app.chat_widget.handle_thread_session(session);
+            app.transcript_cells = ["first", "second"]
+                .map(|message| {
+                    Arc::new(UserHistoryCell {
+                        message: message.into(),
+                        text_elements: Vec::new(),
+                        local_image_paths: Vec::new(),
+                        remote_image_urls: Vec::new(),
+                        spoken: false,
+                    }) as Arc<dyn HistoryCell>
+                })
+                .to_vec();
+            app.chat_widget
+                .apply_external_edit("preserved draft".into());
+            app.open_transcript_overlay(&mut tui);
+            for event in [
+                TuiEvent::Paste("not composer input".into()),
+                TuiEvent::Key(KeyEvent::new(KeyCode::Char('j'), KeyModifiers::NONE)),
+            ] {
+                app.handle_tui_event(&mut tui, &mut app_server, event)
+                    .await?;
             }
-        ))
-    );
-    Ok(())
+            assert_eq!(
+                app.chat_widget.composer_text_with_pending(),
+                "preserved draft"
+            );
+            let chord_prefix = KeyEvent::new(KeyCode::Char('x'), KeyModifiers::CONTROL);
+            app.handle_tui_event(&mut tui, &mut app_server, TuiEvent::Key(chord_prefix))
+                .await?;
+            assert!(!app.key_chord_matcher.is_pending());
+            assert!(!app.backtrack.overlay_preview_active);
+            let area = Rect::new(
+                /*x*/ 0, /*y*/ 0, /*width*/ 100, /*height*/ 12,
+            );
+            let mut buffer = ratatui::buffer::Buffer::empty(area);
+            let Some(Overlay::Transcript(overlay)) = &mut app.overlay else {
+                panic!("viewer closed")
+            };
+            overlay.render(area, &mut buffer);
+            insta::assert_snapshot!("transcript_flag_off_viewer", buffer_text(&buffer));
+            for (key, selected) in [
+                (KeyCode::Esc, 1),
+                (KeyCode::Esc, 0),
+                (KeyCode::Right, 1),
+                (KeyCode::Right, 1),
+            ] {
+                press_key(&mut app, &mut tui, &mut app_server, key).await?;
+                assert_eq!(app.backtrack.nth_user_message, selected);
+            }
+            press_key(&mut app, &mut tui, &mut app_server, KeyCode::Enter).await?;
+            assert!(app.overlay.is_none());
+            assert!(
+                std::iter::from_fn(|| app_event_rx.try_recv().ok()).any(|event| matches!(
+                    event,
+                    AppEvent::RevertSessionForPromptEdit {
+                        nth_user_message: 1,
+                        ..
+                    }
+                ))
+            );
+            Ok(())
+        },
+    )
+    .await;
 }
 
 async fn assert_transcript_close_repaints_inline_draft(mut app: App) -> Result<()> {
@@ -339,5 +345,9 @@ async fn assert_transcript_close_repaints_inline_draft(mut app: App) -> Result<(
 
 #[tokio::test]
 async fn transcript_viewer_close_repaints_preserved_inline_draft() -> Result<()> {
-    assert_transcript_close_repaints_inline_draft(make_test_app().await).await
+    return crate::ui_profile::with_test_ui_profile_async(
+        crate::ui_profile::UiProfile::CodexDev,
+        async { assert_transcript_close_repaints_inline_draft(make_test_app().await).await },
+    )
+    .await;
 }

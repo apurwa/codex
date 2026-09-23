@@ -286,7 +286,7 @@ async fn delegated_item_that_becomes_final_at_turn_completion_is_recoverable() {
 
 #[tokio::test]
 async fn explicit_final_answer_can_explain_private_channel_markers() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut chat, _sender, mut events, mut ops) = make_chatwidget_manual_with_sender().await;
         let thread_id = activate_voice(&mut chat);
         let turn_id = "marker-final-turn";

@@ -359,86 +359,99 @@ async fn switching_agent_threads_stops_backend_voice_once_through_app_server() -
 
 #[tokio::test]
 async fn switching_threads_keeps_the_source_voice_partial_only_on_reattach() {
-    let (mut app, _events, _ops) = make_test_app_with_channels().await;
-    let source = ThreadId::new();
-    app.active_thread_id = Some(source);
-    app.chat_widget
-        .handle_thread_session_quiet(test_thread_session(source, app.config.cwd.to_path_buf()));
-    crate::chatwidget::activate_voice_for_thread(&mut app.chat_widget, source);
-    app.chat_widget.handle_server_notification(
-        ServerNotification::ThreadRealtimeTranscriptDelta(
-            codex_app_server_protocol::ThreadRealtimeTranscriptDeltaNotification {
-                thread_id: source.to_string(),
-                role: "user".into(),
-                delta: "spoken partial".into(),
-            },
-        ),
-        /*replay_kind*/ None,
-    );
-
-    let side = ThreadId::new();
-    let (side_widget, _, mut side_events, _) = make_chatwidget_manual_with_sender().await;
-    app.active_thread_id = Some(side);
-    app.replace_chat_widget(side_widget);
-    app.chat_widget
-        .handle_thread_session_quiet(test_thread_session(side, app.config.cwd.to_path_buf()));
-    assert_eq!(app.pending_realtime_transcript_replay[&source].len(), 1);
-    while let Ok(event) = side_events.try_recv() {
-        if let AppEvent::InsertHistoryCell(cell) = event {
-            assert!(
-                cell.transcript_lines(/*width*/ 80)
-                    .iter()
-                    .all(|line| !line.to_string().contains("spoken partial"))
+    return crate::ui_profile::with_test_ui_profile_async(
+        crate::ui_profile::UiProfile::CodexDev,
+        async {
+            let (mut app, _events, _ops) = make_test_app_with_channels().await;
+            let source = ThreadId::new();
+            app.active_thread_id = Some(source);
+            app.chat_widget
+                .handle_thread_session_quiet(test_thread_session(
+                    source,
+                    app.config.cwd.to_path_buf(),
+                ));
+            crate::chatwidget::activate_voice_for_thread(&mut app.chat_widget, source);
+            app.chat_widget.handle_server_notification(
+                ServerNotification::ThreadRealtimeTranscriptDelta(
+                    codex_app_server_protocol::ThreadRealtimeTranscriptDeltaNotification {
+                        thread_id: source.to_string(),
+                        role: "user".into(),
+                        delta: "spoken partial".into(),
+                    },
+                ),
+                /*replay_kind*/ None,
             );
-        }
-    }
 
-    let (source_widget, _, mut source_events, _) = make_chatwidget_manual_with_sender().await;
-    app.active_thread_id = Some(source);
-    app.replace_chat_widget(source_widget);
-    app.replay_thread_snapshot(
-        empty_thread_snapshot(&app, source),
-        /*resume_restored_queue*/ false,
-    );
-    assert!(!app.pending_realtime_transcript_replay.contains_key(&source));
-    app.chat_widget.handle_server_notification(
-        ServerNotification::ThreadRealtimeTranscriptDone(
-            codex_app_server_protocol::ThreadRealtimeTranscriptDoneNotification {
-                thread_id: source.to_string(),
-                role: "user".into(),
-                text: "spoken partial completed".into(),
-            },
-        ),
-        /*replay_kind*/ None,
-    );
-    commit_realtime_history_events(&mut app.chat_widget, &mut source_events);
-    let rendered = std::iter::from_fn(|| source_events.try_recv().ok())
-        .filter_map(|event| match event {
-            AppEvent::InsertHistoryCell(cell) => Some(
-                cell.transcript_lines(/*width*/ 80)
-                    .into_iter()
-                    .map(|line| line.to_string())
-                    .collect::<Vec<_>>()
-                    .join("\n"),
-            ),
-            _ => None,
-        })
-        .collect::<Vec<_>>()
-        .join("\n");
-    assert_eq!(rendered.matches("spoken partial completed").count(), 1);
-    insta::assert_snapshot!(
-        "voice_partial_completed_after_thread_switch",
-        normalize_voice_snapshot_directory(&rendered, &app.config.cwd)
-    );
-    while let Ok(event) = side_events.try_recv() {
-        if let AppEvent::InsertHistoryCell(cell) = event {
-            assert!(
-                cell.transcript_lines(/*width*/ 80)
-                    .iter()
-                    .all(|line| !line.to_string().contains("spoken partial"))
+            let side = ThreadId::new();
+            let (side_widget, _, mut side_events, _) = make_chatwidget_manual_with_sender().await;
+            app.active_thread_id = Some(side);
+            app.replace_chat_widget(side_widget);
+            app.chat_widget
+                .handle_thread_session_quiet(test_thread_session(
+                    side,
+                    app.config.cwd.to_path_buf(),
+                ));
+            assert_eq!(app.pending_realtime_transcript_replay[&source].len(), 1);
+            while let Ok(event) = side_events.try_recv() {
+                if let AppEvent::InsertHistoryCell(cell) = event {
+                    assert!(
+                        cell.transcript_lines(/*width*/ 80)
+                            .iter()
+                            .all(|line| !line.to_string().contains("spoken partial"))
+                    );
+                }
+            }
+
+            let (source_widget, _, mut source_events, _) =
+                make_chatwidget_manual_with_sender().await;
+            app.active_thread_id = Some(source);
+            app.replace_chat_widget(source_widget);
+            app.replay_thread_snapshot(
+                empty_thread_snapshot(&app, source),
+                /*resume_restored_queue*/ false,
             );
-        }
-    }
+            assert!(!app.pending_realtime_transcript_replay.contains_key(&source));
+            app.chat_widget.handle_server_notification(
+                ServerNotification::ThreadRealtimeTranscriptDone(
+                    codex_app_server_protocol::ThreadRealtimeTranscriptDoneNotification {
+                        thread_id: source.to_string(),
+                        role: "user".into(),
+                        text: "spoken partial completed".into(),
+                    },
+                ),
+                /*replay_kind*/ None,
+            );
+            commit_realtime_history_events(&mut app.chat_widget, &mut source_events);
+            let rendered = std::iter::from_fn(|| source_events.try_recv().ok())
+                .filter_map(|event| match event {
+                    AppEvent::InsertHistoryCell(cell) => Some(
+                        cell.transcript_lines(/*width*/ 80)
+                            .into_iter()
+                            .map(|line| line.to_string())
+                            .collect::<Vec<_>>()
+                            .join("\n"),
+                    ),
+                    _ => None,
+                })
+                .collect::<Vec<_>>()
+                .join("\n");
+            assert_eq!(rendered.matches("spoken partial completed").count(), 1);
+            insta::assert_snapshot!(
+                "voice_partial_completed_after_thread_switch",
+                normalize_voice_snapshot_directory(&rendered, &app.config.cwd)
+            );
+            while let Ok(event) = side_events.try_recv() {
+                if let AppEvent::InsertHistoryCell(cell) = event {
+                    assert!(
+                        cell.transcript_lines(/*width*/ 80)
+                            .iter()
+                            .all(|line| !line.to_string().contains("spoken partial"))
+                    );
+                }
+            }
+        },
+    )
+    .await;
 }
 
 #[tokio::test]
@@ -574,6 +587,7 @@ async fn queued_voice_caption_after_switch_returns_once_to_its_source_thread() {
 
 #[tokio::test]
 async fn replay_reconciles_only_matching_voice_captions_one_for_one() {
+    return crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
     let (mut app, _initial_events, _ops) = make_test_app_with_channels().await;
     let source = ThreadId::new();
     let (widget, _, mut events, _) = make_chatwidget_manual_with_sender().await;
@@ -650,6 +664,8 @@ async fn replay_reconciles_only_matching_voice_captions_one_for_one() {
         "voice_replay_reconciles_matching_captions",
         normalize_voice_snapshot_directory(&rendered, &app.config.cwd)
     );
+
+    }).await;
 }
 
 #[tokio::test]
@@ -748,81 +764,87 @@ async fn inactive_voice_replay_is_bounded_and_discarded_with_its_thread() {
 
 #[tokio::test]
 async fn buffered_voice_items_reconcile_captions_after_thread_switch() {
-    let (mut app, _initial_events, _ops) = make_test_app_with_channels().await;
-    let source = ThreadId::new();
-    let (widget, _, mut events, _) = make_chatwidget_manual_with_sender().await;
-    app.active_thread_id = Some(source);
-    app.replace_chat_widget(widget);
-    app.pending_realtime_transcript_replay.insert(
-        source,
-        [
-            ("user", "buffered question"),
-            ("assistant", "buffered answer"),
-        ]
-        .into_iter()
-        .map(|(role, text)| crate::chatwidget::RealtimeTranscriptRecord {
-            role: role.to_string(),
-            text: text.to_string(),
-            complete: true,
-            before_turn_id: None,
-        })
-        .collect(),
-    );
-    let items = [
-        ThreadItem::UserMessage {
-            id: "user-item".into(),
-            client_id: None,
-            content: vec![UserInput::Text {
+    return crate::ui_profile::with_test_ui_profile_async(
+        crate::ui_profile::UiProfile::CodexDev,
+        async {
+            let (mut app, _initial_events, _ops) = make_test_app_with_channels().await;
+            let source = ThreadId::new();
+            let (widget, _, mut events, _) = make_chatwidget_manual_with_sender().await;
+            app.active_thread_id = Some(source);
+            app.replace_chat_widget(widget);
+            app.pending_realtime_transcript_replay.insert(
+                source,
+                [
+                    ("user", "buffered question"),
+                    ("assistant", "buffered answer"),
+                ]
+                .into_iter()
+                .map(|(role, text)| crate::chatwidget::RealtimeTranscriptRecord {
+                    role: role.to_string(),
+                    text: text.to_string(),
+                    complete: true,
+                    before_turn_id: None,
+                })
+                .collect(),
+            );
+            let items = [
+                ThreadItem::UserMessage {
+                    id: "user-item".into(),
+                    client_id: None,
+                    content: vec![UserInput::Text {
                 text: "<realtime_delegation><input>buffered question</input></realtime_delegation>"
                     .into(),
                 text_elements: Vec::new(),
             }],
-        },
-        test_agent_message("answer-item", "buffered answer"),
-    ];
-    let events_to_replay = items
-        .into_iter()
-        .map(|item| {
-            ThreadBufferedEvent::Notification(Box::new(ServerNotification::ItemCompleted(
-                ItemCompletedNotification {
-                    item,
-                    thread_id: source.to_string(),
-                    turn_id: "buffered-turn".into(),
-                    completed_at_ms: 0,
                 },
-            )))
-        })
-        .collect();
-    app.replay_thread_snapshot(
-        ThreadEventSnapshot {
-            delegated_turns: vec!["buffered-turn".into()],
-            session: Some(test_thread_session(source, app.config.cwd.to_path_buf())),
-            turns: Vec::new(),
-            events: events_to_replay,
-            active_reasoning_item: None,
-            input_state: None,
+                test_agent_message("answer-item", "buffered answer"),
+            ];
+            let events_to_replay = items
+                .into_iter()
+                .map(|item| {
+                    ThreadBufferedEvent::Notification(Box::new(ServerNotification::ItemCompleted(
+                        ItemCompletedNotification {
+                            item,
+                            thread_id: source.to_string(),
+                            turn_id: "buffered-turn".into(),
+                            completed_at_ms: 0,
+                        },
+                    )))
+                })
+                .collect();
+            app.replay_thread_snapshot(
+                ThreadEventSnapshot {
+                    delegated_turns: vec!["buffered-turn".into()],
+                    session: Some(test_thread_session(source, app.config.cwd.to_path_buf())),
+                    turns: Vec::new(),
+                    events: events_to_replay,
+                    active_reasoning_item: None,
+                    input_state: None,
+                },
+                /*resume_restored_queue*/ false,
+            );
+            let rendered = std::iter::from_fn(|| events.try_recv().ok())
+                .filter_map(|event| match event {
+                    AppEvent::InsertHistoryCell(cell) => Some(
+                        cell.transcript_lines(/*width*/ 80)
+                            .into_iter()
+                            .map(|line| line.to_string())
+                            .collect::<Vec<_>>()
+                            .join("\n"),
+                    ),
+                    _ => None,
+                })
+                .collect::<Vec<_>>()
+                .join("\n");
+            assert_eq!(rendered.matches("buffered question").count(), 1);
+            assert_eq!(rendered.matches("buffered answer").count(), 1);
+            insta::assert_snapshot!(
+                "voice_buffered_replay_reconciles_captions",
+                normalize_voice_snapshot_directory(&rendered, &app.config.cwd)
+            );
         },
-        /*resume_restored_queue*/ false,
-    );
-    let rendered = std::iter::from_fn(|| events.try_recv().ok())
-        .filter_map(|event| match event {
-            AppEvent::InsertHistoryCell(cell) => Some(
-                cell.transcript_lines(/*width*/ 80)
-                    .into_iter()
-                    .map(|line| line.to_string())
-                    .collect::<Vec<_>>()
-                    .join("\n"),
-            ),
-            _ => None,
-        })
-        .collect::<Vec<_>>()
-        .join("\n");
-    assert_eq!(rendered.matches("buffered question").count(), 1);
-    assert_eq!(rendered.matches("buffered answer").count(), 1);
-    insta::assert_snapshot!(
-        "voice_buffered_replay_reconciles_captions",
-        normalize_voice_snapshot_directory(&rendered, &app.config.cwd)
-    );
+    )
+    .await;
 }
 
 #[tokio::test]
@@ -931,105 +953,120 @@ async fn unrendered_buffered_items_do_not_consume_retained_captions() {
 
 #[tokio::test]
 async fn completed_voice_caption_survives_repeated_thread_replacement() {
-    let (mut app, mut initial_events, _ops) = make_test_app_with_channels().await;
-    let source = ThreadId::new();
-    app.active_thread_id = Some(source);
-    app.chat_widget
-        .handle_thread_session_quiet(test_thread_session(source, app.config.cwd.to_path_buf()));
-    crate::chatwidget::activate_voice_for_thread(&mut app.chat_widget, source);
-    app.chat_widget.handle_server_notification(
-        ServerNotification::ThreadRealtimeTranscriptDone(
-            codex_app_server_protocol::ThreadRealtimeTranscriptDoneNotification {
-                thread_id: source.to_string(),
-                role: "assistant".into(),
-                text: "spoken complete".into(),
-            },
-        ),
-        /*replay_kind*/ None,
-    );
-    commit_realtime_history_events(&mut app.chat_widget, &mut initial_events);
-    let initial = std::iter::from_fn(|| initial_events.try_recv().ok())
-        .filter_map(|event| match event {
-            AppEvent::InsertHistoryCell(cell) => Some(
-                cell.transcript_lines(/*width*/ 80)
-                    .into_iter()
-                    .map(|line| line.to_string())
-                    .collect::<String>(),
-            ),
-            _ => None,
-        })
-        .collect::<String>();
-    assert_eq!(initial.matches("spoken complete").count(), 1);
-
-    let typed = test_turn(
-        "later-typed-turn",
-        TurnStatus::Completed,
-        vec![test_user_message("later-user", "Later typed question")],
-    );
-    app.chat_widget.handle_server_notification(
-        turn_started_notification(source, &typed.id),
-        /*replay_kind*/ None,
-    );
-
-    for cycle in 0..2 {
-        let side = ThreadId::new();
-        let (side_widget, _, mut side_events, _) = make_chatwidget_manual_with_sender().await;
-        app.active_thread_id = Some(side);
-        app.replace_chat_widget(side_widget);
-        app.chat_widget
-            .handle_thread_session_quiet(test_thread_session(side, app.config.cwd.to_path_buf()));
-        assert_eq!(app.pending_realtime_transcript_replay[&source].len(), 1);
-        while let Ok(event) = side_events.try_recv() {
-            if let AppEvent::InsertHistoryCell(cell) = event {
-                assert!(
-                    cell.transcript_lines(/*width*/ 80)
-                        .iter()
-                        .all(|line| !line.to_string().contains("spoken complete"))
-                );
-            }
-        }
-
-        let (source_widget, _, mut source_events, _) = make_chatwidget_manual_with_sender().await;
-        app.active_thread_id = Some(source);
-        app.replace_chat_widget(source_widget);
-        let mut snapshot = empty_thread_snapshot(&app, source);
-        snapshot.turns.push(Turn {
-            id: "earlier-typed-turn".into(),
-            items: vec![test_agent_message("earlier-answer", "Earlier answer")],
-            ..typed.clone()
-        });
-        snapshot.turns.push(typed.clone());
-        app.replay_thread_snapshot(snapshot, /*resume_restored_queue*/ false);
-        assert!(!app.pending_realtime_transcript_replay.contains_key(&source));
-        commit_realtime_history_events(&mut app.chat_widget, &mut source_events);
-        let rendered = std::iter::from_fn(|| source_events.try_recv().ok())
-            .filter_map(|event| match event {
-                AppEvent::InsertHistoryCell(cell) => Some(
-                    cell.transcript_lines(/*width*/ 80)
-                        .into_iter()
-                        .map(|line| line.to_string())
-                        .collect::<Vec<_>>()
-                        .join("\n"),
+    return crate::ui_profile::with_test_ui_profile_async(
+        crate::ui_profile::UiProfile::CodexDev,
+        async {
+            let (mut app, mut initial_events, _ops) = make_test_app_with_channels().await;
+            let source = ThreadId::new();
+            app.active_thread_id = Some(source);
+            app.chat_widget
+                .handle_thread_session_quiet(test_thread_session(
+                    source,
+                    app.config.cwd.to_path_buf(),
+                ));
+            crate::chatwidget::activate_voice_for_thread(&mut app.chat_widget, source);
+            app.chat_widget.handle_server_notification(
+                ServerNotification::ThreadRealtimeTranscriptDone(
+                    codex_app_server_protocol::ThreadRealtimeTranscriptDoneNotification {
+                        thread_id: source.to_string(),
+                        role: "assistant".into(),
+                        text: "spoken complete".into(),
+                    },
                 ),
-                _ => None,
-            })
-            .collect::<Vec<_>>()
-            .join("\n");
-        assert_eq!(rendered.matches("spoken complete").count(), 1);
-        assert!(
-            rendered.find("Earlier answer").unwrap() < rendered.find("spoken complete").unwrap()
-        );
-        assert!(
-            rendered.find("spoken complete").unwrap()
-                < rendered.find("Later typed question").unwrap()
-        );
-        if cycle == 0 {
-            insta::assert_snapshot!(
-                "voice_completed_after_thread_switch",
-                normalize_voice_snapshot_directory(&rendered, &app.config.cwd)
+                /*replay_kind*/ None,
             );
-        }
-    }
+            commit_realtime_history_events(&mut app.chat_widget, &mut initial_events);
+            let initial = std::iter::from_fn(|| initial_events.try_recv().ok())
+                .filter_map(|event| match event {
+                    AppEvent::InsertHistoryCell(cell) => Some(
+                        cell.transcript_lines(/*width*/ 80)
+                            .into_iter()
+                            .map(|line| line.to_string())
+                            .collect::<String>(),
+                    ),
+                    _ => None,
+                })
+                .collect::<String>();
+            assert_eq!(initial.matches("spoken complete").count(), 1);
+
+            let typed = test_turn(
+                "later-typed-turn",
+                TurnStatus::Completed,
+                vec![test_user_message("later-user", "Later typed question")],
+            );
+            app.chat_widget.handle_server_notification(
+                turn_started_notification(source, &typed.id),
+                /*replay_kind*/ None,
+            );
+
+            for cycle in 0..2 {
+                let side = ThreadId::new();
+                let (side_widget, _, mut side_events, _) =
+                    make_chatwidget_manual_with_sender().await;
+                app.active_thread_id = Some(side);
+                app.replace_chat_widget(side_widget);
+                app.chat_widget
+                    .handle_thread_session_quiet(test_thread_session(
+                        side,
+                        app.config.cwd.to_path_buf(),
+                    ));
+                assert_eq!(app.pending_realtime_transcript_replay[&source].len(), 1);
+                while let Ok(event) = side_events.try_recv() {
+                    if let AppEvent::InsertHistoryCell(cell) = event {
+                        assert!(
+                            cell.transcript_lines(/*width*/ 80)
+                                .iter()
+                                .all(|line| !line.to_string().contains("spoken complete"))
+                        );
+                    }
+                }
+
+                let (source_widget, _, mut source_events, _) =
+                    make_chatwidget_manual_with_sender().await;
+                app.active_thread_id = Some(source);
+                app.replace_chat_widget(source_widget);
+                let mut snapshot = empty_thread_snapshot(&app, source);
+                snapshot.turns.push(Turn {
+                    id: "earlier-typed-turn".into(),
+                    items: vec![test_agent_message("earlier-answer", "Earlier answer")],
+                    ..typed.clone()
+                });
+                snapshot.turns.push(typed.clone());
+                app.replay_thread_snapshot(snapshot, /*resume_restored_queue*/ false);
+                assert!(!app.pending_realtime_transcript_replay.contains_key(&source));
+                commit_realtime_history_events(&mut app.chat_widget, &mut source_events);
+                let rendered = std::iter::from_fn(|| source_events.try_recv().ok())
+                    .filter_map(|event| match event {
+                        AppEvent::InsertHistoryCell(cell) => Some(
+                            cell.transcript_lines(/*width*/ 80)
+                                .into_iter()
+                                .map(|line| line.to_string())
+                                .collect::<Vec<_>>()
+                                .join("\n"),
+                        ),
+                        _ => None,
+                    })
+                    .collect::<Vec<_>>()
+                    .join("\n");
+                assert_eq!(rendered.matches("spoken complete").count(), 1);
+                assert!(
+                    rendered.find("Earlier answer").unwrap()
+                        < rendered.find("spoken complete").unwrap()
+                );
+                assert!(
+                    rendered.find("spoken complete").unwrap()
+                        < rendered.find("Later typed question").unwrap()
+                );
+                if cycle == 0 {
+                    insta::assert_snapshot!(
+                        "voice_completed_after_thread_switch",
+                        normalize_voice_snapshot_directory(&rendered, &app.config.cwd)
+                    );
+                }
+            }
+        },
+    )
+    .await;
 }
 
 #[tokio::test]
@@ -1106,99 +1143,110 @@ async fn inactive_caption_precedes_later_buffered_turn_without_start_event() {
 
 #[tokio::test]
 async fn rejected_realtime_speech_restores_the_delegated_final_answer() -> Result<()> {
-    let (mut app, mut events, mut ops) = make_test_app_with_channels().await;
-    // This proxy forwards appendSpeech to an embedded server with no voice
-    // session for the synthetic thread, which rejects the request.
-    let (mut app_server, requests, proxy) = start_recording_remote_app_server(&app.config).await?;
-    let thread_id = ThreadId::new();
-    app.active_thread_id = Some(thread_id);
-    app.chat_widget
-        .handle_thread_session_quiet(test_thread_session(thread_id, app.config.cwd.to_path_buf()));
-    crate::chatwidget::activate_voice_for_thread(&mut app.chat_widget, thread_id);
-    while ops.try_recv().is_ok() {}
-    send_item(
-        &mut app,
-        thread_id,
-        "rejected-turn",
-        test_user_message(
-            "voice-input",
-            "<realtime_delegation><input>hello</input></realtime_delegation>",
-        ),
-        ItemEventKind::Started,
-    );
-    let answer = test_agent_message("rejected-final", "An answer to keep.");
-    send_item(
-        &mut app,
-        thread_id,
-        "rejected-turn",
-        answer.clone(),
-        ItemEventKind::Started,
-    );
-    send_item(
-        &mut app,
-        thread_id,
-        "rejected-turn",
-        answer.clone(),
-        ItemEventKind::Completed,
-    );
-    app.handle_thread_event_now(ThreadBufferedEvent::Notification(Box::new(
-        ServerNotification::TurnCompleted(TurnCompletedNotification {
-            thread_id: thread_id.to_string(),
-            turn: Turn {
-                id: "rejected-turn".to_string(),
-                items: vec![answer],
-                items_view: TurnItemsView::Summary,
-                status: TurnStatus::Completed,
-                error: None,
-                started_at: None,
-                completed_at: None,
-                duration_ms: None,
-            },
-        }),
-    )));
-    let speech = ops.try_recv()?;
-    let delivery_id = match &speech {
-        AppCommand::RealtimeConversationSpeech { delivery_id, .. } => *delivery_id,
-        _ => unreachable!("voice completion queues speech"),
-    };
-    while events.try_recv().is_ok() {}
-    let mut tui = crate::tui::test_support::make_test_tui()?;
-    Box::pin(app.handle_event(&mut tui, &mut app_server, AppEvent::CodexOp(speech))).await?;
-    assert_eq!(
-        recorded_params(&requests, "thread/realtime/appendSpeech").len(),
-        1
-    );
-    assert!(!app.chat_widget.has_pending_realtime_speech(delivery_id));
-    let mut restored = 0;
-    let mut rendered = Vec::new();
-    while let Ok(event) = events.try_recv() {
-        if let AppEvent::InsertHistoryCell(cell) = event {
-            let lines = cell
-                .display_lines(/*width*/ 80)
-                .into_iter()
-                .map(|line| line.to_string())
-                .collect::<Vec<_>>();
-            if lines.iter().any(|line| line.contains("An answer to keep.")) {
-                restored += 1;
+    return crate::ui_profile::with_test_ui_profile_async(
+        crate::ui_profile::UiProfile::CodexDev,
+        async {
+            let (mut app, mut events, mut ops) = make_test_app_with_channels().await;
+            // This proxy forwards appendSpeech to an embedded server with no voice
+            // session for the synthetic thread, which rejects the request.
+            let (mut app_server, requests, proxy) =
+                start_recording_remote_app_server(&app.config).await?;
+            let thread_id = ThreadId::new();
+            app.active_thread_id = Some(thread_id);
+            app.chat_widget
+                .handle_thread_session_quiet(test_thread_session(
+                    thread_id,
+                    app.config.cwd.to_path_buf(),
+                ));
+            crate::chatwidget::activate_voice_for_thread(&mut app.chat_widget, thread_id);
+            while ops.try_recv().is_ok() {}
+            send_item(
+                &mut app,
+                thread_id,
+                "rejected-turn",
+                test_user_message(
+                    "voice-input",
+                    "<realtime_delegation><input>hello</input></realtime_delegation>",
+                ),
+                ItemEventKind::Started,
+            );
+            let answer = test_agent_message("rejected-final", "An answer to keep.");
+            send_item(
+                &mut app,
+                thread_id,
+                "rejected-turn",
+                answer.clone(),
+                ItemEventKind::Started,
+            );
+            send_item(
+                &mut app,
+                thread_id,
+                "rejected-turn",
+                answer.clone(),
+                ItemEventKind::Completed,
+            );
+            app.handle_thread_event_now(ThreadBufferedEvent::Notification(Box::new(
+                ServerNotification::TurnCompleted(TurnCompletedNotification {
+                    thread_id: thread_id.to_string(),
+                    turn: Turn {
+                        id: "rejected-turn".to_string(),
+                        items: vec![answer],
+                        items_view: TurnItemsView::Summary,
+                        status: TurnStatus::Completed,
+                        error: None,
+                        started_at: None,
+                        completed_at: None,
+                        duration_ms: None,
+                    },
+                }),
+            )));
+            let speech = ops.try_recv()?;
+            let delivery_id = match &speech {
+                AppCommand::RealtimeConversationSpeech { delivery_id, .. } => *delivery_id,
+                _ => unreachable!("voice completion queues speech"),
+            };
+            while events.try_recv().is_ok() {}
+            let mut tui = crate::tui::test_support::make_test_tui()?;
+            Box::pin(app.handle_event(&mut tui, &mut app_server, AppEvent::CodexOp(speech)))
+                .await?;
+            assert_eq!(
+                recorded_params(&requests, "thread/realtime/appendSpeech").len(),
+                1
+            );
+            assert!(!app.chat_widget.has_pending_realtime_speech(delivery_id));
+            let mut restored = 0;
+            let mut rendered = Vec::new();
+            while let Ok(event) = events.try_recv() {
+                if let AppEvent::InsertHistoryCell(cell) = event {
+                    let lines = cell
+                        .display_lines(/*width*/ 80)
+                        .into_iter()
+                        .map(|line| line.to_string())
+                        .collect::<Vec<_>>();
+                    if lines.iter().any(|line| line.contains("An answer to keep.")) {
+                        restored += 1;
+                    }
+                    rendered.extend(lines);
+                }
             }
-            rendered.extend(lines);
-        }
-    }
-    assert_eq!(restored, 1);
-    assert!(
-        rendered
-            .iter()
-            .any(|line| line.contains("Voice conversation failed:"))
-    );
-    insta::assert_snapshot!(
-        "rejected_realtime_speech",
-        rendered
-            .join("\n")
-            .replace(&thread_id.to_string(), "<thread-id>")
-    );
-    app_server.shutdown().await?;
-    proxy.await??;
-    Ok(())
+            assert_eq!(restored, 1);
+            assert!(
+                rendered
+                    .iter()
+                    .any(|line| line.contains("Voice conversation failed:"))
+            );
+            insta::assert_snapshot!(
+                "rejected_realtime_speech",
+                rendered
+                    .join("\n")
+                    .replace(&thread_id.to_string(), "<thread-id>")
+            );
+            app_server.shutdown().await?;
+            proxy.await??;
+            Ok(())
+        },
+    )
+    .await;
 }
 
 #[tokio::test]

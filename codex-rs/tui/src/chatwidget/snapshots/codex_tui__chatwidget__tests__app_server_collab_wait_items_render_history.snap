@@ -1,9 +1,11 @@
 ---
 source: tui/src/chatwidget/tests/app_server.rs
+assertion_line: 1324
 expression: combined
 ---
 
 CODEX · Tool Calls
+
 ┊ • Waiting for 2 agents
 ┊   └ Robie [explorer]
 ┊     Ada [reviewer]
@@ -11,6 +13,7 @@ CODEX · Tool Calls
 
 
 CODEX · Tool Calls
+
 ┊ • Finished waiting
 ┊   └ Robie [explorer]: Completed - Done
 ┊     Ada [reviewer]: Running

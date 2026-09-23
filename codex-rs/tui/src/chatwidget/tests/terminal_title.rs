@@ -344,7 +344,7 @@ async fn thread_title_progress_animates_when_main_turn_is_idle() {
 
 #[tokio::test]
 async fn thread_title_progress_preserves_suffix_after_truncation_and_in_default_footer() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut chat, _rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
         chat.local_settings.tui.animations = false;
         chat.set_thread_title_generation_pending(/*pending*/ true);

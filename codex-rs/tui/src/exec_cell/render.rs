@@ -1024,59 +1024,64 @@ mod tests {
 
     #[test]
     fn truncated_live_output_preview_and_transcript_snapshot() {
-        let mut cell = new_active_exec_command(
-            "call-id".to_string(),
-            vec!["bash".into(), "-lc".into(), "echo output".into()],
-            Vec::new(),
-            ExecCommandSource::Agent,
-            /*interaction_input*/ None,
-            /*animations_enabled*/ false,
-        );
-        let hidden = "\x1b[2m".repeat(300_000);
-        let output = format!(
-            "\x1b[31mhead error that wraps onto the next row\x1b[0m{hidden}\x1b[32mtail output that also wraps\x1b[0m"
-        );
-        assert!(cell.append_output("call-id", &output));
+        crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
+            let mut cell = new_active_exec_command(
+                "call-id".to_string(),
+                vec!["bash".into(), "-lc".into(), "echo output".into()],
+                Vec::new(),
+                ExecCommandSource::Agent,
+                /*interaction_input*/ None,
+                /*animations_enabled*/ false,
+            );
+            let hidden = "\x1b[2m".repeat(300_000);
+            let output = format!(
+                "\x1b[31mhead error that wraps onto the next row\x1b[0m{hidden}\x1b[32mtail output that also wraps\x1b[0m"
+            );
+            assert!(cell.append_output("call-id", &output));
 
-        let preview = cell.display_lines(/*width*/ 60);
-        cell.calls[0].start_time = None;
-        cell.mark_failed();
-        let transcript = cell.transcript_lines(/*width*/ 60);
+            let preview = cell.display_lines(/*width*/ 60);
+            cell.calls[0].start_time = None;
+            cell.mark_failed();
+            let transcript = cell.transcript_lines(/*width*/ 60);
 
-        insta::assert_debug_snapshot!(
-            "truncated_live_output_preview_and_transcript",
-            (preview, transcript)
-        );
+            insta::assert_debug_snapshot!(
+                "truncated_live_output_preview_and_transcript",
+                (preview, transcript)
+            );
+        });
     }
 
     #[test]
     fn powershell_skill_read_snapshot() {
-        let command = vec![
-            "powershell.exe".to_string(),
-            "-Command".to_string(),
-            r"Get-Content C:\skills\demo\SKILL.md".to_string(),
-        ];
-        let parsed = codex_shell_command::parse_command::parse_command(&command);
-        let cell = new_active_exec_command(
-            "call-id".to_string(),
-            command,
-            parsed,
-            ExecCommandSource::Agent,
-            /*interaction_input*/ None,
-            /*animations_enabled*/ false,
-        );
-        let rendered = cell
-            .display_lines(/*width*/ 80)
-            .iter()
-            .map(render_line_text)
-            .join("\n");
+        crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
+            let command = vec![
+                "powershell.exe".to_string(),
+                "-Command".to_string(),
+                r"Get-Content C:\skills\demo\SKILL.md".to_string(),
+            ];
+            let parsed = codex_shell_command::parse_command::parse_command(&command);
+            let cell = new_active_exec_command(
+                "call-id".to_string(),
+                command,
+                parsed,
+                ExecCommandSource::Agent,
+                /*interaction_input*/ None,
+                /*animations_enabled*/ false,
+            );
+            let rendered = cell
+                .display_lines(/*width*/ 80)
+                .iter()
+                .map(render_line_text)
+                .join("\n");
 
-        insta::assert_snapshot!(rendered, @"
+            insta::assert_snapshot!(rendered, @"
 
-        CODEX · Tool Calls
-        ┊ • Exploring
-        ┊   └ Read SKILL.md
-        ");
+            CODEX · Tool Calls
+
+            ┊ • Exploring
+            ┊   └ Read SKILL.md
+            ");
+        });
     }
 
     #[test]

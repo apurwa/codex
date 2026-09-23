@@ -3,7 +3,7 @@ use pretty_assertions::assert_eq;
 
 #[tokio::test]
 async fn external_writer_snapshot_freezes_active_command_and_mcp_rows() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let mut rendered = Vec::new();
         for active_mcp in [false, true] {
             let (mut chat, _events, _operations) =
@@ -52,7 +52,7 @@ async fn external_writer_snapshot_freezes_active_command_and_mcp_rows() {
 
 #[tokio::test]
 async fn replayed_command_completion_preserves_tracking_without_duplicate_starts() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
         chat.on_task_started();
         let mut item =
@@ -80,7 +80,7 @@ async fn replayed_command_completion_preserves_tracking_without_duplicate_starts
         assert_eq!(
             history,
             vec![
-                "\nCODEX · Tool Call\n┊ ✓ cat replay · 0ms · 0 lines · Ctrl+T details\n"
+                "\nCODEX · Tool Calls\n\n┊ ✓ cat replay\n"
                     .to_string()
             ]
         );
@@ -130,7 +130,7 @@ async fn replayed_completion_preserves_unrelated_running_command() {
 
 #[tokio::test]
 async fn failed_exploration_keeps_overlapping_commands_active_until_all_finish() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
         chat.on_task_started();
 
@@ -157,18 +157,20 @@ async fn failed_exploration_keeps_overlapping_commands_active_until_all_finish()
         let history = lines_to_single_string(&cells[0]);
         insta::assert_snapshot!(history, @"
 
-    CODEX · Tool Call
-    ┊ • Explored
-    ┊   └ List missing
-    ┊     Read foo.txt, bar.txt
-    ");
+        CODEX · Tool Calls
+
+        ┊ • Explored
+        ┊   └ List missing
+        ┊     Read foo.txt, bar.txt
+        ");
 
         let later = begin_exec(&mut chat, "call-after-failure", "cat later.txt");
         end_exec(&mut chat, later, "later\n", "", /*exit_code*/ 0);
         insta::assert_snapshot!(active_blob(&chat), @"
 
-    CODEX · Tool Call
-    ┊ ✓ Explored · 5ms · 1 lines · Ctrl+T details
+    CODEX · Tool Calls
+
+    ┊ ✓ Explored
     ");
     })
     .await;
@@ -176,7 +178,7 @@ async fn failed_exploration_keeps_overlapping_commands_active_until_all_finish()
 
 #[tokio::test]
 async fn replayed_commands_preserve_individual_output_and_failure_status() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
         let cwd = chat.config.cwd.clone();
         let replayed_command = |id: &str, output: &str, source: ExecCommandSource| {
@@ -251,29 +253,33 @@ async fn replayed_commands_preserve_individual_output_and_failure_status() {
             .join("\n");
         insta::assert_snapshot!(transcript, @"
 
-    CODEX · Tool Call
-    $ printf first
-    first
-    ✓ • 5ms
+        CODEX · Tool Calls
+
+        ┊ $ printf first
+        ┊ first
+        ┊ ✓ • 5ms
 
 
-    CODEX · Tool Call
-    $ printf second
-    second
-    ✓ • 5ms
+        CODEX · Tool Calls
+
+        ┊ $ printf second
+        ┊ second
+        ┊ ✓ • 5ms
 
 
-    CODEX · Tool Call
-    $ printf failure
-    failure
-    ✗ (7) • 5ms
+        CODEX · Tool Calls
+
+        ┊ $ printf failure
+        ┊ failure
+        ┊ ✗ (7) • 5ms
 
 
-    CODEX · Tool Call
-    $ printf declined
-    declined
-    ✗ (1) • 5ms
-    ");
+        CODEX · Tool Calls
+
+        ┊ $ printf declined
+        ┊ declined
+        ┊ ✗ (1) • 5ms
+        ");
     })
     .await;
 }
@@ -503,7 +509,7 @@ async fn exec_approval_decision_truncates_multiline_and_long_commands() {
 
 #[tokio::test]
 async fn preamble_keeps_working_status_snapshot() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
         chat.thread_id = Some(ThreadId::new());
 
@@ -553,7 +559,7 @@ async fn unified_exec_begin_restores_status_indicator_after_preamble() {
 
 #[tokio::test]
 async fn unified_exec_begin_restores_working_status_snapshot() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
 
         chat.on_task_started();
@@ -581,7 +587,7 @@ async fn unified_exec_begin_restores_working_status_snapshot() {
 
 #[tokio::test]
 async fn exec_history_cell_shows_working_then_completed() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
 
         // Begin command
@@ -638,7 +644,7 @@ async fn exec_history_cell_shows_working_then_failed() {
 
 #[tokio::test]
 async fn exec_end_without_begin_uses_event_command() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
         let command = vec![
             "bash".to_string(),
@@ -686,7 +692,7 @@ async fn exec_end_without_begin_uses_event_command() {
 
 #[tokio::test]
 async fn exec_end_without_begin_does_not_flush_unrelated_running_exploring_cell() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
         chat.on_task_started();
 
@@ -732,7 +738,7 @@ async fn exec_end_without_begin_does_not_flush_unrelated_running_exploring_cell(
 
 #[tokio::test]
 async fn exec_end_without_begin_flushes_completed_unrelated_exploring_cell() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
         chat.on_task_started();
 
@@ -757,8 +763,8 @@ async fn exec_end_without_begin_flushes_completed_unrelated_exploring_cell() {
             "expected flushed exploring cell: {first:?}"
         );
         assert!(
-            first.contains("Ctrl+T details"),
-            "expected compact details affordance: {first:?}"
+            first.contains("CODEX · Tool Calls"),
+            "expected grouped tool-call heading: {first:?}"
         );
         assert!(
             second.contains("✓ echo after"),
@@ -806,7 +812,7 @@ async fn overlapping_exploring_exec_end_is_not_misclassified_as_orphan() {
 
 #[tokio::test]
 async fn exec_history_shows_unified_exec_startup_commands() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
         chat.on_task_started();
 
@@ -842,7 +848,7 @@ async fn exec_history_shows_unified_exec_startup_commands() {
 
 #[tokio::test]
 async fn exec_history_shows_unified_exec_tool_calls() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut chat, _rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
         chat.on_task_started();
 
@@ -857,7 +863,7 @@ async fn exec_history_shows_unified_exec_tool_calls() {
         let blob = active_blob(&chat);
         assert_eq!(
             blob,
-            "\nCODEX · Tool Call\n┊ ✓ Explored · 5ms · 0 lines · Ctrl+T details\n"
+            "\nCODEX · Tool Calls\n\n┊ ✓ Explored\n"
         );
     })
     .await;
@@ -865,7 +871,7 @@ async fn exec_history_shows_unified_exec_tool_calls() {
 
 #[tokio::test]
 async fn unified_exec_unknown_end_with_active_exploring_cell_snapshot() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
         chat.on_task_started();
 
@@ -939,7 +945,7 @@ async fn unified_exec_interaction_after_task_complete_is_suppressed() {
 
 #[tokio::test]
 async fn unified_exec_wait_after_final_agent_message_snapshot() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
         handle_turn_started(&mut chat, "turn-1");
 
@@ -961,7 +967,7 @@ async fn unified_exec_wait_after_final_agent_message_snapshot() {
 
 #[tokio::test]
 async fn unified_exec_wait_before_streamed_agent_message_snapshot() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
         handle_turn_started(&mut chat, "turn-1");
 
@@ -988,7 +994,7 @@ async fn unified_exec_wait_before_streamed_agent_message_snapshot() {
 
 #[tokio::test]
 async fn final_worked_for_uses_cumulative_turn_duration_snapshot() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         for duration_ms in [Some(125_000), None] {
             let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
             handle_turn_started(&mut chat, "turn-1");
@@ -1108,7 +1114,7 @@ async fn unified_exec_waiting_multiple_empty_snapshots() {
 
 #[tokio::test]
 async fn unified_exec_wait_status_renders_command_in_single_details_row_snapshot() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut chat, _rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
         chat.on_task_started();
         begin_unified_exec_startup(
@@ -1219,7 +1225,7 @@ async fn view_image_tool_call_preserves_foreign_path() {
 
 #[tokio::test]
 async fn image_generation_begin_restores_working_status_after_single_line_preamble() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut chat, _rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
 
         chat.on_task_started();
@@ -1284,7 +1290,7 @@ async fn image_generation_call_adds_history_cell() {
 
 #[tokio::test]
 async fn exec_history_extends_previous_when_consecutive() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut chat, _rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
 
         // 1) Start "ls -la" (List)
@@ -1336,7 +1342,7 @@ async fn exec_history_extends_previous_when_consecutive() {
 
 #[tokio::test]
 async fn user_shell_command_renders_output_not_exploring() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
 
         let begin_ls = begin_exec_with_source(
@@ -1756,7 +1762,7 @@ async fn turn_complete_keeps_unified_exec_processes() {
 
 #[tokio::test]
 async fn apply_patch_events_emit_history_cells() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
 
         // 1) Approval request -> proposed patch summary cell
@@ -1794,9 +1800,10 @@ async fn apply_patch_events_emit_history_cells() {
         let blob = lines_to_single_string(cells.last().unwrap());
         insta::assert_snapshot!(blob, @"
 
-    CODEX · Tool Calls
-    ┊ • Added foo.txt (+16 -0) · Ctrl+T details
-    ");
+        CODEX · Tool Calls
+
+        ┊ • Added foo.txt (+16 -0) · Ctrl+T details
+        ");
 
         // 3) End apply success -> success cell
         let mut end_changes = HashMap::new();
@@ -1866,7 +1873,7 @@ async fn apply_patch_manual_approval_adjusts_header() {
 
 #[tokio::test]
 async fn apply_patch_manual_flow_snapshot() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
 
         let mut proposed_changes = HashMap::new();

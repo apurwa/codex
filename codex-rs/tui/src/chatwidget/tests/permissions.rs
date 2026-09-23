@@ -698,7 +698,7 @@ async fn fragmented_terminal_response_cannot_select_non_admin_windows_sandbox() 
 
 #[tokio::test]
 async fn windows_sandbox_setup_starts_a_fresh_status_clock() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut chat, _rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
         chat.bottom_pane
             .reset_status_timer(Duration::from_secs(/*secs*/ 125));

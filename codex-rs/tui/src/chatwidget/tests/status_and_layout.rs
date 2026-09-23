@@ -13,7 +13,7 @@ use serial_test::serial;
 
 #[tokio::test]
 async fn voice_live_transcript_renders_beside_the_streamed_cell() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut chat, _rx, _ops) = make_chatwidget_manual(/*model_override*/ None).await;
         chat.local_settings.tui.animations = false;
         activate_voice_for_thread(&mut chat, ThreadId::new());
@@ -2129,7 +2129,7 @@ async fn streaming_final_answer_keeps_task_running_state() {
 
 #[tokio::test]
 async fn single_line_final_answer_hides_working_status_snapshot() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(Some("gpt-5")).await;
         chat.thread_id = Some(ThreadId::new());
 
@@ -2183,7 +2183,7 @@ async fn ctrl_c_interrupt_pauses_active_goal_turn() {
 
 #[tokio::test]
 async fn esc_interrupt_pauses_active_goal_turn() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
         chat.show_welcome_banner = false;
         let thread_id = start_active_goal_turn(&mut chat);
@@ -2428,7 +2428,7 @@ async fn fast_status_indicator_is_hidden_when_fast_mode_is_off() {
 // Ensures overall layout behaves when terminal height is extremely constrained.
 #[tokio::test]
 async fn ui_snapshots_small_heights_idle() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         use ratatui::Terminal;
         use ratatui::backend::TestBackend;
         let (chat, _rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
@@ -2448,7 +2448,7 @@ async fn ui_snapshots_small_heights_idle() {
 // Validates how status + composer are presented within tight space.
 #[tokio::test]
 async fn ui_snapshots_small_heights_task_running() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         use ratatui::Terminal;
         use ratatui::backend::TestBackend;
         let (mut chat, _rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
@@ -2669,7 +2669,7 @@ async fn ambient_pet_reduces_stream_width_and_composer_text_width() {
 
 #[tokio::test]
 async fn bottom_pane_renderable_can_be_laid_out_independently() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         use ratatui::Terminal;
 
         let (chat, _rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
@@ -2817,7 +2817,7 @@ async fn status_widget_and_approval_modal_snapshot() {
 // Ensures the VT100 rendering of the status indicator is stable when active.
 #[tokio::test]
 async fn status_widget_active_snapshot() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut chat, _rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
         // Activate the status indicator by simulating a task start.
         handle_turn_started(&mut chat, "turn-1");
@@ -2968,7 +2968,7 @@ async fn status_line_invalid_items_warn_once() {
 
 #[tokio::test]
 async fn status_line_rows_render_bold_nerd_font_icons() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut chat, _rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
         chat.show_welcome_banner = false;
         chat.status_line_branch_cwd = Some(
@@ -3012,7 +3012,7 @@ async fn status_line_rows_render_bold_nerd_font_icons() {
 
 #[tokio::test]
 async fn multiple_status_line_rows_override_legacy_status_line_and_render_as_a_stack() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut chat, _rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
         chat.show_welcome_banner = false;
         chat.local_settings.tui.status_line = Some(vec!["hostname".to_string()]);
@@ -3045,7 +3045,7 @@ async fn multiple_status_line_rows_override_legacy_status_line_and_render_as_a_s
 
 #[tokio::test]
 async fn multiple_status_line_rows_preserve_composer_session_title() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut chat, _rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
         chat.show_welcome_banner = false;
         let thread_id = ThreadId::new();
@@ -3718,7 +3718,7 @@ async fn status_line_estimated_thread_cost_rejects_stale_thread_completions() {
 
 #[tokio::test]
 async fn status_line_estimated_thread_cost_footer_snapshot() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         use ratatui::Terminal;
         use ratatui::backend::TestBackend;
 
@@ -4023,7 +4023,7 @@ impl crate::workspace_command::WorkspaceCommandExecutor for NoopWorkspaceCommand
 
 #[tokio::test]
 async fn interrupted_turn_clears_visible_running_hook() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut chat, _rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
         chat.on_task_started();
 
@@ -4053,7 +4053,7 @@ async fn interrupted_turn_clears_visible_running_hook() {
 
 #[tokio::test]
 async fn completed_turn_clears_visible_running_hook() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut chat, _rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
         chat.on_task_started();
 
@@ -4118,7 +4118,7 @@ async fn status_line_fast_mode_updates_visibility_on_model_change() {
 
 #[tokio::test]
 async fn status_line_fast_mode_footer_snapshot() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         use ratatui::Terminal;
         use ratatui::backend::TestBackend;
 
@@ -4247,7 +4247,7 @@ async fn status_line_model_with_reasoning_updates_on_mode_switch_without_manual_
 
 #[tokio::test]
 async fn status_line_model_with_reasoning_plan_mode_footer_snapshot() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         use ratatui::Terminal;
         use ratatui::backend::TestBackend;
 
@@ -4277,7 +4277,7 @@ async fn status_line_model_with_reasoning_plan_mode_footer_snapshot() {
 
 #[tokio::test]
 async fn renamed_thread_footer_title_snapshot() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         use ratatui::Terminal;
         use ratatui::backend::TestBackend;
 
@@ -4318,7 +4318,7 @@ async fn renamed_thread_footer_title_snapshot() {
 
 #[tokio::test]
 async fn status_line_model_with_reasoning_fast_footer_snapshot() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         use ratatui::Terminal;
         use ratatui::backend::TestBackend;
 
@@ -4355,7 +4355,7 @@ async fn status_line_model_with_reasoning_fast_footer_snapshot() {
 
 #[tokio::test]
 async fn status_line_model_with_reasoning_context_remaining_footer_snapshot() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         use ratatui::Terminal;
         use ratatui::backend::TestBackend;
 
@@ -4392,7 +4392,7 @@ async fn status_line_model_with_reasoning_context_remaining_footer_snapshot() {
 
 #[tokio::test]
 async fn status_line_goal_active_token_budget_footer_snapshot() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         use ratatui::Terminal;
         use ratatui::backend::TestBackend;
 
@@ -4432,7 +4432,7 @@ async fn status_line_goal_active_token_budget_footer_snapshot() {
 
 #[tokio::test]
 async fn status_line_goal_complete_elapsed_footer_snapshot() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         use ratatui::Terminal;
         use ratatui::backend::TestBackend;
 
@@ -4779,7 +4779,7 @@ async fn multiple_agent_messages_in_single_turn_emit_multiple_headers() {
 
 #[tokio::test]
 async fn final_reasoning_then_message_without_deltas_are_rendered() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
 
         // No deltas; only final reasoning followed by final message.
@@ -4807,7 +4807,7 @@ async fn final_reasoning_then_message_without_deltas_are_rendered() {
 
 #[tokio::test]
 async fn deltas_then_same_final_message_are_rendered_snapshot() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
 
         // Stream some reasoning deltas first.
@@ -5044,7 +5044,7 @@ async fn reasoning_delta_does_not_double_schedule_visible_status_redraw() {
 
 #[tokio::test]
 async fn reasoning_delta_restores_recreated_status_indicator_header() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
         chat.on_task_started();
         chat.on_agent_reasoning_delta("**Checking files**".to_string());
@@ -5276,7 +5276,7 @@ async fn blocked_and_failed_hooks_render_feedback_and_errors() {
 
 #[tokio::test]
 async fn completed_hook_with_output_flushes_immediately() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
 
         handle_hook_started(
@@ -5318,7 +5318,7 @@ async fn completed_hook_with_output_flushes_immediately() {
 
 #[tokio::test]
 async fn completed_hook_output_precedes_following_assistant_message() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
 
         handle_hook_started(
@@ -5375,7 +5375,7 @@ async fn completed_hook_output_precedes_following_assistant_message() {
 
 #[tokio::test]
 async fn completed_same_id_hook_output_survives_restart() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
         let hook_id = "stop:0:/tmp/hooks.json";
 
@@ -5428,7 +5428,7 @@ async fn completed_same_id_hook_output_survives_restart() {
 
 #[tokio::test]
 async fn running_hooks_fit_around_background_activity_and_finish_without_history_snapshot() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
 
     for (messages, snapshot) in [
         (
@@ -5499,7 +5499,7 @@ async fn running_hooks_fit_around_background_activity_and_finish_without_history
 
 #[tokio::test]
 async fn session_end_hook_has_standalone_activity_row() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         for (message, snapshot) in [
             (Some("saving session summary"), "session_end_hook_activity"),
             (None, "session_end_hook_activity_without_message"),
@@ -5540,7 +5540,7 @@ async fn session_end_hook_has_standalone_activity_row() {
 
 #[tokio::test]
 async fn overlapping_hook_live_cell_tracks_parallel_quiet_hooks() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
 
     let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
 
@@ -5618,7 +5618,7 @@ async fn overlapping_hook_live_cell_tracks_parallel_quiet_hooks() {
 
 #[tokio::test]
 async fn running_hook_does_not_displace_active_exec_cell() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
 
     let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
 
@@ -5862,7 +5862,7 @@ fn hook_status_frame(chat: &ChatWidget, width: u16) -> String {
 // then the exec block, another blank line, the status line, a blank line, and the composer.
 #[tokio::test]
 async fn chatwidget_exec_and_status_layout_vt100_snapshot() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
 
     let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
     complete_assistant_message(
@@ -5965,7 +5965,7 @@ async fn chatwidget_exec_and_status_layout_vt100_snapshot() {
 // E2E vt100 snapshot for complex markdown with indented and nested fenced code blocks
 #[tokio::test]
 async fn chatwidget_markdown_code_blocks_vt100_snapshot() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
 
         // Simulate a final agent message via streaming deltas instead of a single message
@@ -6049,7 +6049,7 @@ printf 'fenced within fenced\n'
 
 #[tokio::test]
 async fn chatwidget_tall() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut chat, _rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
         chat.thread_id = Some(ThreadId::new());
         handle_turn_started(&mut chat, "turn-1");

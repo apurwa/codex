@@ -400,17 +400,23 @@ mod tool_call_grouping_tests {
 
     #[test]
     fn invisible_cells_do_not_split_a_tool_call_group() {
-        let tool: Arc<dyn HistoryCell> = Arc::new(history_cell::CodexToolCallHistoryCell::new(
-            history_cell::PlainHistoryCell::new(vec![Line::from("first tool")]),
-        ));
-        let invisible: Arc<dyn HistoryCell> =
-            Arc::new(history_cell::PlainHistoryCell::new(Vec::new()));
+        return crate::ui_profile::with_test_ui_profile(
+            crate::ui_profile::UiProfile::CodexDev,
+            || {
+                let tool: Arc<dyn HistoryCell> =
+                    Arc::new(history_cell::CodexToolCallHistoryCell::new(
+                        history_cell::PlainHistoryCell::new(vec![Line::from("first tool")]),
+                    ));
+                let invisible: Arc<dyn HistoryCell> =
+                    Arc::new(history_cell::PlainHistoryCell::new(Vec::new()));
 
-        assert!(last_visible_cell_is_tool_call(
-            &[tool, invisible],
-            /* width */ 80,
-            history_cell::HistoryRenderMode::Rich,
-        ));
+                assert!(last_visible_cell_is_tool_call(
+                    &[tool, invisible],
+                    /* width */ 80,
+                    history_cell::HistoryRenderMode::Rich,
+                ));
+            },
+        );
     }
 
     #[test]

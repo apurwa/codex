@@ -268,7 +268,7 @@ async fn unexpected_voice_close_preserves_partial_transcripts_once() {
 
 #[tokio::test]
 async fn interleaved_partial_transcripts_survive_voice_close() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut chat, _sender, mut events, _ops) = make_chatwidget_manual_with_sender().await;
         activate_voice(&mut chat);
         seed_interleaved_partials(&mut chat);
@@ -317,7 +317,7 @@ async fn interleaved_partials_transfer_once_on_thread_switch() {
 
 #[tokio::test]
 async fn intentional_stop_preserves_both_interleaved_partials_once() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut chat, _sender, mut events, _ops) = make_chatwidget_manual_with_sender().await;
         activate_voice(&mut chat);
         seed_interleaved_partials(&mut chat);
@@ -441,7 +441,7 @@ async fn direct_reset_preserves_both_partial_speakers_for_replay() {
 
 #[tokio::test]
 async fn stopping_voice_preserves_the_live_transcript_once() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         for command in ["/voice", "/voice stop"] {
             let (mut chat, _sender, mut events, _ops) = make_chatwidget_manual_with_sender().await;
             chat.local_settings.tui.animations = true;
@@ -502,7 +502,7 @@ async fn stopping_voice_preserves_the_live_transcript_once() {
 
 #[tokio::test]
 async fn transcript_completion_waits_for_normal_agent_stream_consolidation() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut chat, _sender, mut events, _ops) = make_chatwidget_manual_with_sender().await;
         activate_voice(&mut chat);
         chat.on_agent_message_delta("normal typed output".to_string());
@@ -685,7 +685,7 @@ async fn transcript_deltas_keep_a_bounded_utf8_suffix() {
 
 #[tokio::test]
 async fn completed_transcript_is_added_to_history_and_clears_the_caption() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut chat, _sender, mut events, _ops) = make_chatwidget_manual_with_sender().await;
         chat.realtime_conversation.phase = RealtimeConversationPhase::Active;
         chat.on_realtime_transcript_delta("assistant".to_string(), "Hello".to_string());
@@ -769,7 +769,7 @@ async fn live_voice_split_flap_animates_without_changing_final_history() {
 
 #[tokio::test]
 async fn spoken_user_transcript_preserves_red_chevron_and_canonical_history() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut chat, _sender, mut events, _ops) = make_chatwidget_manual_with_sender().await;
         activate_voice(&mut chat);
         chat.on_realtime_transcript_delta("user".to_string(), " hello".to_string());
@@ -873,7 +873,7 @@ async fn new_voice_turn_interrupts_uncaptioned_queued_speech() {
 
 #[tokio::test]
 async fn completed_user_caption_stays_visible_until_history_commit() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
 
     let (mut chat, _sender, mut events, _ops) = make_chatwidget_manual_with_sender().await;
     activate_voice(&mut chat);
@@ -921,7 +921,7 @@ async fn completed_user_caption_stays_visible_until_history_commit() {
 
 #[tokio::test]
 async fn animated_interleaved_captions_keep_settled_words_visible() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let words = "Keep these words visible";
         let mut settled = Vec::new();
         for (first, second) in [("user", "assistant"), ("assistant", "user")] {
@@ -986,7 +986,7 @@ async fn animated_interleaved_captions_keep_settled_words_visible() {
 
 #[tokio::test]
 async fn empty_interleaved_caption_completion_invalidates_overlay() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         for phase in [
             RealtimeConversationPhase::Active,
             RealtimeConversationPhase::Stopping,

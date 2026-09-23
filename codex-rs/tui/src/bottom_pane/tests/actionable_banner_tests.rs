@@ -129,42 +129,44 @@ fn banner_hidden_during_task_waits_for_redraw_before_accepting_dismissal() {
 
 #[test]
 fn information_banner_preserves_input_and_honors_dismissal() {
-    for dismissal in [BannerDismissal::Persistent, BannerDismissal::Dismissible] {
-        let (tx, _rx) = unbounded_channel();
-        let mut pane = test_pane_with_disable_paste_burst(
-            AppEventSender::new(tx),
-            /*disable_paste_burst*/ true,
-        );
-        pane.set_inline_banner(Some(ActionableBanner {
-            title: "Usage limit reached".into(),
-            description: "You can change models or request more usage.".into(),
-            dismissal,
-            ..Default::default()
-        }));
-        let area = Rect::new(
-            /*x*/ 0,
-            /*y*/ 0,
-            /*width*/ 70,
-            pane.desired_height(/*width*/ 70),
-        );
-        let rendered = render_snapshot(&pane, area);
-        assert!(!rendered.contains("no matches"));
-        assert!(!rendered.contains("Press a number"));
-        assert_eq!(
-            rendered.contains("esc to dismiss"),
-            dismissal == BannerDismissal::Dismissible
-        );
-        if dismissal == BannerDismissal::Persistent {
-            assert_snapshot!("information_banner_persistent", rendered);
-        } else {
-            assert_snapshot!("information_banner_dismissible", rendered);
+    return crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
+        for dismissal in [BannerDismissal::Persistent, BannerDismissal::Dismissible] {
+            let (tx, _rx) = unbounded_channel();
+            let mut pane = test_pane_with_disable_paste_burst(
+                AppEventSender::new(tx),
+                /*disable_paste_burst*/ true,
+            );
+            pane.set_inline_banner(Some(ActionableBanner {
+                title: "Usage limit reached".into(),
+                description: "You can change models or request more usage.".into(),
+                dismissal,
+                ..Default::default()
+            }));
+            let area = Rect::new(
+                /*x*/ 0,
+                /*y*/ 0,
+                /*width*/ 70,
+                pane.desired_height(/*width*/ 70),
+            );
+            let rendered = render_snapshot(&pane, area);
+            assert!(!rendered.contains("no matches"));
+            assert!(!rendered.contains("Press a number"));
+            assert_eq!(
+                rendered.contains("esc to dismiss"),
+                dismissal == BannerDismissal::Dismissible
+            );
+            if dismissal == BannerDismissal::Persistent {
+                assert_snapshot!("information_banner_persistent", rendered);
+            } else {
+                assert_snapshot!("information_banner_dismissible", rendered);
+            }
+            pane.handle_key_event(KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE));
+            assert_eq!(
+                render_snapshot(&pane, area).contains("Usage limit reached"),
+                dismissal == BannerDismissal::Persistent
+            );
+            pane.handle_key_event(KeyEvent::new(KeyCode::Char('1'), KeyModifiers::NONE));
+            assert_eq!(pane.composer_text(), "1");
         }
-        pane.handle_key_event(KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE));
-        assert_eq!(
-            render_snapshot(&pane, area).contains("Usage limit reached"),
-            dismissal == BannerDismissal::Persistent
-        );
-        pane.handle_key_event(KeyEvent::new(KeyCode::Char('1'), KeyModifiers::NONE));
-        assert_eq!(pane.composer_text(), "1");
-    }
+    });
 }

@@ -2,7 +2,7 @@
 source: tui/src/inline_visualization_tests.rs
 expression: text
 ---
-
+───────────────────────────────────────────────────────────────────────────────
 CODEX
 
   Fenced:
@@ -12,3 +12,4 @@ CODEX
   Indented:
 
       ::codex-inline-vis{file="chart.html"}
+───────────────────────────────────────────────────────────────────────────────

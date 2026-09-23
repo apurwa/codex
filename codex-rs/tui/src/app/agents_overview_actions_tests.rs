@@ -775,58 +775,64 @@ async fn disabled_footer_shortcuts_stay_bold_when_wrapped() {
 
 #[tokio::test]
 async fn lifecycle_footer_keeps_custom_chords_with_labels() {
-    let mut app = make_test_app().await;
-    app.keymap = RuntimeKeymap::from_config(
-        &serde_json::from_value(serde_json::json!({
-            "agents": { "archive": "f5 f6", "delete": "f5 f7", "hide": "f5 f8" }
-        }))
-        .unwrap(),
-    )
-    .unwrap();
-    let mut view = app.agents_overview_view(
-        vec![overview_thread(
-            ThreadId::new(),
-            /*parent_thread_id*/ None,
-            "Task",
-            ThreadStatus::Idle,
-        )],
-        /*selected_thread_id*/ None,
-    );
-    view.handle_key_event(KeyCode::Esc.into());
-    for width in [36, 48, 80] {
-        let area = Rect::new(/*x*/ 0, /*y*/ 0, width + 4, /*height*/ 24);
-        let mut buffer = ratatui::buffer::Buffer::empty(area);
-        view.render(area, &mut buffer);
-        let lines = buffer
-            .content()
-            .chunks(usize::from(area.width))
-            .map(|row| {
-                row.iter()
-                    .map(ratatui::buffer::Cell::symbol)
-                    .collect::<String>()
-                    .trim()
-                    .to_string()
-            })
-            .collect::<Vec<_>>();
-        for label in ["archive", "delete", "hide"] {
-            assert!(
-                lines
-                    .iter()
-                    .any(|line| line.contains(label) && line.contains("f5"))
+    return crate::ui_profile::with_test_ui_profile_async(
+        crate::ui_profile::UiProfile::CodexDev,
+        async {
+            let mut app = make_test_app().await;
+            app.keymap = RuntimeKeymap::from_config(
+                &serde_json::from_value(serde_json::json!({
+                    "agents": { "archive": "f5 f6", "delete": "f5 f7", "hide": "f5 f8" }
+                }))
+                .unwrap(),
+            )
+            .unwrap();
+            let mut view = app.agents_overview_view(
+                vec![overview_thread(
+                    ThreadId::new(),
+                    /*parent_thread_id*/ None,
+                    "Task",
+                    ThreadStatus::Idle,
+                )],
+                /*selected_thread_id*/ None,
             );
-        }
-        assert!(
-            lines
-                .iter()
-                .filter(|line| !line.chars().all(|ch| ch == '─'))
-                .all(|line| unicode_width::UnicodeWidthStr::width(line.as_str())
-                    <= usize::from(width))
-        );
-    }
-    app.chat_widget.show_bottom_pane_view(Box::new(view));
-    insta::assert_snapshot!(
-        "agents_custom_lifecycle_chords",
-        render_bottom_popup(&app.chat_widget, /*width*/ 48)
-            .replace(&test_path_display("/tmp/project"), "/tmp/project")
-    );
+            view.handle_key_event(KeyCode::Esc.into());
+            for width in [36, 48, 80] {
+                let area = Rect::new(/*x*/ 0, /*y*/ 0, width + 4, /*height*/ 24);
+                let mut buffer = ratatui::buffer::Buffer::empty(area);
+                view.render(area, &mut buffer);
+                let lines = buffer
+                    .content()
+                    .chunks(usize::from(area.width))
+                    .map(|row| {
+                        row.iter()
+                            .map(ratatui::buffer::Cell::symbol)
+                            .collect::<String>()
+                            .trim()
+                            .to_string()
+                    })
+                    .collect::<Vec<_>>();
+                for label in ["archive", "delete", "hide"] {
+                    assert!(
+                        lines
+                            .iter()
+                            .any(|line| line.contains(label) && line.contains("f5"))
+                    );
+                }
+                assert!(
+                    lines
+                        .iter()
+                        .filter(|line| !line.chars().all(|ch| ch == '─'))
+                        .all(|line| unicode_width::UnicodeWidthStr::width(line.as_str())
+                            <= usize::from(width))
+                );
+            }
+            app.chat_widget.show_bottom_pane_view(Box::new(view));
+            insta::assert_snapshot!(
+                "agents_custom_lifecycle_chords",
+                render_bottom_popup(&app.chat_widget, /*width*/ 48)
+                    .replace(&test_path_display("/tmp/project"), "/tmp/project")
+            );
+        },
+    )
+    .await;
 }

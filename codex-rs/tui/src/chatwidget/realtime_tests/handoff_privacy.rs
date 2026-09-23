@@ -68,7 +68,7 @@ async fn typed_turn_remains_a_normal_text_response_while_voice_is_active() {
 
 #[tokio::test]
 async fn typed_steering_restores_normal_output_for_an_existing_voice_item() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut chat, _sender, mut events, mut ops) = make_chatwidget_manual_with_sender().await;
         let thread_id = activate_voice(&mut chat);
         let turn_id = "shared-turn";
@@ -173,7 +173,7 @@ async fn newer_voice_steering_an_existing_typed_turn_is_spoken_once() {
 
 #[tokio::test]
 async fn voice_handoff_preserves_started_typed_reasoning_but_hides_new_reasoning() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut chat, _sender, mut events, _ops) = make_chatwidget_manual_with_sender().await;
         let thread_id = activate_voice(&mut chat);
         let turn_id = "mixed-reasoning-turn";

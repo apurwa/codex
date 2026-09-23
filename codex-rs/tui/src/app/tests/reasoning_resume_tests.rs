@@ -7,115 +7,126 @@ use codex_app_server_protocol::ReasoningSummaryTextDeltaNotification;
 
 #[tokio::test]
 async fn resumed_reasoning_without_start_accepts_deltas_and_completion() {
-    for initial_replay in [false, true] {
-        for snapshot_item_id in [None, Some("reasoning"), Some("previous")] {
-            for with_delta in [false, true] {
-                let (mut app, mut events, _ops) = make_test_app_with_channels().await;
-                let thread_id = ThreadId::new();
-                let session = test_thread_session(thread_id, app.config.cwd.to_path_buf());
-                let items = snapshot_item_id
-                    .into_iter()
-                    .map(|id| ThreadItem::Reasoning {
-                        id: id.into(),
-                        summary: vec![
-                            if id == "previous" {
-                                "**Earlier work**\nEarlier paragraph."
-                            } else {
-                                "**Inspecting**\nSnapshot paragraph."
-                            }
-                            .into(),
-                        ],
-                        content: Vec::new(),
-                    })
-                    .collect();
-                let turns = vec![test_turn("turn", TurnStatus::InProgress, items)];
-                if initial_replay {
-                    app.chat_widget.handle_thread_session(session);
-                    app.chat_widget
-                        .replay_thread_turns(turns, ReplayKind::ResumeInitialMessages);
-                } else {
-                    // Reconnect constructs a fresh store; no start notification was retained.
-                    let store =
-                        ThreadEventStore::new_with_session(/*capacity*/ 1, session, turns);
-                    assert!(store.active_reasoning_item.is_none());
-                    app.replay_thread_snapshot(
-                        store.snapshot(),
-                        /*resume_restored_queue*/ false,
-                    );
-                }
-                let delta = |turn_id: &str, text: &str| {
-                    ServerNotification::ReasoningSummaryTextDelta(
-                        ReasoningSummaryTextDeltaNotification {
-                            thread_id: thread_id.to_string(),
-                            turn_id: turn_id.into(),
-                            item_id: "reasoning".into(),
-                            delta: text.into(),
-                            summary_index: 0,
-                        },
-                    )
-                };
-                app.chat_widget.handle_server_notification(
-                    delta("old-turn", "Wrong turn"),
-                    /*replay_kind*/ None,
-                );
-                assert!(
-                    !render_bottom_popup(&app.chat_widget, /*width*/ 80).contains("Wrong turn")
-                );
-                if with_delta {
-                    app.chat_widget.handle_server_notification(
-                        delta("turn", "\n**Running checks**"),
-                        /*replay_kind*/ None,
-                    );
-                    assert!(
-                        render_bottom_popup(&app.chat_widget, /*width*/ 80)
-                            .contains("Running checks")
-                    );
-                }
-                app.chat_widget.handle_server_notification(
-                    ServerNotification::ItemCompleted(ItemCompletedNotification {
-                        thread_id: thread_id.to_string(),
-                        turn_id: "turn".into(),
-                        completed_at_ms: 0,
-                        item: ThreadItem::Reasoning {
-                            id: "reasoning".into(),
-                            summary: vec![
-                                "**Inspecting**\nSnapshot paragraph.\nCompleted paragraph.".into(),
-                            ],
-                            content: Vec::new(),
-                        },
-                    }),
-                    /*replay_kind*/ None,
-                );
-                app.chat_widget.handle_server_notification(
-                    delta("turn", "Stale update"),
-                    /*replay_kind*/ None,
-                );
-                assert!(
-                    !render_bottom_popup(&app.chat_widget, /*width*/ 80).contains("Stale update")
-                );
-                let transcript = reasoning_transcript(&mut events);
-                insta::allow_duplicates! {
-                    if snapshot_item_id == Some("previous") {
-                        insta::assert_snapshot!(transcript, @"
+    return crate::ui_profile::with_test_ui_profile_async(
+        crate::ui_profile::UiProfile::CodexDev,
+        async {
+            for initial_replay in [false, true] {
+                for snapshot_item_id in [None, Some("reasoning"), Some("previous")] {
+                    for with_delta in [false, true] {
+                        let (mut app, mut events, _ops) = make_test_app_with_channels().await;
+                        let thread_id = ThreadId::new();
+                        let session = test_thread_session(thread_id, app.config.cwd.to_path_buf());
+                        let items = snapshot_item_id
+                            .into_iter()
+                            .map(|id| ThreadItem::Reasoning {
+                                id: id.into(),
+                                summary: vec![
+                                    if id == "previous" {
+                                        "**Earlier work**\nEarlier paragraph."
+                                    } else {
+                                        "**Inspecting**\nSnapshot paragraph."
+                                    }
+                                    .into(),
+                                ],
+                                content: Vec::new(),
+                            })
+                            .collect();
+                        let turns = vec![test_turn("turn", TurnStatus::InProgress, items)];
+                        if initial_replay {
+                            app.chat_widget.handle_thread_session(session);
+                            app.chat_widget
+                                .replay_thread_turns(turns, ReplayKind::ResumeInitialMessages);
+                        } else {
+                            // Reconnect constructs a fresh store; no start notification was retained.
+                            let store = ThreadEventStore::new_with_session(
+                                /*capacity*/ 1, session, turns,
+                            );
+                            assert!(store.active_reasoning_item.is_none());
+                            app.replay_thread_snapshot(
+                                store.snapshot(),
+                                /*resume_restored_queue*/ false,
+                            );
+                        }
+                        let delta = |turn_id: &str, text: &str| {
+                            ServerNotification::ReasoningSummaryTextDelta(
+                                ReasoningSummaryTextDeltaNotification {
+                                    thread_id: thread_id.to_string(),
+                                    turn_id: turn_id.into(),
+                                    item_id: "reasoning".into(),
+                                    delta: text.into(),
+                                    summary_index: 0,
+                                },
+                            )
+                        };
+                        app.chat_widget.handle_server_notification(
+                            delta("old-turn", "Wrong turn"),
+                            /*replay_kind*/ None,
+                        );
+                        assert!(
+                            !render_bottom_popup(&app.chat_widget, /*width*/ 80)
+                                .contains("Wrong turn")
+                        );
+                        if with_delta {
+                            app.chat_widget.handle_server_notification(
+                                delta("turn", "\n**Running checks**"),
+                                /*replay_kind*/ None,
+                            );
+                            assert!(
+                                render_bottom_popup(&app.chat_widget, /*width*/ 80)
+                                    .contains("Running checks")
+                            );
+                        }
+                        app.chat_widget.handle_server_notification(
+                            ServerNotification::ItemCompleted(ItemCompletedNotification {
+                                thread_id: thread_id.to_string(),
+                                turn_id: "turn".into(),
+                                completed_at_ms: 0,
+                                item: ThreadItem::Reasoning {
+                                    id: "reasoning".into(),
+                                    summary: vec![
+                                        "**Inspecting**\nSnapshot paragraph.\nCompleted paragraph."
+                                            .into(),
+                                    ],
+                                    content: Vec::new(),
+                                },
+                            }),
+                            /*replay_kind*/ None,
+                        );
+                        app.chat_widget.handle_server_notification(
+                            delta("turn", "Stale update"),
+                            /*replay_kind*/ None,
+                        );
+                        assert!(
+                            !render_bottom_popup(&app.chat_widget, /*width*/ 80)
+                                .contains("Stale update")
+                        );
+                        let transcript = reasoning_transcript(&mut events);
+                        insta::allow_duplicates! {
+                            if snapshot_item_id == Some("previous") {
+                                insta::assert_snapshot!(transcript, @"
                         ┊ Earlier paragraph.
 
                         ┊ Snapshot paragraph.
                         ┊ Completed paragraph.
                         ");
-                    } else {
-                        insta::assert_snapshot!(transcript, @"
+                            } else {
+                                insta::assert_snapshot!(transcript, @"
                         ┊ Snapshot paragraph.
                         ┊ Completed paragraph.
                         ");
+                            }
+                        }
                     }
                 }
             }
-        }
-    }
+        },
+    )
+    .await;
 }
 
 #[tokio::test]
 async fn resumed_trailing_reasoning_is_kept_when_no_more_reasoning_arrives() {
+    return crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
     for next_item in [false, true] {
         let (mut app, mut events, _ops) = make_test_app_with_channels().await;
         let thread_id = ThreadId::new();
@@ -159,6 +170,8 @@ async fn resumed_trailing_reasoning_is_kept_when_no_more_reasoning_arrives() {
             insta::assert_snapshot!(reasoning_transcript(&mut events), @"┊ Saved paragraph.");
         }
     }
+
+    }).await;
 }
 
 fn reasoning_transcript(events: &mut tokio::sync::mpsc::UnboundedReceiver<AppEvent>) -> String {

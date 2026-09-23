@@ -1,8 +1,8 @@
 ---
 source: tui/src/chatwidget/tests/status_and_layout.rs
+assertion_line: 5957
 expression: normalize_snapshot_paths(term.backend().vt100().screen().contents())
 ---
-
 
 
 
@@ -32,8 +32,9 @@ CODEX
   that view.
 
 
-CODEX · Tool Call
-┊ ✓ Explored · 16.00s · 0 lines · Ctrl+T details
+CODEX · Tool Calls
+
+┊ ✓ Explored
 
 • Investigating rendering code (0s • esc to interrupt)
 

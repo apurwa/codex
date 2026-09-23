@@ -107,7 +107,7 @@ async fn luna_reserve_selector_supports_arrows_enter_shortcuts_and_escape_withou
 
 #[tokio::test]
 async fn luna_reserve_status_tracks_the_active_model() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut chat, _rx, _ops) = make_chatwidget_manual(Some("gpt-5.6-sol")).await;
         chat.has_chatgpt_account = true;
         chat.on_rate_limit_snapshot(Some(reserve_snapshot(
@@ -143,7 +143,7 @@ async fn luna_reserve_status_tracks_the_active_model() {
 
 #[tokio::test]
 async fn luna_reserve_usage_survives_banner_dismissal_and_typing_during_a_turn() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut chat, _rx, _ops) = make_chatwidget_manual(Some("gpt-reserve")).await;
         chat.has_chatgpt_account = true;
         chat.on_rate_limit_snapshot(Some(reserve_snapshot(

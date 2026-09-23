@@ -145,22 +145,24 @@ fn paragraph_multiple() {
 
 #[test]
 fn headings() {
-    let md = "# Heading 1\n## Heading 2\n### Heading 3\n#### Heading 4\n##### Heading 5\n###### Heading 6\n";
-    let text = render_markdown_text(md);
-    let expected = Text::from_iter([
-        Line::from_iter(["# ".bold().underlined(), "Heading 1".bold().underlined()]),
-        Line::default(),
-        Line::from_iter(["## ".bold(), "Heading 2".bold()]),
-        Line::default(),
-        Line::from_iter(["### ".bold().italic(), "Heading 3".bold().italic()]),
-        Line::default(),
-        Line::from_iter(["#### ".bold().italic(), "Heading 4".bold().italic()]),
-        Line::default(),
-        Line::from_iter(["##### ".bold().italic(), "Heading 5".bold().italic()]),
-        Line::default(),
-        Line::from_iter(["###### ".bold().italic(), "Heading 6".bold().italic()]),
-    ]);
-    assert_eq!(text, expected);
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
+        let md = "# Heading 1\n## Heading 2\n### Heading 3\n#### Heading 4\n##### Heading 5\n###### Heading 6\n";
+        let text = render_markdown_text(md);
+        let expected = Text::from_iter([
+            Line::from_iter(["# ".bold().underlined(), "Heading 1".bold().underlined()]),
+            Line::default(),
+            Line::from_iter(["## ".bold(), "Heading 2".bold()]),
+            Line::default(),
+            Line::from_iter(["### ".bold().italic(), "Heading 3".bold().italic()]),
+            Line::default(),
+            Line::from_iter(["#### ".bold().italic(), "Heading 4".bold().italic()]),
+            Line::default(),
+            Line::from_iter(["##### ".bold().italic(), "Heading 5".bold().italic()]),
+            Line::default(),
+            Line::from_iter(["###### ".bold().italic(), "Heading 6".bold().italic()]),
+        ]);
+        assert_eq!(text, expected);
+    });
 }
 
 #[test]

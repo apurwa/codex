@@ -28,7 +28,7 @@ fn compaction_completed(id: &str) -> ServerNotification {
 
 #[tokio::test]
 async fn compaction_status_survives_follow_up_and_preserves_turn_time() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut chat, mut rx, mut op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
         chat.thread_id = Some(ThreadId::new());
         handle_turn_started(&mut chat, "turn-1");
@@ -96,7 +96,7 @@ async fn compaction_status_survives_follow_up_and_preserves_turn_time() {
 
 #[tokio::test]
 async fn manual_compaction_shows_status_before_backend_events() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut chat, _rx, _ops) = make_chatwidget_manual(/*model_override*/ None).await;
         chat.dispatch_command(SlashCommand::Compact);
         assert_chatwidget_snapshot!(

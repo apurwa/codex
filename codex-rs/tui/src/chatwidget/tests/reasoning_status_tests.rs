@@ -258,7 +258,7 @@ async fn reasoning_status_accepts_plain_lines_and_ignores_empty_sections() {
 
 #[tokio::test]
 async fn completed_reasoning_stays_in_expanded_transcript_for_live_and_replay() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let mut renders = Vec::new();
         for replay in [false, true] {
             let (mut chat, mut rx, _ops) = make_chatwidget_manual(/*model_override*/ None).await;

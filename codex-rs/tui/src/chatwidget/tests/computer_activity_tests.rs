@@ -27,7 +27,7 @@ fn computer_item(
 
 #[tokio::test]
 async fn computer_activity_live_and_replay_group_identically() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         use codex_app_server_protocol::McpToolCallStatus;
         let mut outputs = Vec::new();
         for replay in [false, true] {
@@ -87,7 +87,7 @@ async fn computer_activity_preserves_boundaries_and_expanded_output() {
 
 #[tokio::test]
 async fn computer_activity_out_of_order_completion_and_interruption() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         use codex_app_server_protocol::McpToolCallStatus;
         let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
         chat.on_mcp_tool_call_started(computer_item("1", McpToolCallStatus::InProgress));

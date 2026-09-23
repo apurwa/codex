@@ -58,45 +58,47 @@ fn viewport(cells: Vec<Arc<dyn HistoryCell>>) -> ConversationViewport {
 
 #[test]
 fn user_background_spans_main_viewport_after_scroll_and_resize() {
-    crate::terminal_palette::with_test_default_colors(
-        crate::terminal_probe::DefaultColors {
-            fg: (40, 40, 40),
-            bg: (250, 245, 210),
-        },
-        || {
-            let user: Arc<dyn HistoryCell> = Arc::new(crate::history_cell::UserHistoryCell {
-                spoken: false,
-                message: "short message\nsecond line\nthird line\nfourth line".into(),
-                text_elements: Vec::new(),
-                local_image_paths: Vec::new(),
-                remote_image_urls: Vec::new(),
-            });
-            let raw = user.raw_lines();
-            let mut viewport = viewport(vec![user.clone()]);
-            let expected = user.background_style().unwrap().bg.unwrap();
-            let mut snapshots = Vec::new();
-            for width in [20, 60, 32] {
-                let area = Rect::new(0, 0, width, 3);
-                viewport.scroll_to_bottom();
-                for scroll in [false, true] {
-                    if scroll {
-                        viewport.handle_mouse_scroll(MouseScrollDirection::Up);
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
+        crate::terminal_palette::with_test_default_colors(
+            crate::terminal_probe::DefaultColors {
+                fg: (40, 40, 40),
+                bg: (250, 245, 210),
+            },
+            || {
+                let user: Arc<dyn HistoryCell> = Arc::new(crate::history_cell::UserHistoryCell {
+                    spoken: false,
+                    message: "short message\nsecond line\nthird line\nfourth line".into(),
+                    text_elements: Vec::new(),
+                    local_image_paths: Vec::new(),
+                    remote_image_urls: Vec::new(),
+                });
+                let raw = user.raw_lines();
+                let mut viewport = viewport(vec![user.clone()]);
+                let expected = user.background_style().unwrap().bg.unwrap();
+                let mut snapshots = Vec::new();
+                for width in [20, 60, 32] {
+                    let area = Rect::new(0, 0, width, 3);
+                    viewport.scroll_to_bottom();
+                    for scroll in [false, true] {
+                        if scroll {
+                            viewport.handle_mouse_scroll(MouseScrollDirection::Up);
+                        }
+                        let mut buffer = Buffer::empty(area);
+                        viewport.render(area, &mut buffer);
+                        for y in 0..area.height {
+                            assert_eq!(buffer[(width - 1, y)].bg, expected);
+                        }
+                        snapshots.push(format!(
+                            "width={width}, scrolled={scroll}: right edge {:?}",
+                            buffer[(width - 1, 0)].bg
+                        ));
                     }
-                    let mut buffer = Buffer::empty(area);
-                    viewport.render(area, &mut buffer);
-                    for y in 0..area.height {
-                        assert_eq!(buffer[(width - 1, y)].bg, expected);
-                    }
-                    snapshots.push(format!(
-                        "width={width}, scrolled={scroll}: right edge {:?}",
-                        buffer[(width - 1, 0)].bg
-                    ));
                 }
-            }
-            assert_eq!(user.raw_lines(), raw);
-            assert_snapshot!("main_user_background_band", snapshots.join("\n"));
-        },
-    );
+                assert_eq!(user.raw_lines(), raw);
+                assert_snapshot!("main_user_background_band", snapshots.join("\n"));
+            },
+        );
+    });
 }
 
 #[test]

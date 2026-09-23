@@ -27,7 +27,7 @@ fn banner_response(
 
 #[tokio::test]
 async fn backend_banner_presentation_and_cta_do_not_imply_recovery() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         for presentation in [None, Some("inline"), Some("dismissible")] {
             let (mut chat, mut rx, _ops) = make_chatwidget_manual(Some("test-model-a")).await;
             let response = banner_response(
@@ -92,7 +92,7 @@ async fn backend_banner_presentation_and_cta_do_not_imply_recovery() {
 
 #[tokio::test]
 async fn backend_banner_zero_actions_preserve_guidance_and_composer_input() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         for presentation in [None, Some("inline"), Some("dismissible")] {
             for ctas in [
                 json!([]),

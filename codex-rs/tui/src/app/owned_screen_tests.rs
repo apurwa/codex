@@ -29,22 +29,28 @@ impl HistoryCell for TestCell {
 
 #[tokio::test]
 async fn renders_committed_conversation_above_fixed_composer() {
-    let (mut chat_widget, _app_event_tx, _rx, _op_rx) = make_chatwidget_manual_with_sender().await;
-    chat_widget.apply_external_edit("draft sentinel".to_string());
-    let mut screen = OwnedScreen::new(&chat_widget, crate::keymap::RuntimeKeymap::defaults().pager);
-    screen
-        .viewport
-        .push_cell(Arc::new(TestCell("committed response")));
-    let mut terminal =
-        Terminal::new(TestBackend::new(/*width*/ 50, /*height*/ 10)).expect("create terminal");
+    return crate::ui_profile::with_test_ui_profile_async(
+        crate::ui_profile::UiProfile::CodexDev,
+        async {
+            let (mut chat_widget, _app_event_tx, _rx, _op_rx) =
+                make_chatwidget_manual_with_sender().await;
+            chat_widget.apply_external_edit("draft sentinel".to_string());
+            let mut screen =
+                OwnedScreen::new(&chat_widget, crate::keymap::RuntimeKeymap::defaults().pager);
+            screen
+                .viewport
+                .push_cell(Arc::new(TestCell("committed response")));
+            let mut terminal =
+                Terminal::new(TestBackend::new(/*width*/ 50, /*height*/ 10))
+                    .expect("create terminal");
 
-    terminal
-        .draw(|frame| {
-            screen.render(&chat_widget, frame.area(), frame.buffer_mut());
-        })
-        .expect("render owned screen");
+            terminal
+                .draw(|frame| {
+                    screen.render(&chat_widget, frame.area(), frame.buffer_mut());
+                })
+                .expect("render owned screen");
 
-    assert_snapshot!(terminal.backend(), @r#"
+            assert_snapshot!(terminal.backend(), @r#"
     "committed response                                "
     "                                                  "
     "                                                  "
@@ -56,6 +62,9 @@ async fn renders_committed_conversation_above_fixed_composer() {
     "──────────────────────────────────────────────────"
     "  gpt-5.6-sol default · /tmp/project              "
     "#);
+        },
+    )
+    .await;
 }
 
 #[tokio::test]
@@ -215,32 +224,38 @@ async fn navigation_does_not_steal_printable_or_draft_input() {
 
 #[tokio::test]
 async fn mouse_wheel_scrolls_transcript_without_changing_draft() {
-    let (mut chat_widget, _app_event_tx, _rx, _op_rx) = make_chatwidget_manual_with_sender().await;
-    chat_widget.apply_external_edit("draft sentinel".to_string());
-    let mut screen = OwnedScreen::new(&chat_widget, crate::keymap::RuntimeKeymap::defaults().pager);
-    for text in ["oldest", "older", "middle", "newer", "LATEST"] {
-        screen.viewport.push_cell(Arc::new(TestCell(text)));
-    }
-    let mut terminal =
-        Terminal::new(TestBackend::new(/*width*/ 40, /*height*/ 8)).expect("create terminal");
-    terminal
-        .draw(|frame| {
-            screen.render(&chat_widget, frame.area(), frame.buffer_mut());
-        })
-        .expect("render bottom");
+    return crate::ui_profile::with_test_ui_profile_async(
+        crate::ui_profile::UiProfile::CodexDev,
+        async {
+            let (mut chat_widget, _app_event_tx, _rx, _op_rx) =
+                make_chatwidget_manual_with_sender().await;
+            chat_widget.apply_external_edit("draft sentinel".to_string());
+            let mut screen =
+                OwnedScreen::new(&chat_widget, crate::keymap::RuntimeKeymap::defaults().pager);
+            for text in ["oldest", "older", "middle", "newer", "LATEST"] {
+                screen.viewport.push_cell(Arc::new(TestCell(text)));
+            }
+            let mut terminal =
+                Terminal::new(TestBackend::new(/*width*/ 40, /*height*/ 8))
+                    .expect("create terminal");
+            terminal
+                .draw(|frame| {
+                    screen.render(&chat_widget, frame.area(), frame.buffer_mut());
+                })
+                .expect("render bottom");
 
-    assert!(screen.handle_mouse_scroll(MouseScrollEvent {
-        direction: MouseScrollDirection::Up,
-        column: 2,
-        row: 2,
-    }));
-    terminal
-        .draw(|frame| {
-            screen.render(&chat_widget, frame.area(), frame.buffer_mut());
-        })
-        .expect("render scrolled");
+            assert!(screen.handle_mouse_scroll(MouseScrollEvent {
+                direction: MouseScrollDirection::Up,
+                column: 2,
+                row: 2,
+            }));
+            terminal
+                .draw(|frame| {
+                    screen.render(&chat_widget, frame.area(), frame.buffer_mut());
+                })
+                .expect("render scrolled");
 
-    assert_snapshot!(terminal.backend(), @r#"
+            assert_snapshot!(terminal.backend(), @r#"
     "                                        "
     "middle                                  "
     "        Jump to bottom (click) ↓        "
@@ -250,86 +265,98 @@ async fn mouse_wheel_scrolls_transcript_without_changing_draft() {
     "────────────────────────────────────────"
     "  gpt-5.6-sol default · /tmp/project    "
     "#);
-    assert!(!screen.viewport.is_following_bottom());
-    assert!(!screen.handle_mouse_scroll(MouseScrollEvent {
-        direction: MouseScrollDirection::Up,
-        column: 2,
-        row: 7,
-    }));
+            assert!(!screen.viewport.is_following_bottom());
+            assert!(!screen.handle_mouse_scroll(MouseScrollEvent {
+                direction: MouseScrollDirection::Up,
+                column: 2,
+                row: 7,
+            }));
 
-    assert!(screen.handle_mouse_scroll(MouseScrollEvent {
-        direction: MouseScrollDirection::Down,
-        column: 2,
-        row: 2,
-    }));
-    terminal
-        .draw(|frame| {
-            screen.render(&chat_widget, frame.area(), frame.buffer_mut());
-        })
-        .expect("render restored bottom");
-    assert!(screen.viewport.is_following_bottom());
+            assert!(screen.handle_mouse_scroll(MouseScrollEvent {
+                direction: MouseScrollDirection::Down,
+                column: 2,
+                row: 2,
+            }));
+            terminal
+                .draw(|frame| {
+                    screen.render(&chat_widget, frame.area(), frame.buffer_mut());
+                })
+                .expect("render restored bottom");
+            assert!(screen.viewport.is_following_bottom());
+        },
+    )
+    .await;
 }
 
 #[tokio::test]
 async fn jump_to_bottom_button_restores_follow_mode() {
-    let (mut chat_widget, _app_event_tx, _rx, _op_rx) = make_chatwidget_manual_with_sender().await;
-    chat_widget.apply_external_edit("draft sentinel".to_string());
-    let mut screen = OwnedScreen::new(&chat_widget, crate::keymap::RuntimeKeymap::defaults().pager);
-    for text in ["oldest", "older", "middle", "newer", "LATEST"] {
-        screen.viewport.push_cell(Arc::new(TestCell(text)));
-    }
-    let mut terminal =
-        Terminal::new(TestBackend::new(/*width*/ 40, /*height*/ 8)).expect("create terminal");
-    terminal
-        .draw(|frame| {
-            screen.render(&chat_widget, frame.area(), frame.buffer_mut());
-        })
-        .expect("render bottom");
-    assert!(screen.handle_mouse_scroll(MouseScrollEvent {
-        direction: MouseScrollDirection::Up,
-        column: 2,
-        row: 2,
-    }));
+    return crate::ui_profile::with_test_ui_profile_async(
+        crate::ui_profile::UiProfile::CodexDev,
+        async {
+            let (mut chat_widget, _app_event_tx, _rx, _op_rx) =
+                make_chatwidget_manual_with_sender().await;
+            chat_widget.apply_external_edit("draft sentinel".to_string());
+            let mut screen =
+                OwnedScreen::new(&chat_widget, crate::keymap::RuntimeKeymap::defaults().pager);
+            for text in ["oldest", "older", "middle", "newer", "LATEST"] {
+                screen.viewport.push_cell(Arc::new(TestCell(text)));
+            }
+            let mut terminal =
+                Terminal::new(TestBackend::new(/*width*/ 40, /*height*/ 8))
+                    .expect("create terminal");
+            terminal
+                .draw(|frame| {
+                    screen.render(&chat_widget, frame.area(), frame.buffer_mut());
+                })
+                .expect("render bottom");
+            assert!(screen.handle_mouse_scroll(MouseScrollEvent {
+                direction: MouseScrollDirection::Up,
+                column: 2,
+                row: 2,
+            }));
 
-    terminal
-        .draw(|frame| {
-            screen.render(&chat_widget, frame.area(), frame.buffer_mut());
-        })
-        .expect("render jump button");
-    let button = screen
-        .jump_to_bottom_area
-        .expect("jump button should be visible while scrolled");
-    let label = (button.x..button.right())
-        .map(|x| terminal.backend().buffer()[(x, button.y)].symbol())
-        .collect::<String>();
-    assert_eq!(label, JUMP_TO_BOTTOM_LABEL);
-    for x in button.x..button.right() {
-        let cell = &terminal.backend().buffer()[(x, button.y)];
-        assert_eq!(
-            (cell.fg, cell.bg),
-            (
-                ratatui::style::Color::Rgb(255, 255, 255),
-                ratatui::style::Color::Rgb(0, 95, 135),
-            )
-        );
-    }
-    assert_snapshot!(
-        "jump_to_bottom_button_style",
-        format!(
-            "{:?}",
-            terminal.backend().buffer()[(button.x, button.y)].style()
-        )
-    );
+            terminal
+                .draw(|frame| {
+                    screen.render(&chat_widget, frame.area(), frame.buffer_mut());
+                })
+                .expect("render jump button");
+            let button = screen
+                .jump_to_bottom_area
+                .expect("jump button should be visible while scrolled");
+            let label = (button.x..button.right())
+                .map(|x| terminal.backend().buffer()[(x, button.y)].symbol())
+                .collect::<String>();
+            assert_eq!(label, JUMP_TO_BOTTOM_LABEL);
+            for x in button.x..button.right() {
+                let cell = &terminal.backend().buffer()[(x, button.y)];
+                assert_eq!(
+                    (cell.fg, cell.bg),
+                    (
+                        ratatui::style::Color::Rgb(255, 255, 255),
+                        ratatui::style::Color::Rgb(0, 95, 135),
+                    )
+                );
+            }
+            assert_snapshot!(
+                "jump_to_bottom_button_style",
+                format!(
+                    "{:?}",
+                    terminal.backend().buffer()[(button.x, button.y)].style()
+                )
+            );
 
-    assert!(screen.handle_mouse_click(MouseClickEvent {
-        column: button.x,
-        row: button.y,
-    }));
-    terminal
-        .draw(|frame| {
-            screen.render(&chat_widget, frame.area(), frame.buffer_mut());
-        })
-        .expect("render restored bottom");
-    assert!(screen.viewport.is_following_bottom());
-    assert!(screen.jump_to_bottom_area.is_none());
+            assert!(screen.handle_mouse_click(MouseClickEvent {
+                column: button.x,
+                row: button.y,
+            }));
+            terminal
+                .draw(|frame| {
+                    screen.render(&chat_widget, frame.area(), frame.buffer_mut());
+                })
+                .expect("render restored bottom");
+            assert!(screen.viewport.is_following_bottom());
+            assert!(screen.jump_to_bottom_area.is_none());
+        },
+    )
+    .await;
 }

@@ -41,22 +41,24 @@ fn effort_composer_baseline_repeat_and_lowering_do_not_replay() {
 
 #[test]
 fn effort_transition_keeps_the_visible_status_line_while_queuing() {
-    let (mut composer, _rx) = new_test_composer();
-    composer.set_status_line_enabled(/*enabled*/ true);
-    composer.set_status_line(Some(Line::from("gpt-5.4 high · main")));
-    composer.set_task_running(/*running*/ true);
-    composer.set_text_content("queued draft".to_string(), Vec::new(), Vec::new());
-    composer.set_active_reasoning_effort(
-        Some(&ReasoningEffort::High),
-        /*animations_enabled*/ true,
-    );
+    return crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
+        let (mut composer, _rx) = new_test_composer();
+        composer.set_status_line_enabled(/*enabled*/ true);
+        composer.set_status_line(Some(Line::from("gpt-5.4 high · main")));
+        composer.set_task_running(/*running*/ true);
+        composer.set_text_content("queued draft".to_string(), Vec::new(), Vec::new());
+        composer.set_active_reasoning_effort(
+            Some(&ReasoningEffort::High),
+            /*animations_enabled*/ true,
+        );
 
-    assert!(composer.set_active_reasoning_effort(
-        Some(&ReasoningEffort::Ultra),
-        /*animations_enabled*/ true,
-    ));
-    assert!(composer.effort_ignition.is_some());
-    assert!(composer.effort_status_line_transition.is_some());
+        assert!(composer.set_active_reasoning_effort(
+            Some(&ReasoningEffort::Ultra),
+            /*animations_enabled*/ true,
+        ));
+        assert!(composer.effort_ignition.is_some());
+        assert!(composer.effort_status_line_transition.is_some());
+    });
 }
 
 #[test]

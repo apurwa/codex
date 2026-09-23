@@ -51,165 +51,167 @@ pub(crate) fn quiet_startup_test_pump() -> StartupDraftPump {
 #[test]
 fn startup_draft_renders_full_empty_and_multiline_composer_frames() {
     crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
-    let mut pump = startup_test_pump(std::iter::empty());
-    let mut snapshots = Vec::new();
+        let mut pump = startup_test_pump(std::iter::empty());
+        let mut snapshots = Vec::new();
 
-    for (label, width, text, session_action) in [
-        ("empty", 48, "", StartupDraftSessionAction::New),
-        ("resuming", 48, "", StartupDraftSessionAction::Resume),
-        (
-            "forking",
-            48,
-            "draft while loading",
-            StartupDraftSessionAction::Fork,
-        ),
-        (
-            "multiline",
-            48,
-            "first startup line\nsecond startup line",
-            StartupDraftSessionAction::New,
-        ),
-        (
-            "narrow",
-            18,
-            "first startup line\nsecond startup line",
-            StartupDraftSessionAction::New,
-        ),
-    ] {
-        pump.session_action = session_action;
-        pump.bottom_pane
-            .set_composer_text(text.to_string(), Vec::new(), Vec::new());
-        let renderable =
-            startup_draft_renderable(&pump.header, &pump.bottom_pane, pump.session_action);
-        assert_eq!(
-            renderable.desired_height(width),
-            startup_draft_renderable(
-                &pump.header,
-                &pump.bottom_pane,
+        for (label, width, text, session_action) in [
+            ("empty", 48, "", StartupDraftSessionAction::New),
+            ("resuming", 48, "", StartupDraftSessionAction::Resume),
+            (
+                "forking",
+                48,
+                "draft while loading",
+                StartupDraftSessionAction::Fork,
+            ),
+            (
+                "multiline",
+                48,
+                "first startup line\nsecond startup line",
                 StartupDraftSessionAction::New,
-            )
-            .desired_height(width),
-            "loading status should reuse the existing gap above the composer"
-        );
-        let area = Rect::new(
-            /*x*/ 0,
-            /*y*/ 0,
-            width,
-            renderable.desired_height(width),
-        );
-        let mut buffer = Buffer::empty(area);
-        renderable.render(area, &mut buffer);
-        let cursor = renderable
-            .cursor_pos(area)
-            .expect("keep the editable composer cursor visible below its header");
-        let frame = (0..area.height)
-            .map(|row| {
-                (0..area.width)
-                    .map(|column| buffer[(column, row)].symbol())
-                    .collect::<String>()
-                    .trim_end()
-                    .to_string()
-            })
-            .collect::<Vec<_>>()
-            .join("\n")
-            .replace(crate::version::CODEX_CLI_VERSION, "<VERSION>");
+            ),
+            (
+                "narrow",
+                18,
+                "first startup line\nsecond startup line",
+                StartupDraftSessionAction::New,
+            ),
+        ] {
+            pump.session_action = session_action;
+            pump.bottom_pane
+                .set_composer_text(text.to_string(), Vec::new(), Vec::new());
+            let renderable =
+                startup_draft_renderable(&pump.header, &pump.bottom_pane, pump.session_action);
+            assert_eq!(
+                renderable.desired_height(width),
+                startup_draft_renderable(
+                    &pump.header,
+                    &pump.bottom_pane,
+                    StartupDraftSessionAction::New,
+                )
+                .desired_height(width),
+                "loading status should reuse the existing gap above the composer"
+            );
+            let area = Rect::new(
+                /*x*/ 0,
+                /*y*/ 0,
+                width,
+                renderable.desired_height(width),
+            );
+            let mut buffer = Buffer::empty(area);
+            renderable.render(area, &mut buffer);
+            let cursor = renderable
+                .cursor_pos(area)
+                .expect("keep the editable composer cursor visible below its header");
+            let frame = (0..area.height)
+                .map(|row| {
+                    (0..area.width)
+                        .map(|column| buffer[(column, row)].symbol())
+                        .collect::<String>()
+                        .trim_end()
+                        .to_string()
+                })
+                .collect::<Vec<_>>()
+                .join("\n")
+                .replace(crate::version::CODEX_CLI_VERSION, "<VERSION>");
 
-        assert!(
-            cursor.1 >= pump.header.desired_height(width),
-            "the composer cursor should remain below the startup header"
-        );
-        snapshots.push(format!("{label} ({width} columns):\n{frame}"));
-    }
+            assert!(
+                cursor.1 >= pump.header.desired_height(width),
+                "the composer cursor should remain below the startup header"
+            );
+            snapshots.push(format!("{label} ({width} columns):\n{frame}"));
+        }
 
-    insta::assert_snapshot!("startup_draft_full_frames", snapshots.join("\n---\n"));
+        insta::assert_snapshot!("startup_draft_full_frames", snapshots.join("\n---\n"));
     });
 }
 
 #[tokio::test]
 async fn startup_draft_clears_loading_status_when_starting_fresh() {
-    let mut snapshots = Vec::new();
-    let render_frame = |pump: &StartupDraftPump| {
-        let width = 48;
-        let renderable =
-            startup_draft_renderable(&pump.header, &pump.bottom_pane, pump.session_action);
-        let area = Rect::new(
-            /*x*/ 0,
-            /*y*/ 0,
-            width,
-            renderable.desired_height(width),
-        );
-        let mut buffer = Buffer::empty(area);
-        renderable.render(area, &mut buffer);
-        (0..area.height)
-            .map(|row| {
-                (0..area.width)
-                    .map(|column| buffer[(column, row)].symbol())
-                    .collect::<String>()
-                    .trim_end()
-                    .to_string()
-            })
-            .collect::<Vec<_>>()
-            .join("\n")
-            .replace(crate::version::CODEX_CLI_VERSION, "<VERSION>")
-    };
-
-    for (label, initial_screen, session_action) in [
-        (
-            "resume lookup fallback",
-            StartupDraftInitialScreen::Composer,
-            StartupDraftSessionAction::Resume,
-        ),
-        (
-            "fork lookup fallback",
-            StartupDraftInitialScreen::Composer,
-            StartupDraftSessionAction::Fork,
-        ),
-        (
-            "resume picker cancellation",
-            StartupDraftInitialScreen::SessionPicker,
-            StartupDraftSessionAction::Resume,
-        ),
-        (
-            "fork picker cancellation",
-            StartupDraftInitialScreen::SessionPicker,
-            StartupDraftSessionAction::Fork,
-        ),
-    ] {
-        let mut pump = startup_test_pump(std::iter::empty());
-        pump.initial_screen = initial_screen;
-        pump.session_action = session_action;
-        if initial_screen == StartupDraftInitialScreen::Composer {
-            pump.bottom_pane.insert_str("draft while loading");
-        }
-        let mut tui = crate::tui::test_support::make_test_tui().expect("create test terminal");
-        pump.show_initial_screen(&mut tui)
-            .expect("respect the initial composer or picker screen");
-        let before = if tui.terminal.viewport_area.is_empty() {
-            "hidden while picker owns input".to_string()
-        } else {
-            render_frame(&pump)
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
+        let mut snapshots = Vec::new();
+        let render_frame = |pump: &StartupDraftPump| {
+            let width = 48;
+            let renderable =
+                startup_draft_renderable(&pump.header, &pump.bottom_pane, pump.session_action);
+            let area = Rect::new(
+                /*x*/ 0,
+                /*y*/ 0,
+                width,
+                renderable.desired_height(width),
+            );
+            let mut buffer = Buffer::empty(area);
+            renderable.render(area, &mut buffer);
+            (0..area.height)
+                .map(|row| {
+                    (0..area.width)
+                        .map(|column| buffer[(column, row)].symbol())
+                        .collect::<String>()
+                        .trim_end()
+                        .to_string()
+                })
+                .collect::<Vec<_>>()
+                .join("\n")
+                .replace(crate::version::CODEX_CLI_VERSION, "<VERSION>")
         };
 
-        pump.update_session_selection(&mut tui, &SessionSelection::StartFresh)
-            .expect("clear the loading status after a fresh-session selection");
-        if initial_screen == StartupDraftInitialScreen::SessionPicker {
-            assert!(tui.terminal.viewport_area.is_empty());
-            pump.show(&mut tui)
-                .expect("reveal the fresh-session composer after the picker");
-        }
-        let after = render_frame(&pump);
-        assert!(!after.contains("Resuming session"));
-        assert!(!after.contains("Forking session"));
-        if initial_screen == StartupDraftInitialScreen::Composer {
-            assert_eq!(pump.bottom_pane.composer_text(), "draft while loading");
-        }
-        snapshots.push(format!("{label}:\nbefore:\n{before}\nafter:\n{after}"));
-    }
+        for (label, initial_screen, session_action) in [
+            (
+                "resume lookup fallback",
+                StartupDraftInitialScreen::Composer,
+                StartupDraftSessionAction::Resume,
+            ),
+            (
+                "fork lookup fallback",
+                StartupDraftInitialScreen::Composer,
+                StartupDraftSessionAction::Fork,
+            ),
+            (
+                "resume picker cancellation",
+                StartupDraftInitialScreen::SessionPicker,
+                StartupDraftSessionAction::Resume,
+            ),
+            (
+                "fork picker cancellation",
+                StartupDraftInitialScreen::SessionPicker,
+                StartupDraftSessionAction::Fork,
+            ),
+        ] {
+            let mut pump = startup_test_pump(std::iter::empty());
+            pump.initial_screen = initial_screen;
+            pump.session_action = session_action;
+            if initial_screen == StartupDraftInitialScreen::Composer {
+                pump.bottom_pane.insert_str("draft while loading");
+            }
+            let mut tui = crate::tui::test_support::make_test_tui().expect("create test terminal");
+            pump.show_initial_screen(&mut tui)
+                .expect("respect the initial composer or picker screen");
+            let before = if tui.terminal.viewport_area.is_empty() {
+                "hidden while picker owns input".to_string()
+            } else {
+                render_frame(&pump)
+            };
 
-    insta::assert_snapshot!(
-        "startup_draft_fresh_session_transitions",
-        snapshots.join("\n---\n")
-    );
+            pump.update_session_selection(&mut tui, &SessionSelection::StartFresh)
+                .expect("clear the loading status after a fresh-session selection");
+            if initial_screen == StartupDraftInitialScreen::SessionPicker {
+                assert!(tui.terminal.viewport_area.is_empty());
+                pump.show(&mut tui)
+                    .expect("reveal the fresh-session composer after the picker");
+            }
+            let after = render_frame(&pump);
+            assert!(!after.contains("Resuming session"));
+            assert!(!after.contains("Forking session"));
+            if initial_screen == StartupDraftInitialScreen::Composer {
+                assert_eq!(pump.bottom_pane.composer_text(), "draft while loading");
+            }
+            snapshots.push(format!("{label}:\nbefore:\n{before}\nafter:\n{after}"));
+        }
+
+        insta::assert_snapshot!(
+            "startup_draft_fresh_session_transitions",
+            snapshots.join("\n---\n")
+        );
+    });
 }
 
 #[tokio::test]

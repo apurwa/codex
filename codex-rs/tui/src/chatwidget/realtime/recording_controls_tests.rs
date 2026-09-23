@@ -90,7 +90,7 @@ async fn voice_mute_keymap_updates_the_active_handler_and_composer_hint() {
 
 #[tokio::test]
 async fn voice_composer_preserves_normal_colors_across_microphone_states() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         use crate::render::renderable::Renderable;
         use ratatui::prelude::Buffer;
         use ratatui::prelude::Color;
@@ -322,7 +322,7 @@ async fn voice_meters_preserve_silence_and_restart_sampling_after_reset() {
 
 #[tokio::test]
 async fn voice_footer_renders_the_main_conversation_states() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut chat, _sender, _events, _ops) = make_chatwidget_manual_with_sender().await;
         activate_voice(&mut chat);
         chat.thread_name = Some("status line stays visible".to_string());

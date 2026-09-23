@@ -65,7 +65,7 @@ fn assert_literal_plan_prompt(chat: &ChatWidget, op: Result<Op, TryRecvError>, p
 
 #[tokio::test]
 async fn plan_draft_footer_snapshot() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut chat, _rx, _op_rx) = make_chatwidget_manual(Some("gpt-5")).await;
         chat.set_token_info(Some(make_token_info(
             /*total_tokens*/ 50_000, /*context_window*/ 100_000,
@@ -84,7 +84,7 @@ async fn plan_draft_footer_snapshot() {
 
 #[tokio::test]
 async fn plan_draft_footer_narrow_snapshot() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut chat, _rx, _op_rx) = make_chatwidget_manual(Some("gpt-5")).await;
         chat.bottom_pane
             .set_composer_text("make a plan".to_string(), Vec::new(), Vec::new());

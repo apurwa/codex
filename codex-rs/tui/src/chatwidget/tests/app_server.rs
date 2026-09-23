@@ -723,7 +723,7 @@ async fn live_app_server_user_message_item_completed_does_not_duplicate_rendered
 
 #[tokio::test]
 async fn live_app_server_user_message_omits_unsupported_media() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
 
         chat.handle_server_notification(
@@ -1073,7 +1073,7 @@ async fn live_app_server_file_change_item_started_preserves_changes() {
 
 #[tokio::test]
 async fn live_app_server_command_execution_strips_shell_wrapper() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
         let script = r#"python3 -c 'print("Hello, world!")'"#;
         let command =
@@ -1147,7 +1147,7 @@ async fn live_app_server_command_execution_strips_shell_wrapper() {
 
 #[tokio::test]
 async fn live_app_server_command_output_delta_transcript_snapshot() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
         chat.on_task_started();
         begin_exec(&mut chat, "cmd-1", "printf 'stdout\\nstderr\\n'");
@@ -1236,7 +1236,7 @@ async fn live_app_server_sub_agent_activity_renders_once() {
 
 #[tokio::test]
 async fn live_app_server_collab_wait_items_render_history() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
         let sender_thread_id =
             ThreadId::from_string("019cff70-2599-75e2-af72-b90000000001").expect("valid thread id");
@@ -1328,7 +1328,7 @@ async fn live_app_server_collab_wait_items_render_history() {
 
 #[tokio::test]
 async fn live_app_server_collab_spawn_completed_renders_requested_model_and_effort() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
         let sender_thread_id =
             ThreadId::from_string("019cff70-2599-75e2-af72-b90000000002").expect("valid thread id");
@@ -1807,7 +1807,7 @@ async fn live_app_server_invalid_thread_name_update_is_ignored() {
 
 #[tokio::test]
 async fn live_app_server_manual_thread_name_updates_status_surfaces() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
         let thread_id =
             ThreadId::from_string("123e4567-e89b-12d3-a456-426614174000").expect("thread id");

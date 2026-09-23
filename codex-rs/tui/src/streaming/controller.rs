@@ -1148,18 +1148,23 @@ mod tests {
 
     #[test]
     fn controller_set_width_preserves_in_flight_tail() {
-        let mut ctrl = stream_controller(Some(80));
-        ctrl.push("tail without newline");
-        ctrl.set_width(Some(24));
+        return crate::ui_profile::with_test_ui_profile(
+            crate::ui_profile::UiProfile::CodexDev,
+            || {
+                let mut ctrl = stream_controller(Some(80));
+                ctrl.push("tail without newline");
+                ctrl.set_width(Some(24));
 
-        let (cell, _source) = ctrl.finalize();
-        let rendered = lines_to_plain_strings(
-            &cell
-                .expect("expected finalized tail")
-                .transcript_lines(u16::MAX),
+                let (cell, _source) = ctrl.finalize();
+                let rendered = lines_to_plain_strings(
+                    &cell
+                        .expect("expected finalized tail")
+                        .transcript_lines(u16::MAX),
+                );
+
+                assert_eq!(rendered, vec!["", "CODEX", "  tail without newline"]);
+            },
         );
-
-        assert_eq!(rendered, vec!["", "CODEX", "  tail without newline"]);
     }
 
     #[test]
@@ -1231,160 +1236,183 @@ mod tests {
 
     #[test]
     fn controller_loose_vs_tight_with_commit_ticks_matches_full() {
-        let mut ctrl = stream_controller(/*width*/ None);
-        let mut lines = Vec::new();
+        return crate::ui_profile::with_test_ui_profile(
+            crate::ui_profile::UiProfile::CodexDev,
+            || {
+                let mut ctrl = stream_controller(/*width*/ None);
+                let mut lines = Vec::new();
 
-        let deltas = vec![
-            "\n\n",
-            "Loose",
-            " vs",
-            ".",
-            " tight",
-            " list",
-            " items",
-            ":\n",
-            "1",
-            ".",
-            " Tight",
-            " item",
-            "\n",
-            "2",
-            ".",
-            " Another",
-            " tight",
-            " item",
-            "\n\n",
-            "1",
-            ".",
-            " Loose",
-            " item",
-            " with",
-            " its",
-            " own",
-            " paragraph",
-            ".\n\n",
-            "  ",
-            " This",
-            " paragraph",
-            " belongs",
-            " to",
-            " the",
-            " same",
-            " list",
-            " item",
-            ".\n\n",
-            "2",
-            ".",
-            " Second",
-            " loose",
-            " item",
-            " with",
-            " a",
-            " nested",
-            " list",
-            " after",
-            " a",
-            " blank",
-            " line",
-            ".\n\n",
-            "  ",
-            " -",
-            " Nested",
-            " bullet",
-            " under",
-            " a",
-            " loose",
-            " item",
-            "\n",
-            "  ",
-            " -",
-            " Another",
-            " nested",
-            " bullet",
-            "\n\n",
-        ];
+                let deltas = vec![
+                    "\n\n",
+                    "Loose",
+                    " vs",
+                    ".",
+                    " tight",
+                    " list",
+                    " items",
+                    ":\n",
+                    "1",
+                    ".",
+                    " Tight",
+                    " item",
+                    "\n",
+                    "2",
+                    ".",
+                    " Another",
+                    " tight",
+                    " item",
+                    "\n\n",
+                    "1",
+                    ".",
+                    " Loose",
+                    " item",
+                    " with",
+                    " its",
+                    " own",
+                    " paragraph",
+                    ".\n\n",
+                    "  ",
+                    " This",
+                    " paragraph",
+                    " belongs",
+                    " to",
+                    " the",
+                    " same",
+                    " list",
+                    " item",
+                    ".\n\n",
+                    "2",
+                    ".",
+                    " Second",
+                    " loose",
+                    " item",
+                    " with",
+                    " a",
+                    " nested",
+                    " list",
+                    " after",
+                    " a",
+                    " blank",
+                    " line",
+                    ".\n\n",
+                    "  ",
+                    " -",
+                    " Nested",
+                    " bullet",
+                    " under",
+                    " a",
+                    " loose",
+                    " item",
+                    "\n",
+                    "  ",
+                    " -",
+                    " Another",
+                    " nested",
+                    " bullet",
+                    "\n\n",
+                ];
 
-        for d in deltas.iter() {
-            ctrl.push(d);
-            while let (Some(cell), idle) = ctrl.on_commit_tick() {
-                lines.extend(cell.transcript_lines(u16::MAX));
-                if idle {
-                    break;
+                for d in deltas.iter() {
+                    ctrl.push(d);
+                    while let (Some(cell), idle) = ctrl.on_commit_tick() {
+                        lines.extend(cell.transcript_lines(u16::MAX));
+                        if idle {
+                            break;
+                        }
+                    }
                 }
-            }
-        }
-        if let (Some(cell), _source) = ctrl.finalize() {
-            lines.extend(cell.transcript_lines(u16::MAX));
-        }
+                if let (Some(cell), _source) = ctrl.finalize() {
+                    lines.extend(cell.transcript_lines(u16::MAX));
+                }
 
-        let streamed: Vec<_> = lines_to_plain_strings(&lines)
-            .into_iter()
-            .skip(2)
-            .map(|s| s.chars().skip(2).collect::<String>())
-            .collect();
+                let streamed: Vec<_> = lines_to_plain_strings(&lines)
+                    .into_iter()
+                    .skip(2)
+                    .map(|s| s.chars().skip(2).collect::<String>())
+                    .collect();
 
-        let source: String = deltas.iter().copied().collect();
-        let mut rendered: Vec<ratatui::text::Line<'static>> = Vec::new();
-        crate::markdown::append_markdown_agent(&source, /*width*/ None, &mut rendered);
-        let rendered_strs = lines_to_plain_strings(&rendered);
+                let source: String = deltas.iter().copied().collect();
+                let mut rendered: Vec<ratatui::text::Line<'static>> = Vec::new();
+                crate::markdown::append_markdown_agent(&source, /*width*/ None, &mut rendered);
+                let rendered_strs = lines_to_plain_strings(&rendered);
 
-        assert_eq!(streamed, rendered_strs);
+                assert_eq!(streamed, rendered_strs);
 
-        let expected = vec![
-            "Loose vs. tight list items:".to_string(),
-            "".to_string(),
-            "1. Tight item".to_string(),
-            "2. Another tight item".to_string(),
-            "3. Loose item with its own paragraph.".to_string(),
-            "".to_string(),
-            "   This paragraph belongs to the same list item.".to_string(),
-            "".to_string(),
-            "4. Second loose item with a nested list after a blank line.".to_string(),
-            "    - Nested bullet under a loose item".to_string(),
-            "    - Another nested bullet".to_string(),
-        ];
-        assert_eq!(
-            streamed, expected,
-            "expected exact rendered lines for loose/tight section"
+                let expected = vec![
+                    "Loose vs. tight list items:".to_string(),
+                    "".to_string(),
+                    "1. Tight item".to_string(),
+                    "2. Another tight item".to_string(),
+                    "3. Loose item with its own paragraph.".to_string(),
+                    "".to_string(),
+                    "   This paragraph belongs to the same list item.".to_string(),
+                    "".to_string(),
+                    "4. Second loose item with a nested list after a blank line.".to_string(),
+                    "    - Nested bullet under a loose item".to_string(),
+                    "    - Another nested bullet".to_string(),
+                ];
+                assert_eq!(
+                    streamed, expected,
+                    "expected exact rendered lines for loose/tight section"
+                );
+            },
         );
     }
 
     #[test]
     fn controller_streamed_table_matches_full_render_widths() {
-        let deltas = vec![
-            "| Key | Description |\n",
-            "| --- | --- |\n",
-            "| -v | Enable very verbose logging output for debugging |\n",
-            "\n",
-        ];
+        return crate::ui_profile::with_test_ui_profile(
+            crate::ui_profile::UiProfile::CodexDev,
+            || {
+                let deltas = vec![
+                    "| Key | Description |\n",
+                    "| --- | --- |\n",
+                    "| -v | Enable very verbose logging output for debugging |\n",
+                    "\n",
+                ];
 
-        let streamed = collect_streamed_lines(&deltas, Some(80));
+                let streamed = collect_streamed_lines(&deltas, Some(80));
 
-        let source: String = deltas.iter().copied().collect();
-        let mut rendered = Vec::new();
-        crate::markdown::append_markdown_agent(&source, /*width*/ Some(80), &mut rendered);
-        let expected = lines_to_plain_strings(&rendered);
+                let source: String = deltas.iter().copied().collect();
+                let mut rendered = Vec::new();
+                crate::markdown::append_markdown_agent(
+                    &source,
+                    /*width*/ Some(80),
+                    &mut rendered,
+                );
+                let expected = lines_to_plain_strings(&rendered);
 
-        assert_eq!(streamed, expected);
+                assert_eq!(streamed, expected);
+            },
+        );
     }
 
     #[test]
     fn controller_holds_blockquoted_table_tail_until_stable() {
-        let deltas = vec![
-            "> | A | B |\n",
-            "> | --- | --- |\n",
-            "> | longvalue | ok |\n",
-            "\n",
-        ];
+        return crate::ui_profile::with_test_ui_profile(
+            crate::ui_profile::UiProfile::CodexDev,
+            || {
+                let deltas = vec![
+                    "> | A | B |\n",
+                    "> | --- | --- |\n",
+                    "> | longvalue | ok |\n",
+                    "\n",
+                ];
 
-        let streamed = collect_streamed_lines(&deltas, Some(80));
+                let streamed = collect_streamed_lines(&deltas, Some(80));
 
-        let source: String = deltas.iter().copied().collect();
-        let mut rendered = Vec::new();
-        crate::markdown::append_markdown_agent(&source, /*width*/ Some(80), &mut rendered);
-        let expected = lines_to_plain_strings(&rendered);
+                let source: String = deltas.iter().copied().collect();
+                let mut rendered = Vec::new();
+                crate::markdown::append_markdown_agent(
+                    &source,
+                    /*width*/ Some(80),
+                    &mut rendered,
+                );
+                let expected = lines_to_plain_strings(&rendered);
 
-        assert_eq!(streamed, expected);
+                assert_eq!(streamed, expected);
+            },
+        );
     }
 
     #[test]
@@ -1417,39 +1445,48 @@ mod tests {
 
     #[test]
     fn controller_set_width_during_confirmed_table_stream_matches_finalize_render() {
-        let mut ctrl = stream_controller(Some(120));
-        let deltas = [
-            "| Key | Description |\n",
-            "| --- | --- |\n",
-            "| one | value that should wrap after resize |\n",
-        ];
-        for delta in deltas {
-            ctrl.push(delta);
-        }
-        assert_eq!(
-            ctrl.queued_lines(),
-            0,
-            "confirmed table should remain mutable"
+        return crate::ui_profile::with_test_ui_profile(
+            crate::ui_profile::UiProfile::CodexDev,
+            || {
+                let mut ctrl = stream_controller(Some(120));
+                let deltas = [
+                    "| Key | Description |\n",
+                    "| --- | --- |\n",
+                    "| one | value that should wrap after resize |\n",
+                ];
+                for delta in deltas {
+                    ctrl.push(delta);
+                }
+                assert_eq!(
+                    ctrl.queued_lines(),
+                    0,
+                    "confirmed table should remain mutable"
+                );
+
+                ctrl.set_width(Some(32));
+
+                let (cell, source) = ctrl.finalize();
+                let source = source.expect("expected finalized source");
+                let streamed = lines_to_plain_strings(
+                    &cell
+                        .expect("expected finalized table")
+                        .transcript_lines(u16::MAX),
+                )
+                .into_iter()
+                .skip(2)
+                .map(|line| line.chars().skip(2).collect::<String>())
+                .collect::<Vec<_>>();
+
+                let mut rendered = Vec::new();
+                crate::markdown::append_markdown_agent(
+                    &source,
+                    /*width*/ Some(32),
+                    &mut rendered,
+                );
+                let expected = lines_to_plain_strings(&rendered);
+                assert_eq!(streamed, expected);
+            },
         );
-
-        ctrl.set_width(Some(32));
-
-        let (cell, source) = ctrl.finalize();
-        let source = source.expect("expected finalized source");
-        let streamed = lines_to_plain_strings(
-            &cell
-                .expect("expected finalized table")
-                .transcript_lines(u16::MAX),
-        )
-        .into_iter()
-        .skip(2)
-        .map(|line| line.chars().skip(2).collect::<String>())
-        .collect::<Vec<_>>();
-
-        let mut rendered = Vec::new();
-        crate::markdown::append_markdown_agent(&source, /*width*/ Some(32), &mut rendered);
-        let expected = lines_to_plain_strings(&rendered);
-        assert_eq!(streamed, expected);
     }
 
     #[test]
@@ -1492,23 +1529,32 @@ mod tests {
 
     #[test]
     fn controller_handles_table_immediately_after_heading() {
-        let deltas = vec![
-            "### 1) Basic table\n",
-            "| Name | Role | Status |\n",
-            "|---|---|---|\n",
-            "| Alice | Admin | Active |\n",
-            "| Bob | Editor | Pending |\n",
-            "\n",
-        ];
+        return crate::ui_profile::with_test_ui_profile(
+            crate::ui_profile::UiProfile::CodexDev,
+            || {
+                let deltas = vec![
+                    "### 1) Basic table\n",
+                    "| Name | Role | Status |\n",
+                    "|---|---|---|\n",
+                    "| Alice | Admin | Active |\n",
+                    "| Bob | Editor | Pending |\n",
+                    "\n",
+                ];
 
-        let streamed = collect_streamed_lines(&deltas, Some(100));
+                let streamed = collect_streamed_lines(&deltas, Some(100));
 
-        let source: String = deltas.iter().copied().collect();
-        let mut rendered = Vec::new();
-        crate::markdown::append_markdown_agent(&source, /*width*/ Some(100), &mut rendered);
-        let expected = lines_to_plain_strings(&rendered);
+                let source: String = deltas.iter().copied().collect();
+                let mut rendered = Vec::new();
+                crate::markdown::append_markdown_agent(
+                    &source,
+                    /*width*/ Some(100),
+                    &mut rendered,
+                );
+                let expected = lines_to_plain_strings(&rendered);
 
-        assert_eq!(streamed, expected);
+                assert_eq!(streamed, expected);
+            },
+        );
     }
 
     #[test]
@@ -1535,89 +1581,116 @@ mod tests {
 
     #[test]
     fn controller_renders_separators_for_no_outer_pipes_table_shape() {
-        let source = "### 1) Basic\n\n| Name | Role | Active |\n|---|---|---|\n| Alice | Engineer | Yes |\n| Bob | Designer | No |\n\n### 2) No outer
+        return crate::ui_profile::with_test_ui_profile(
+            crate::ui_profile::UiProfile::CodexDev,
+            || {
+                let source = "### 1) Basic\n\n| Name | Role | Active |\n|---|---|---|\n| Alice | Engineer | Yes |\n| Bob | Designer | No |\n\n### 2) No outer
   pipes\n\nCol A | Col B | Col C\n--- | --- | ---\nx | y | z\n10 | 20 | 30\n\n### 3) Another table\n\n| Key | Value |\n|---|---|\n| a | b |\n";
 
-        let chunked = source
-            .split_inclusive('\n')
-            .map(ToString::to_string)
-            .collect::<Vec<_>>();
-        let deltas = chunked.iter().map(String::as_str).collect::<Vec<_>>();
-        let streamed = collect_streamed_lines(&deltas, Some(100));
+                let chunked = source
+                    .split_inclusive('\n')
+                    .map(ToString::to_string)
+                    .collect::<Vec<_>>();
+                let deltas = chunked.iter().map(String::as_str).collect::<Vec<_>>();
+                let streamed = collect_streamed_lines(&deltas, Some(100));
 
-        let mut rendered = Vec::new();
-        crate::markdown::append_markdown_agent(source, /*width*/ Some(100), &mut rendered);
-        let expected = lines_to_plain_strings(&rendered);
+                let mut rendered = Vec::new();
+                crate::markdown::append_markdown_agent(
+                    source,
+                    /*width*/ Some(100),
+                    &mut rendered,
+                );
+                let expected = lines_to_plain_strings(&rendered);
 
-        assert_eq!(streamed, expected);
-        let has_raw_no_outer_header = streamed
-            .iter()
-            .any(|line| line.trim() == "Col A | Col B | Col C");
-        assert!(
-            !has_raw_no_outer_header,
-            "no-outer-pipes header should not remain raw in final streamed output: {streamed:?}"
-        );
-        assert!(
-            streamed.iter().any(|line| line.contains('━')),
-            "expected table separator in final streamed output: {streamed:?}"
+                assert_eq!(streamed, expected);
+                let has_raw_no_outer_header = streamed
+                    .iter()
+                    .any(|line| line.trim() == "Col A | Col B | Col C");
+                assert!(
+                    !has_raw_no_outer_header,
+                    "no-outer-pipes header should not remain raw in final streamed output: {streamed:?}"
+                );
+                assert!(
+                    streamed.iter().any(|line| line.contains('━')),
+                    "expected table separator in final streamed output: {streamed:?}"
+                );
+            },
         );
     }
 
     #[test]
     fn controller_stabilizes_first_no_outer_pipes_table_in_response() {
-        let deltas = vec![
-            "### No outer pipes first\n\n",
-            "Col A | Col B | Col C\n",
-            "--- | --- | ---\n",
-            "x | y | z\n",
-            "10 | 20 | 30\n",
-            "\n",
-            "After table paragraph.\n",
-        ];
-        let streamed = collect_streamed_lines(&deltas, Some(100));
+        return crate::ui_profile::with_test_ui_profile(
+            crate::ui_profile::UiProfile::CodexDev,
+            || {
+                let deltas = vec![
+                    "### No outer pipes first\n\n",
+                    "Col A | Col B | Col C\n",
+                    "--- | --- | ---\n",
+                    "x | y | z\n",
+                    "10 | 20 | 30\n",
+                    "\n",
+                    "After table paragraph.\n",
+                ];
+                let streamed = collect_streamed_lines(&deltas, Some(100));
 
-        let source: String = deltas.iter().copied().collect();
-        let mut rendered = Vec::new();
-        crate::markdown::append_markdown_agent(&source, /*width*/ Some(100), &mut rendered);
-        let expected = lines_to_plain_strings(&rendered);
+                let source: String = deltas.iter().copied().collect();
+                let mut rendered = Vec::new();
+                crate::markdown::append_markdown_agent(
+                    &source,
+                    /*width*/ Some(100),
+                    &mut rendered,
+                );
+                let expected = lines_to_plain_strings(&rendered);
 
-        assert_eq!(streamed, expected);
-        assert!(
-            streamed.iter().any(|line| line.contains('━')),
-            "expected table separator for no-outer-pipes streaming: {streamed:?}"
-        );
-        assert!(
-            !streamed
-                .iter()
-                .any(|line| line.trim() == "Col A | Col B | Col C"),
-            "did not expect raw no-outer-pipes header in final streamed output: {streamed:?}"
+                assert_eq!(streamed, expected);
+                assert!(
+                    streamed.iter().any(|line| line.contains('━')),
+                    "expected table separator for no-outer-pipes streaming: {streamed:?}"
+                );
+                assert!(
+                    !streamed
+                        .iter()
+                        .any(|line| line.trim() == "Col A | Col B | Col C"),
+                    "did not expect raw no-outer-pipes header in final streamed output: {streamed:?}"
+                );
+            },
         );
     }
 
     #[test]
     fn controller_stabilizes_two_column_no_outer_table_in_response() {
-        let deltas = vec![
-            "A | B\n",
-            "--- | ---\n",
-            "left | right\n",
-            "\n",
-            "After table paragraph.\n",
-        ];
-        let streamed = collect_streamed_lines(&deltas, Some(80));
+        return crate::ui_profile::with_test_ui_profile(
+            crate::ui_profile::UiProfile::CodexDev,
+            || {
+                let deltas = vec![
+                    "A | B\n",
+                    "--- | ---\n",
+                    "left | right\n",
+                    "\n",
+                    "After table paragraph.\n",
+                ];
+                let streamed = collect_streamed_lines(&deltas, Some(80));
 
-        let source: String = deltas.iter().copied().collect();
-        let mut rendered = Vec::new();
-        crate::markdown::append_markdown_agent(&source, /*width*/ Some(80), &mut rendered);
-        let expected = lines_to_plain_strings(&rendered);
+                let source: String = deltas.iter().copied().collect();
+                let mut rendered = Vec::new();
+                crate::markdown::append_markdown_agent(
+                    &source,
+                    /*width*/ Some(80),
+                    &mut rendered,
+                );
+                let expected = lines_to_plain_strings(&rendered);
 
-        assert_eq!(streamed, expected);
-        assert!(
-            streamed.iter().any(|line| line.contains('━')),
-            "expected table separator for two-column no-outer table: {streamed:?}"
-        );
-        assert!(
-            !streamed.iter().any(|line| line.trim() == "A | B"),
-            "did not expect raw two-column no-outer header in final streamed output: {streamed:?}"
+                assert_eq!(streamed, expected);
+                assert!(
+                    streamed.iter().any(|line| line.contains('━')),
+                    "expected table separator for two-column no-outer table: {streamed:?}"
+                );
+                assert!(
+                    !streamed.iter().any(|line| line.trim() == "A | B"),
+                    "did not expect raw two-column no-outer header in final streamed output: {streamed:?}"
+                );
+            },
         );
     }
 
@@ -1651,111 +1724,134 @@ mod tests {
 
     #[test]
     fn controller_keeps_markdown_fenced_tables_mutable_until_finalize() {
-        let source = "```md\n| A | B |\n|---|---|\n| 1 | 2 |\n```\n";
-        let deltas = vec![
-            "```md\n",
-            "| A | B |\n",
-            "|---|---|\n",
-            "| 1 | 2 |\n",
-            "```\n",
-        ];
-        let streamed = collect_streamed_lines(&deltas, Some(80));
+        return crate::ui_profile::with_test_ui_profile(
+            crate::ui_profile::UiProfile::CodexDev,
+            || {
+                let source = "```md\n| A | B |\n|---|---|\n| 1 | 2 |\n```\n";
+                let deltas = vec![
+                    "```md\n",
+                    "| A | B |\n",
+                    "|---|---|\n",
+                    "| 1 | 2 |\n",
+                    "```\n",
+                ];
+                let streamed = collect_streamed_lines(&deltas, Some(80));
 
-        let mut rendered = Vec::new();
-        crate::markdown::append_markdown_agent(source, /*width*/ Some(80), &mut rendered);
-        let expected = lines_to_plain_strings(&rendered);
+                let mut rendered = Vec::new();
+                crate::markdown::append_markdown_agent(
+                    source,
+                    /*width*/ Some(80),
+                    &mut rendered,
+                );
+                let expected = lines_to_plain_strings(&rendered);
 
-        assert_eq!(streamed, expected);
-        assert!(
-            streamed.iter().any(|line| line.contains('━')),
-            "expected table separator in streamed output: {streamed:?}"
-        );
-        assert!(
-            !streamed.iter().any(|line| line.trim() == "| A | B |"),
-            "did not expect raw table header line after finalize: {streamed:?}"
+                assert_eq!(streamed, expected);
+                assert!(
+                    streamed.iter().any(|line| line.contains('━')),
+                    "expected table separator in streamed output: {streamed:?}"
+                );
+                assert!(
+                    !streamed.iter().any(|line| line.trim() == "| A | B |"),
+                    "did not expect raw table header line after finalize: {streamed:?}"
+                );
+            },
         );
     }
 
     #[test]
     fn controller_keeps_markdown_fenced_no_outer_tables_mutable_until_finalize() {
-        let source =
-            "```md\nCol A | Col B | Col C\n--- | --- | ---\nx | y | z\n10 | 20 | 30\n```\n";
-        let deltas = vec![
-            "```md\n",
-            "Col A | Col B | Col C\n",
-            "--- | --- | ---\n",
-            "x | y | z\n",
-            "10 | 20 | 30\n",
-            "```\n",
-        ];
-        let streamed = collect_streamed_lines(&deltas, Some(100));
+        return crate::ui_profile::with_test_ui_profile(
+            crate::ui_profile::UiProfile::CodexDev,
+            || {
+                let source =
+                    "```md\nCol A | Col B | Col C\n--- | --- | ---\nx | y | z\n10 | 20 | 30\n```\n";
+                let deltas = vec![
+                    "```md\n",
+                    "Col A | Col B | Col C\n",
+                    "--- | --- | ---\n",
+                    "x | y | z\n",
+                    "10 | 20 | 30\n",
+                    "```\n",
+                ];
+                let streamed = collect_streamed_lines(&deltas, Some(100));
 
-        let mut rendered = Vec::new();
-        crate::markdown::append_markdown_agent(source, /*width*/ Some(100), &mut rendered);
-        let expected = lines_to_plain_strings(&rendered);
+                let mut rendered = Vec::new();
+                crate::markdown::append_markdown_agent(
+                    source,
+                    /*width*/ Some(100),
+                    &mut rendered,
+                );
+                let expected = lines_to_plain_strings(&rendered);
 
-        assert_eq!(streamed, expected);
-        assert!(
-            streamed.iter().any(|line| line.contains('━')),
-            "expected table separator in streamed output: {streamed:?}"
-        );
-        assert!(
-            !streamed
-                .iter()
-                .any(|line| line.trim() == "Col A | Col B | Col C"),
-            "did not expect raw no-outer-pipes header line after finalize: {streamed:?}"
+                assert_eq!(streamed, expected);
+                assert!(
+                    streamed.iter().any(|line| line.contains('━')),
+                    "expected table separator in streamed output: {streamed:?}"
+                );
+                assert!(
+                    !streamed
+                        .iter()
+                        .any(|line| line.trim() == "Col A | Col B | Col C"),
+                    "did not expect raw no-outer-pipes header line after finalize: {streamed:?}"
+                );
+            },
         );
     }
 
     #[test]
     fn controller_live_view_matches_render_during_interleaved_table_streaming() {
-        let source = "Project updates are easier to scan when narrative and structured data alternate.\n\n| Focus Area | Owner | Priority | Status |\n|---|---|---|---|\n| Authentication cleanup | Maya | High | 80% |\n| CLI error messages | Jordan | Medium | 55% |\n| Docs refresh | Lee | Low | 30% |\n\nThe first checkpoint shows progress, but we still have open risks.\n\n| Task | Command / Artifact | Due | State |\n|---|---|---|---|\n| Run unit tests | `cargo test -p codex-core` | Today | ✅ |\n| Snapshot review | `cargo insta pending-snapshots -p codex-tui` | Today | ⏳ |\n| Changelog draft | Release template (https://replacechangelog.com/) | Tomorrow | 📝 |\n\nFinal sign-off criteria are summarized below.\n";
-        let width = Some(72usize);
-        let mut ctrl = stream_controller(width);
-        let mut emitted_lines: Vec<Line<'static>> = Vec::new();
+        return crate::ui_profile::with_test_ui_profile(
+            crate::ui_profile::UiProfile::CodexDev,
+            || {
+                let source = "Project updates are easier to scan when narrative and structured data alternate.\n\n| Focus Area | Owner | Priority | Status |\n|---|---|---|---|\n| Authentication cleanup | Maya | High | 80% |\n| CLI error messages | Jordan | Medium | 55% |\n| Docs refresh | Lee | Low | 30% |\n\nThe first checkpoint shows progress, but we still have open risks.\n\n| Task | Command / Artifact | Due | State |\n|---|---|---|---|\n| Run unit tests | `cargo test -p codex-core` | Today | ✅ |\n| Snapshot review | `cargo insta pending-snapshots -p codex-tui` | Today | ⏳ |\n| Changelog draft | Release template (https://replacechangelog.com/) | Tomorrow | 📝 |\n\nFinal sign-off criteria are summarized below.\n";
+                let width = Some(72usize);
+                let mut ctrl = stream_controller(width);
+                let mut emitted_lines: Vec<Line<'static>> = Vec::new();
 
-        for delta in source.split_inclusive('\n') {
-            ctrl.push(delta);
-            loop {
-                let (cell, idle) = ctrl.on_commit_tick();
-                if let Some(cell) = cell {
-                    emitted_lines.extend(
-                        cell.transcript_lines(u16::MAX)
-                            .into_iter()
-                            .skip(if cell.is_stream_continuation() { 0 } else { 2 })
-                            .map(|line| {
-                                let plain: String = line
-                                    .spans
-                                    .iter()
-                                    .map(|s| s.content.clone())
-                                    .collect::<Vec<_>>()
-                                    .join("");
-                                Line::from(plain.chars().skip(2).collect::<String>())
-                            }),
+                for delta in source.split_inclusive('\n') {
+                    ctrl.push(delta);
+                    loop {
+                        let (cell, idle) = ctrl.on_commit_tick();
+                        if let Some(cell) = cell {
+                            emitted_lines.extend(
+                                cell.transcript_lines(u16::MAX)
+                                    .into_iter()
+                                    .skip(if cell.is_stream_continuation() { 0 } else { 2 })
+                                    .map(|line| {
+                                        let plain: String = line
+                                            .spans
+                                            .iter()
+                                            .map(|s| s.content.clone())
+                                            .collect::<Vec<_>>()
+                                            .join("");
+                                        Line::from(plain.chars().skip(2).collect::<String>())
+                                    }),
+                            );
+                        }
+                        if idle {
+                            break;
+                        }
+                    }
+
+                    let mut visible = emitted_lines.clone();
+                    visible.extend(visible_lines(ctrl.current_tail_lines()));
+                    let visible_plain = lines_to_plain_strings(&visible);
+
+                    let mut expected = Vec::new();
+                    crate::markdown::append_markdown_agent(
+                        ctrl.core.state.collector.committed_source(),
+                        /*width*/ width,
+                        &mut expected,
+                    );
+                    let expected_plain = lines_to_plain_strings(&expected);
+
+                    assert_eq!(
+                        visible_plain, expected_plain,
+                        "live view diverged after delta: {delta:?}"
                     );
                 }
-                if idle {
-                    break;
-                }
-            }
-
-            let mut visible = emitted_lines.clone();
-            visible.extend(visible_lines(ctrl.current_tail_lines()));
-            let visible_plain = lines_to_plain_strings(&visible);
-
-            let mut expected = Vec::new();
-            crate::markdown::append_markdown_agent(
-                ctrl.core.state.collector.committed_source(),
-                /*width*/ width,
-                &mut expected,
-            );
-            let expected_plain = lines_to_plain_strings(&expected);
-
-            assert_eq!(
-                visible_plain, expected_plain,
-                "live view diverged after delta: {delta:?}"
-            );
-        }
+            },
+        );
     }
 
     #[test]
@@ -1784,30 +1880,39 @@ mod tests {
 
     #[test]
     fn controller_keeps_non_markdown_fenced_tables_as_code() {
-        let source = "```sh\n| A | B |\n|---|---|\n| 1 | 2 |\n```\n";
-        let deltas = vec![
-            "```sh\n",
-            "| A | B |\n",
-            "|---|---|\n",
-            "| 1 | 2 |\n",
-            "```\n",
-        ];
-        let streamed = collect_streamed_lines(&deltas, Some(80));
+        return crate::ui_profile::with_test_ui_profile(
+            crate::ui_profile::UiProfile::CodexDev,
+            || {
+                let source = "```sh\n| A | B |\n|---|---|\n| 1 | 2 |\n```\n";
+                let deltas = vec![
+                    "```sh\n",
+                    "| A | B |\n",
+                    "|---|---|\n",
+                    "| 1 | 2 |\n",
+                    "```\n",
+                ];
+                let streamed = collect_streamed_lines(&deltas, Some(80));
 
-        let mut rendered = Vec::new();
-        crate::markdown::append_markdown_agent(source, /*width*/ Some(80), &mut rendered);
-        let expected = lines_to_plain_strings(&rendered);
+                let mut rendered = Vec::new();
+                crate::markdown::append_markdown_agent(
+                    source,
+                    /*width*/ Some(80),
+                    &mut rendered,
+                );
+                let expected = lines_to_plain_strings(&rendered);
 
-        assert_eq!(streamed, expected);
-        assert!(
-            streamed.iter().any(|line| line.trim() == "| A | B |"),
-            "expected code-fenced pipe line to remain raw: {streamed:?}"
-        );
-        assert!(
-            !streamed
-                .iter()
-                .any(|line| line.contains('━') || line.contains('─')),
-            "did not expect a table separator for non-markdown fence: {streamed:?}"
+                assert_eq!(streamed, expected);
+                assert!(
+                    streamed.iter().any(|line| line.trim() == "| A | B |"),
+                    "expected code-fenced pipe line to remain raw: {streamed:?}"
+                );
+                assert!(
+                    !streamed
+                        .iter()
+                        .any(|line| line.contains('━') || line.contains('─')),
+                    "did not expect a table separator for non-markdown fence: {streamed:?}"
+                );
+            },
         );
     }
 

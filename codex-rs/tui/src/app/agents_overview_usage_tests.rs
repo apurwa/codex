@@ -12,6 +12,7 @@ use pretty_assertions::assert_eq;
 
 #[tokio::test]
 async fn selected_usage_is_cached_and_account_changes_discard_old_results() -> Result<()> {
+    return crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
     let mut app = make_test_app().await;
     let app_server = crate::start_embedded_app_server_for_picker(&app.config).await?;
     app.chat_widget.update_account_state(
@@ -215,6 +216,8 @@ async fn selected_usage_is_cached_and_account_changes_discard_old_results() -> R
     assert_eq!(app.agents_overview.pending_usage, None);
     assert!(!app.agents_overview.usage_disabled);
     Ok(())
+
+    }).await;
 }
 
 #[test]

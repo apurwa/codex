@@ -1,16 +1,19 @@
 ---
 source: tui/src/chatwidget/tests/status_and_layout.rs
+assertion_line: 5660
 expression: "format!(\"exec running:\\n{exec_running}\\nexec and hook running:\\n{exec_and_hook_running}\\nhistory after exec:\\n{history_after_exec}\\nhook running after exec:\\n{hook_running_after_exec}\\nquiet hook completed:\\n{quiet_hook_completed}\")"
 ---
 exec running:
 
-CODEX · Tool Call
+CODEX · Tool Calls
+
 ┊ • Running echo done
 
 exec and hook running:
 "                                                                                "
 "                                                                                "
-"CODEX · Tool Call                                                               "
+"CODEX · Tool Calls                                                              "
+"                                                                                "
 "┊ • Running echo done                                                           "
 "                                                                                "
 "• Working (0s • esc to interrupt) · checking output policy                      "
@@ -21,8 +24,9 @@ exec and hook running:
 "  gpt-5.6-sol default · /tmp/project                                            "
 history after exec:
 
-CODEX · Tool Call
-┊ ✓ echo done · 5ms · 1 lines · Ctrl+T details
+CODEX · Tool Calls
+
+┊ ✓ echo done
 
 hook running after exec:
 "                                                                                "

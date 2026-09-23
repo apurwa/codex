@@ -102,7 +102,11 @@ impl AgentsOverviewView {
         } else {
             None
         };
-        let project_directory = AbsolutePathBuf::try_from(state.project_directory.clone()).ok();
+        let project_directory = if self.rows.is_empty() && state.has_opened_selected_checkout {
+            None
+        } else {
+            AbsolutePathBuf::try_from(state.project_directory.clone()).ok()
+        };
         drop(state);
         if let Some(prompt) = prompt {
             self.app_event_tx.send(AppEvent::NewAgentsOverviewSession {
@@ -154,24 +158,33 @@ impl AgentsOverviewView {
         if composing && let Some(override_hints) = &state.key_chord_hint {
             hints = override_hints.clone();
         }
+        let codex_dev_composer = matches!(
+            crate::ui_profile::ui_profile(),
+            crate::ui_profile::UiProfile::CodexDev
+        ) && state.composer.is_some();
         let input_height = if metadata_height == 1 {
             1
-        } else if let Some(composer) = state.composer.as_mut() {
+        } else if codex_dev_composer
+            && let Some(composer) = state.composer.as_mut()
+        {
             composer.set_footer_hint_override(Some(hints));
             composer
                 .desired_height(area.width)
                 .min((area.height / 3).max(/*other*/ 5))
                 .min(area.height.saturating_sub(/*rhs*/ 7))
                 .max(/*other*/ 3)
-        } else {
+        } else if codex_dev_composer {
             3
+        } else {
+            0
         };
+        let title_height = u16::from(codex_dev_composer);
         Layout::vertical([
             Constraint::Length(header_height),
             Constraint::Length(1),
             Constraint::Length(1),
             Constraint::Min(1),
-            Constraint::Length(u16::from(metadata_height == 0)),
+            Constraint::Length(title_height),
             Constraint::Length(input_height),
             Constraint::Length(footer_height),
         ])

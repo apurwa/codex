@@ -1,9 +1,11 @@
 ---
 source: tui/src/chatwidget/tests/app_server.rs
+assertion_line: 1170
 expression: active
 ---
 
-CODEX · Tool Call
+CODEX · Tool Calls
+
 ┊ • Running printf 'stdout\nstderr\n'
 ┊   └ stdout
 ┊     stderr

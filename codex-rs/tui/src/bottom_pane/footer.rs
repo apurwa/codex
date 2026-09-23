@@ -1710,449 +1710,455 @@ mod tests {
 
     #[test]
     fn footer_snapshots() {
-        snapshot_footer(
-            "footer_shortcuts_default",
-            FooterProps {
-                mode: FooterMode::ComposerEmpty,
-                esc_backtrack_hint: false,
-                use_shift_enter_hint: false,
-                is_task_running: false,
-                queue_submissions: false,
-                collaboration_modes_enabled: false,
-                is_wsl: false,
-                quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
-                status_line_values: Vec::new(),
-                status_line_enabled: false,
-                key_hints: FooterKeyHints::default_bindings(),
-                active_agent_label: None,
+        return crate::ui_profile::with_test_ui_profile(
+            crate::ui_profile::UiProfile::CodexDev,
+            || {
+                snapshot_footer(
+                    "footer_shortcuts_default",
+                    FooterProps {
+                        mode: FooterMode::ComposerEmpty,
+                        esc_backtrack_hint: false,
+                        use_shift_enter_hint: false,
+                        is_task_running: false,
+                        queue_submissions: false,
+                        collaboration_modes_enabled: false,
+                        is_wsl: false,
+                        quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
+                        status_line_values: Vec::new(),
+                        status_line_enabled: false,
+                        key_hints: FooterKeyHints::default_bindings(),
+                        active_agent_label: None,
+                    },
+                );
+
+                snapshot_footer(
+                    "footer_shortcuts_shift_and_esc",
+                    FooterProps {
+                        mode: FooterMode::ShortcutOverlay,
+                        esc_backtrack_hint: true,
+                        use_shift_enter_hint: true,
+                        is_task_running: false,
+                        queue_submissions: false,
+                        collaboration_modes_enabled: false,
+                        is_wsl: false,
+                        quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
+                        status_line_values: Vec::new(),
+                        status_line_enabled: false,
+                        key_hints: FooterKeyHints {
+                            insert_newline: Some(key_hint::shift(KeyCode::Enter).into()),
+                            ..FooterKeyHints::default_bindings()
+                        },
+                        active_agent_label: None,
+                    },
+                );
+
+                snapshot_footer(
+                    "footer_shortcuts_collaboration_modes_enabled",
+                    FooterProps {
+                        mode: FooterMode::ShortcutOverlay,
+                        esc_backtrack_hint: false,
+                        use_shift_enter_hint: false,
+                        is_task_running: false,
+                        queue_submissions: false,
+                        collaboration_modes_enabled: true,
+                        is_wsl: false,
+                        quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
+                        status_line_values: Vec::new(),
+                        status_line_enabled: false,
+                        key_hints: FooterKeyHints::default_bindings(),
+                        active_agent_label: None,
+                    },
+                );
+
+                snapshot_footer(
+                    "footer_shortcuts_running",
+                    FooterProps {
+                        mode: FooterMode::ShortcutOverlay,
+                        esc_backtrack_hint: false,
+                        use_shift_enter_hint: false,
+                        is_task_running: true,
+                        queue_submissions: false,
+                        collaboration_modes_enabled: false,
+                        is_wsl: false,
+                        quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
+                        status_line_values: Vec::new(),
+                        status_line_enabled: false,
+                        key_hints: FooterKeyHints::default_bindings(),
+                        active_agent_label: None,
+                    },
+                );
+
+                snapshot_footer(
+                    "footer_ctrl_c_quit_idle",
+                    FooterProps {
+                        mode: FooterMode::QuitShortcutReminder,
+                        esc_backtrack_hint: false,
+                        use_shift_enter_hint: false,
+                        is_task_running: false,
+                        queue_submissions: false,
+                        collaboration_modes_enabled: false,
+                        is_wsl: false,
+                        quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
+                        status_line_values: Vec::new(),
+                        status_line_enabled: false,
+                        key_hints: FooterKeyHints::default_bindings(),
+                        active_agent_label: None,
+                    },
+                );
+
+                snapshot_footer(
+                    "footer_ctrl_c_quit_running",
+                    FooterProps {
+                        mode: FooterMode::QuitShortcutReminder,
+                        esc_backtrack_hint: false,
+                        use_shift_enter_hint: false,
+                        is_task_running: true,
+                        queue_submissions: false,
+                        collaboration_modes_enabled: false,
+                        is_wsl: false,
+                        quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
+                        status_line_values: Vec::new(),
+                        status_line_enabled: false,
+                        key_hints: FooterKeyHints::default_bindings(),
+                        active_agent_label: None,
+                    },
+                );
+
+                snapshot_footer(
+                    "footer_esc_hint_idle",
+                    FooterProps {
+                        mode: FooterMode::EscHint,
+                        esc_backtrack_hint: false,
+                        use_shift_enter_hint: false,
+                        is_task_running: false,
+                        queue_submissions: false,
+                        collaboration_modes_enabled: false,
+                        is_wsl: false,
+                        quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
+                        status_line_values: Vec::new(),
+                        status_line_enabled: false,
+                        key_hints: FooterKeyHints::default_bindings(),
+                        active_agent_label: None,
+                    },
+                );
+
+                snapshot_footer(
+                    "footer_esc_hint_primed",
+                    FooterProps {
+                        mode: FooterMode::EscHint,
+                        esc_backtrack_hint: true,
+                        use_shift_enter_hint: false,
+                        is_task_running: false,
+                        queue_submissions: false,
+                        collaboration_modes_enabled: false,
+                        is_wsl: false,
+                        quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
+                        status_line_values: Vec::new(),
+                        status_line_enabled: false,
+                        key_hints: FooterKeyHints::default_bindings(),
+                        active_agent_label: None,
+                    },
+                );
+
+                snapshot_footer_with_context(
+                    "footer_shortcuts_context_running",
+                    FooterProps {
+                        mode: FooterMode::ComposerEmpty,
+                        esc_backtrack_hint: false,
+                        use_shift_enter_hint: false,
+                        is_task_running: true,
+                        queue_submissions: false,
+                        collaboration_modes_enabled: false,
+                        is_wsl: false,
+                        quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
+                        status_line_values: Vec::new(),
+                        status_line_enabled: false,
+                        key_hints: FooterKeyHints::default_bindings(),
+                        active_agent_label: None,
+                    },
+                    Some(72),
+                    /*used_tokens*/ None,
+                );
+
+                snapshot_footer_with_context(
+                    "footer_context_tokens_used",
+                    FooterProps {
+                        mode: FooterMode::ComposerEmpty,
+                        esc_backtrack_hint: false,
+                        use_shift_enter_hint: false,
+                        is_task_running: false,
+                        queue_submissions: false,
+                        collaboration_modes_enabled: false,
+                        is_wsl: false,
+                        quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
+                        status_line_values: Vec::new(),
+                        status_line_enabled: false,
+                        key_hints: FooterKeyHints::default_bindings(),
+                        active_agent_label: None,
+                    },
+                    /*percent*/ None,
+                    Some(123_456),
+                );
+
+                snapshot_footer(
+                    "footer_composer_has_draft_queue_hint_enabled",
+                    FooterProps {
+                        mode: FooterMode::ComposerHasDraft,
+                        esc_backtrack_hint: false,
+                        use_shift_enter_hint: false,
+                        is_task_running: true,
+                        queue_submissions: false,
+                        collaboration_modes_enabled: false,
+                        is_wsl: false,
+                        quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
+                        status_line_values: Vec::new(),
+                        status_line_enabled: false,
+                        key_hints: FooterKeyHints::default_bindings(),
+                        active_agent_label: None,
+                    },
+                );
+
+                let props = FooterProps {
+                    mode: FooterMode::ComposerEmpty,
+                    esc_backtrack_hint: false,
+                    use_shift_enter_hint: false,
+                    is_task_running: false,
+                    queue_submissions: false,
+                    collaboration_modes_enabled: true,
+                    is_wsl: false,
+                    quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
+                    status_line_values: Vec::new(),
+                    status_line_enabled: false,
+                    key_hints: FooterKeyHints::default_bindings(),
+                    active_agent_label: None,
+                };
+
+                snapshot_footer_with_mode_indicator(
+                    "footer_mode_indicator_wide",
+                    /*width*/ 120,
+                    &props,
+                    Some(CollaborationModeIndicator::Plan),
+                );
+
+                snapshot_footer_with_mode_indicator(
+                    "footer_mode_indicator_narrow_overlap_hides",
+                    /*width*/ 50,
+                    &props,
+                    Some(CollaborationModeIndicator::Plan),
+                );
+
+                let props = FooterProps {
+                    mode: FooterMode::ComposerEmpty,
+                    esc_backtrack_hint: false,
+                    use_shift_enter_hint: false,
+                    is_task_running: true,
+                    queue_submissions: false,
+                    collaboration_modes_enabled: true,
+                    is_wsl: false,
+                    quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
+                    status_line_values: Vec::new(),
+                    status_line_enabled: false,
+                    key_hints: FooterKeyHints::default_bindings(),
+                    active_agent_label: None,
+                };
+
+                snapshot_footer_with_mode_indicator(
+                    "footer_mode_indicator_running_hides_hint",
+                    /*width*/ 120,
+                    &props,
+                    Some(CollaborationModeIndicator::Plan),
+                );
+
+                let props = FooterProps {
+                    mode: FooterMode::ComposerEmpty,
+                    esc_backtrack_hint: false,
+                    use_shift_enter_hint: false,
+                    is_task_running: false,
+                    queue_submissions: false,
+                    collaboration_modes_enabled: false,
+                    is_wsl: false,
+                    quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
+                    status_line_values: vec![Line::from("Status line content".to_string())],
+                    status_line_enabled: true,
+                    key_hints: FooterKeyHints::default_bindings(),
+                    active_agent_label: None,
+                };
+
+                snapshot_footer("footer_status_line_overrides_shortcuts", props);
+
+                let props = FooterProps {
+                    mode: FooterMode::ComposerHasDraft,
+                    esc_backtrack_hint: false,
+                    use_shift_enter_hint: false,
+                    is_task_running: true,
+                    queue_submissions: false,
+                    collaboration_modes_enabled: false,
+                    is_wsl: false,
+                    quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
+                    status_line_values: vec![Line::from("Status line content".to_string())],
+                    status_line_enabled: true,
+                    key_hints: FooterKeyHints::default_bindings(),
+                    active_agent_label: None,
+                };
+
+                snapshot_footer("footer_status_line_yields_to_queue_hint", props);
+
+                let props = FooterProps {
+                    mode: FooterMode::ComposerHasDraft,
+                    esc_backtrack_hint: false,
+                    use_shift_enter_hint: false,
+                    is_task_running: false,
+                    queue_submissions: false,
+                    collaboration_modes_enabled: false,
+                    is_wsl: false,
+                    quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
+                    status_line_values: vec![Line::from("Status line content".to_string())],
+                    status_line_enabled: true,
+                    key_hints: FooterKeyHints::default_bindings(),
+                    active_agent_label: None,
+                };
+
+                snapshot_footer("footer_status_line_overrides_draft_idle", props);
+
+                let props = FooterProps {
+                    mode: FooterMode::ComposerEmpty,
+                    esc_backtrack_hint: false,
+                    use_shift_enter_hint: false,
+                    is_task_running: false,
+                    queue_submissions: false,
+                    collaboration_modes_enabled: true,
+                    is_wsl: false,
+                    quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
+                    status_line_values: Vec::new(), // command timed out / empty
+                    status_line_enabled: true,
+                    key_hints: FooterKeyHints::default_bindings(),
+                    active_agent_label: None,
+                };
+
+                snapshot_footer_with_mode_indicator_and_context(
+                    "footer_status_line_enabled_mode_right",
+                    /*width*/ 120,
+                    &props,
+                    Some(CollaborationModeIndicator::Plan),
+                    context_window_line(Some(50), /*used_tokens*/ None),
+                );
+
+                snapshot_footer_with_indicators(
+                    "footer_status_line_enabled_mode_and_ide_context_right",
+                    /*width*/ 120,
+                    &props,
+                    Some(CollaborationModeIndicator::Plan),
+                    /*ide_context_active*/ true,
+                );
+
+                let props = FooterProps {
+                    mode: FooterMode::ComposerEmpty,
+                    esc_backtrack_hint: false,
+                    use_shift_enter_hint: false,
+                    is_task_running: false,
+                    queue_submissions: false,
+                    collaboration_modes_enabled: true,
+                    is_wsl: false,
+                    quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
+                    status_line_values: Vec::new(),
+                    status_line_enabled: false,
+                    key_hints: FooterKeyHints::default_bindings(),
+                    active_agent_label: None,
+                };
+
+                snapshot_footer_with_mode_indicator_and_context(
+                    "footer_status_line_disabled_context_right",
+                    /*width*/ 120,
+                    &props,
+                    Some(CollaborationModeIndicator::Plan),
+                    context_window_line(Some(50), /*used_tokens*/ None),
+                );
+
+                let props = FooterProps {
+                    mode: FooterMode::ComposerEmpty,
+                    esc_backtrack_hint: false,
+                    use_shift_enter_hint: false,
+                    is_task_running: false,
+                    queue_submissions: false,
+                    collaboration_modes_enabled: false,
+                    is_wsl: false,
+                    quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
+                    status_line_values: Vec::new(),
+                    status_line_enabled: true,
+                    key_hints: FooterKeyHints::default_bindings(),
+                    active_agent_label: None,
+                };
+
+                // has status line and no collaboration mode
+                snapshot_footer_with_mode_indicator_and_context(
+                    "footer_status_line_enabled_no_mode_right",
+                    /*width*/ 120,
+                    &props,
+                    /*collaboration_mode_indicator*/ None,
+                    context_window_line(Some(50), /*used_tokens*/ None),
+                );
+
+                let props = FooterProps {
+                    mode: FooterMode::ComposerEmpty,
+                    esc_backtrack_hint: false,
+                    use_shift_enter_hint: false,
+                    is_task_running: false,
+                    queue_submissions: false,
+                    collaboration_modes_enabled: true,
+                    is_wsl: false,
+                    quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
+                    status_line_values: vec![Line::from(
+                        "Status line content that should truncate before the mode indicator"
+                            .to_string(),
+                    )],
+                    status_line_enabled: true,
+                    key_hints: FooterKeyHints::default_bindings(),
+                    active_agent_label: None,
+                };
+
+                snapshot_footer_with_mode_indicator_and_context(
+                    "footer_status_line_truncated_with_gap",
+                    /*width*/ 40,
+                    &props,
+                    Some(CollaborationModeIndicator::Plan),
+                    context_window_line(Some(50), /*used_tokens*/ None),
+                );
+
+                let props = FooterProps {
+                    mode: FooterMode::ComposerEmpty,
+                    esc_backtrack_hint: false,
+                    use_shift_enter_hint: false,
+                    is_task_running: false,
+                    queue_submissions: false,
+                    collaboration_modes_enabled: false,
+                    is_wsl: false,
+                    quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
+                    status_line_values: Vec::new(),
+                    status_line_enabled: false,
+                    key_hints: FooterKeyHints::default_bindings(),
+                    active_agent_label: Some("Robie [explorer]".to_string()),
+                };
+
+                snapshot_footer("footer_active_agent_label", props);
+
+                let props = FooterProps {
+                    mode: FooterMode::ComposerEmpty,
+                    esc_backtrack_hint: false,
+                    use_shift_enter_hint: false,
+                    is_task_running: false,
+                    queue_submissions: false,
+                    collaboration_modes_enabled: false,
+                    is_wsl: false,
+                    quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
+                    status_line_values: vec![Line::from("Status line content".to_string())],
+                    status_line_enabled: true,
+                    key_hints: FooterKeyHints::default_bindings(),
+                    active_agent_label: Some("Robie [explorer]".to_string()),
+                };
+
+                snapshot_footer("footer_status_line_with_active_agent_label", props);
             },
         );
-
-        snapshot_footer(
-            "footer_shortcuts_shift_and_esc",
-            FooterProps {
-                mode: FooterMode::ShortcutOverlay,
-                esc_backtrack_hint: true,
-                use_shift_enter_hint: true,
-                is_task_running: false,
-                queue_submissions: false,
-                collaboration_modes_enabled: false,
-                is_wsl: false,
-                quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
-                status_line_values: Vec::new(),
-                status_line_enabled: false,
-                key_hints: FooterKeyHints {
-                    insert_newline: Some(key_hint::shift(KeyCode::Enter).into()),
-                    ..FooterKeyHints::default_bindings()
-                },
-                active_agent_label: None,
-            },
-        );
-
-        snapshot_footer(
-            "footer_shortcuts_collaboration_modes_enabled",
-            FooterProps {
-                mode: FooterMode::ShortcutOverlay,
-                esc_backtrack_hint: false,
-                use_shift_enter_hint: false,
-                is_task_running: false,
-                queue_submissions: false,
-                collaboration_modes_enabled: true,
-                is_wsl: false,
-                quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
-                status_line_values: Vec::new(),
-                status_line_enabled: false,
-                key_hints: FooterKeyHints::default_bindings(),
-                active_agent_label: None,
-            },
-        );
-
-        snapshot_footer(
-            "footer_shortcuts_running",
-            FooterProps {
-                mode: FooterMode::ShortcutOverlay,
-                esc_backtrack_hint: false,
-                use_shift_enter_hint: false,
-                is_task_running: true,
-                queue_submissions: false,
-                collaboration_modes_enabled: false,
-                is_wsl: false,
-                quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
-                status_line_values: Vec::new(),
-                status_line_enabled: false,
-                key_hints: FooterKeyHints::default_bindings(),
-                active_agent_label: None,
-            },
-        );
-
-        snapshot_footer(
-            "footer_ctrl_c_quit_idle",
-            FooterProps {
-                mode: FooterMode::QuitShortcutReminder,
-                esc_backtrack_hint: false,
-                use_shift_enter_hint: false,
-                is_task_running: false,
-                queue_submissions: false,
-                collaboration_modes_enabled: false,
-                is_wsl: false,
-                quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
-                status_line_values: Vec::new(),
-                status_line_enabled: false,
-                key_hints: FooterKeyHints::default_bindings(),
-                active_agent_label: None,
-            },
-        );
-
-        snapshot_footer(
-            "footer_ctrl_c_quit_running",
-            FooterProps {
-                mode: FooterMode::QuitShortcutReminder,
-                esc_backtrack_hint: false,
-                use_shift_enter_hint: false,
-                is_task_running: true,
-                queue_submissions: false,
-                collaboration_modes_enabled: false,
-                is_wsl: false,
-                quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
-                status_line_values: Vec::new(),
-                status_line_enabled: false,
-                key_hints: FooterKeyHints::default_bindings(),
-                active_agent_label: None,
-            },
-        );
-
-        snapshot_footer(
-            "footer_esc_hint_idle",
-            FooterProps {
-                mode: FooterMode::EscHint,
-                esc_backtrack_hint: false,
-                use_shift_enter_hint: false,
-                is_task_running: false,
-                queue_submissions: false,
-                collaboration_modes_enabled: false,
-                is_wsl: false,
-                quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
-                status_line_values: Vec::new(),
-                status_line_enabled: false,
-                key_hints: FooterKeyHints::default_bindings(),
-                active_agent_label: None,
-            },
-        );
-
-        snapshot_footer(
-            "footer_esc_hint_primed",
-            FooterProps {
-                mode: FooterMode::EscHint,
-                esc_backtrack_hint: true,
-                use_shift_enter_hint: false,
-                is_task_running: false,
-                queue_submissions: false,
-                collaboration_modes_enabled: false,
-                is_wsl: false,
-                quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
-                status_line_values: Vec::new(),
-                status_line_enabled: false,
-                key_hints: FooterKeyHints::default_bindings(),
-                active_agent_label: None,
-            },
-        );
-
-        snapshot_footer_with_context(
-            "footer_shortcuts_context_running",
-            FooterProps {
-                mode: FooterMode::ComposerEmpty,
-                esc_backtrack_hint: false,
-                use_shift_enter_hint: false,
-                is_task_running: true,
-                queue_submissions: false,
-                collaboration_modes_enabled: false,
-                is_wsl: false,
-                quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
-                status_line_values: Vec::new(),
-                status_line_enabled: false,
-                key_hints: FooterKeyHints::default_bindings(),
-                active_agent_label: None,
-            },
-            Some(72),
-            /*used_tokens*/ None,
-        );
-
-        snapshot_footer_with_context(
-            "footer_context_tokens_used",
-            FooterProps {
-                mode: FooterMode::ComposerEmpty,
-                esc_backtrack_hint: false,
-                use_shift_enter_hint: false,
-                is_task_running: false,
-                queue_submissions: false,
-                collaboration_modes_enabled: false,
-                is_wsl: false,
-                quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
-                status_line_values: Vec::new(),
-                status_line_enabled: false,
-                key_hints: FooterKeyHints::default_bindings(),
-                active_agent_label: None,
-            },
-            /*percent*/ None,
-            Some(123_456),
-        );
-
-        snapshot_footer(
-            "footer_composer_has_draft_queue_hint_enabled",
-            FooterProps {
-                mode: FooterMode::ComposerHasDraft,
-                esc_backtrack_hint: false,
-                use_shift_enter_hint: false,
-                is_task_running: true,
-                queue_submissions: false,
-                collaboration_modes_enabled: false,
-                is_wsl: false,
-                quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
-                status_line_values: Vec::new(),
-                status_line_enabled: false,
-                key_hints: FooterKeyHints::default_bindings(),
-                active_agent_label: None,
-            },
-        );
-
-        let props = FooterProps {
-            mode: FooterMode::ComposerEmpty,
-            esc_backtrack_hint: false,
-            use_shift_enter_hint: false,
-            is_task_running: false,
-            queue_submissions: false,
-            collaboration_modes_enabled: true,
-            is_wsl: false,
-            quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
-            status_line_values: Vec::new(),
-            status_line_enabled: false,
-            key_hints: FooterKeyHints::default_bindings(),
-            active_agent_label: None,
-        };
-
-        snapshot_footer_with_mode_indicator(
-            "footer_mode_indicator_wide",
-            /*width*/ 120,
-            &props,
-            Some(CollaborationModeIndicator::Plan),
-        );
-
-        snapshot_footer_with_mode_indicator(
-            "footer_mode_indicator_narrow_overlap_hides",
-            /*width*/ 50,
-            &props,
-            Some(CollaborationModeIndicator::Plan),
-        );
-
-        let props = FooterProps {
-            mode: FooterMode::ComposerEmpty,
-            esc_backtrack_hint: false,
-            use_shift_enter_hint: false,
-            is_task_running: true,
-            queue_submissions: false,
-            collaboration_modes_enabled: true,
-            is_wsl: false,
-            quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
-            status_line_values: Vec::new(),
-            status_line_enabled: false,
-            key_hints: FooterKeyHints::default_bindings(),
-            active_agent_label: None,
-        };
-
-        snapshot_footer_with_mode_indicator(
-            "footer_mode_indicator_running_hides_hint",
-            /*width*/ 120,
-            &props,
-            Some(CollaborationModeIndicator::Plan),
-        );
-
-        let props = FooterProps {
-            mode: FooterMode::ComposerEmpty,
-            esc_backtrack_hint: false,
-            use_shift_enter_hint: false,
-            is_task_running: false,
-            queue_submissions: false,
-            collaboration_modes_enabled: false,
-            is_wsl: false,
-            quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
-            status_line_values: vec![Line::from("Status line content".to_string())],
-            status_line_enabled: true,
-            key_hints: FooterKeyHints::default_bindings(),
-            active_agent_label: None,
-        };
-
-        snapshot_footer("footer_status_line_overrides_shortcuts", props);
-
-        let props = FooterProps {
-            mode: FooterMode::ComposerHasDraft,
-            esc_backtrack_hint: false,
-            use_shift_enter_hint: false,
-            is_task_running: true,
-            queue_submissions: false,
-            collaboration_modes_enabled: false,
-            is_wsl: false,
-            quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
-            status_line_values: vec![Line::from("Status line content".to_string())],
-            status_line_enabled: true,
-            key_hints: FooterKeyHints::default_bindings(),
-            active_agent_label: None,
-        };
-
-        snapshot_footer("footer_status_line_yields_to_queue_hint", props);
-
-        let props = FooterProps {
-            mode: FooterMode::ComposerHasDraft,
-            esc_backtrack_hint: false,
-            use_shift_enter_hint: false,
-            is_task_running: false,
-            queue_submissions: false,
-            collaboration_modes_enabled: false,
-            is_wsl: false,
-            quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
-            status_line_values: vec![Line::from("Status line content".to_string())],
-            status_line_enabled: true,
-            key_hints: FooterKeyHints::default_bindings(),
-            active_agent_label: None,
-        };
-
-        snapshot_footer("footer_status_line_overrides_draft_idle", props);
-
-        let props = FooterProps {
-            mode: FooterMode::ComposerEmpty,
-            esc_backtrack_hint: false,
-            use_shift_enter_hint: false,
-            is_task_running: false,
-            queue_submissions: false,
-            collaboration_modes_enabled: true,
-            is_wsl: false,
-            quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
-            status_line_values: Vec::new(), // command timed out / empty
-            status_line_enabled: true,
-            key_hints: FooterKeyHints::default_bindings(),
-            active_agent_label: None,
-        };
-
-        snapshot_footer_with_mode_indicator_and_context(
-            "footer_status_line_enabled_mode_right",
-            /*width*/ 120,
-            &props,
-            Some(CollaborationModeIndicator::Plan),
-            context_window_line(Some(50), /*used_tokens*/ None),
-        );
-
-        snapshot_footer_with_indicators(
-            "footer_status_line_enabled_mode_and_ide_context_right",
-            /*width*/ 120,
-            &props,
-            Some(CollaborationModeIndicator::Plan),
-            /*ide_context_active*/ true,
-        );
-
-        let props = FooterProps {
-            mode: FooterMode::ComposerEmpty,
-            esc_backtrack_hint: false,
-            use_shift_enter_hint: false,
-            is_task_running: false,
-            queue_submissions: false,
-            collaboration_modes_enabled: true,
-            is_wsl: false,
-            quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
-            status_line_values: Vec::new(),
-            status_line_enabled: false,
-            key_hints: FooterKeyHints::default_bindings(),
-            active_agent_label: None,
-        };
-
-        snapshot_footer_with_mode_indicator_and_context(
-            "footer_status_line_disabled_context_right",
-            /*width*/ 120,
-            &props,
-            Some(CollaborationModeIndicator::Plan),
-            context_window_line(Some(50), /*used_tokens*/ None),
-        );
-
-        let props = FooterProps {
-            mode: FooterMode::ComposerEmpty,
-            esc_backtrack_hint: false,
-            use_shift_enter_hint: false,
-            is_task_running: false,
-            queue_submissions: false,
-            collaboration_modes_enabled: false,
-            is_wsl: false,
-            quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
-            status_line_values: Vec::new(),
-            status_line_enabled: true,
-            key_hints: FooterKeyHints::default_bindings(),
-            active_agent_label: None,
-        };
-
-        // has status line and no collaboration mode
-        snapshot_footer_with_mode_indicator_and_context(
-            "footer_status_line_enabled_no_mode_right",
-            /*width*/ 120,
-            &props,
-            /*collaboration_mode_indicator*/ None,
-            context_window_line(Some(50), /*used_tokens*/ None),
-        );
-
-        let props = FooterProps {
-            mode: FooterMode::ComposerEmpty,
-            esc_backtrack_hint: false,
-            use_shift_enter_hint: false,
-            is_task_running: false,
-            queue_submissions: false,
-            collaboration_modes_enabled: true,
-            is_wsl: false,
-            quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
-            status_line_values: vec![Line::from(
-                "Status line content that should truncate before the mode indicator".to_string(),
-            )],
-            status_line_enabled: true,
-            key_hints: FooterKeyHints::default_bindings(),
-            active_agent_label: None,
-        };
-
-        snapshot_footer_with_mode_indicator_and_context(
-            "footer_status_line_truncated_with_gap",
-            /*width*/ 40,
-            &props,
-            Some(CollaborationModeIndicator::Plan),
-            context_window_line(Some(50), /*used_tokens*/ None),
-        );
-
-        let props = FooterProps {
-            mode: FooterMode::ComposerEmpty,
-            esc_backtrack_hint: false,
-            use_shift_enter_hint: false,
-            is_task_running: false,
-            queue_submissions: false,
-            collaboration_modes_enabled: false,
-            is_wsl: false,
-            quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
-            status_line_values: Vec::new(),
-            status_line_enabled: false,
-            key_hints: FooterKeyHints::default_bindings(),
-            active_agent_label: Some("Robie [explorer]".to_string()),
-        };
-
-        snapshot_footer("footer_active_agent_label", props);
-
-        let props = FooterProps {
-            mode: FooterMode::ComposerEmpty,
-            esc_backtrack_hint: false,
-            use_shift_enter_hint: false,
-            is_task_running: false,
-            queue_submissions: false,
-            collaboration_modes_enabled: false,
-            is_wsl: false,
-            quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
-            status_line_values: vec![Line::from("Status line content".to_string())],
-            status_line_enabled: true,
-            key_hints: FooterKeyHints::default_bindings(),
-            active_agent_label: Some("Robie [explorer]".to_string()),
-        };
-
-        snapshot_footer("footer_status_line_with_active_agent_label", props);
     }
 
     #[test]

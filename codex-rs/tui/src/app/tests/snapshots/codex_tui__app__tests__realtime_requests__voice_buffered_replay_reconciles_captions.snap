@@ -1,5 +1,6 @@
 ---
 source: tui/src/app/tests/realtime_requests.rs
+assertion_line: 841
 expression: "normalize_voice_snapshot_directory(&rendered, &app.config.cwd)"
 ---
 ╭────────────────────────────────────────╮
@@ -20,7 +21,8 @@ expression: "normalize_voice_snapshot_directory(&rendered, &app.config.cwd)"
 YOU
 │ buffered question
 ───────────────────────────────────────────────────────────────────────────────
-
+───────────────────────────────────────────────────────────────────────────────
 CODEX · Answer
 
   buffered answer
+───────────────────────────────────────────────────────────────────────────────

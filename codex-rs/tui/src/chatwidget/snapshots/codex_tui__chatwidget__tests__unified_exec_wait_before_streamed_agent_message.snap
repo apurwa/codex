@@ -1,8 +1,12 @@
 ---
 source: tui/src/chatwidget/tests/exec_flow.rs
-expression: normalize_completion_timestamps(combined)
+assertion_line: 984
+expression: combined
 ---
-• Waited for background terminal · cargo test -p codex-core
+
+CODEX · Tool Calls
+
+┊ • Waited for background terminal · cargo test -p codex-core
 
 
 CODEX

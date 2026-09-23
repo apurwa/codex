@@ -140,6 +140,7 @@ async fn worktree_creation_rejects_running_agent_before_allocation() -> Result<(
 
 #[tokio::test]
 async fn turn_start_failure_is_shown_without_exiting() -> Result<()> {
+    return crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
     let (mut app, mut app_event_rx, mut op_rx) = make_test_app_with_channels().await;
     let mut tui = crate::tui::test_support::make_test_tui()?;
     let mut app_server = Box::pin(crate::start_embedded_app_server_for_picker(&app.config)).await?;
@@ -189,6 +190,8 @@ async fn turn_start_failure_is_shown_without_exiting() -> Result<()> {
 
     app_server.shutdown().await?;
     Ok(())
+
+    }).await;
 }
 
 #[tokio::test]

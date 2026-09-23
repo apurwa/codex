@@ -304,132 +304,139 @@ fn viewer_reuses_path_and_refreshes_static_document() {
 
 #[test]
 fn finalized_agent_cell_replays_visualization_link() {
-    let (_codex_home, context) = context_with_fragment("<div>chart</div>");
-    let fragment_path = context.thread_dir.join("chart.html");
-    let cell = AgentMarkdownCell::new_with_inline_visualizations(
-        format!(
-            "Before\n\n\u{e200}visualize\u{e202}{}\u{e201}\n\nAfter",
-            serde_json::json!({ "path": fragment_path })
-        ),
-        Path::new("/workspace"),
-        Some(context),
-    );
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
+        let (_codex_home, context) = context_with_fragment("<div>chart</div>");
+        let fragment_path = context.thread_dir.join("chart.html");
+        let cell = AgentMarkdownCell::new_with_inline_visualizations(
+            format!(
+                "Before\n\n\u{e200}visualize\u{e202}{}\u{e201}\n\nAfter",
+                serde_json::json!({ "path": fragment_path })
+            ),
+            Path::new("/workspace"),
+            Some(context),
+        );
 
-    let lines = cell.display_hyperlink_lines(/*width*/ 80);
-    let text = lines
-        .iter()
-        .map(|line| line_text(&line.line))
-        .collect::<Vec<_>>()
-        .join("\n");
-    let snapshot_text = text
-        .lines()
-        .map(|line| {
-            line.find("file://").map_or_else(
-                || line.to_string(),
-                |start| format!("{}file://<viewer-path>", &line[..start]),
-            )
-        })
-        .collect::<Vec<_>>()
-        .join("\n");
-
-    insta::assert_snapshot!("finalized_agent_cell_visualization_link", snapshot_text);
-    let title_span = lines
-        .iter()
-        .flat_map(|line| &line.line.spans)
-        .find(|span| span.content == "Open chart visualization in the browser")
-        .expect("visualization title span");
-    assert_eq!(title_span.style, Style::new());
-    let url_span = lines
-        .iter()
-        .flat_map(|line| &line.line.spans)
-        .find(|span| span.content.starts_with("file://"))
-        .expect("visualization URL span");
-    assert_eq!(url_span.style, Style::new().cyan().underlined());
-    let destinations = lines
-        .iter()
-        .flat_map(|line| &line.hyperlinks)
-        .map(|link| link.destination.as_str())
-        .collect::<Vec<_>>();
-    assert_eq!(destinations.len(), 1);
-    assert!(
-        destinations
+        let lines = cell.display_hyperlink_lines(/*width*/ 80);
+        let text = lines
             .iter()
-            .all(|destination| destination.starts_with("file://"))
-    );
+            .map(|line| line_text(&line.line))
+            .collect::<Vec<_>>()
+            .join("\n");
+        let snapshot_text = text
+            .lines()
+            .map(|line| {
+                line.find("file://").map_or_else(
+                    || line.to_string(),
+                    |start| format!("{}file://<viewer-path>", &line[..start]),
+                )
+            })
+            .collect::<Vec<_>>()
+            .join("\n");
+
+        insta::assert_snapshot!("finalized_agent_cell_visualization_link", snapshot_text);
+        let title_span = lines
+            .iter()
+            .flat_map(|line| &line.line.spans)
+            .find(|span| span.content == "Open chart visualization in the browser")
+            .expect("visualization title span");
+        assert_eq!(title_span.style, Style::new());
+        let url_span = lines
+            .iter()
+            .flat_map(|line| &line.line.spans)
+            .find(|span| span.content.starts_with("file://"))
+            .expect("visualization URL span");
+        assert_eq!(url_span.style, Style::new().cyan().underlined());
+        let destinations = lines
+            .iter()
+            .flat_map(|line| &line.hyperlinks)
+            .map(|link| link.destination.as_str())
+            .collect::<Vec<_>>();
+        assert_eq!(destinations.len(), 1);
+        assert!(
+            destinations
+                .iter()
+                .all(|destination| destination.starts_with("file://"))
+        );
+    });
 }
 
 #[test]
 fn transcript_overlay_remeasures_visualization_when_artifact_becomes_available() {
-    let codex_home = tempfile::tempdir().expect("temp codex home");
-    let context = InlineVisualizationContext::new(codex_home.path(), ThreadId::new())
-        .expect("UUIDv7 thread id should provide a timestamp");
-    fs::create_dir_all(&context.thread_dir).expect("create visualization directory");
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
+        let codex_home = tempfile::tempdir().expect("temp codex home");
+        let context = InlineVisualizationContext::new(codex_home.path(), ThreadId::new())
+            .expect("UUIDv7 thread id should provide a timestamp");
+        fs::create_dir_all(&context.thread_dir).expect("create visualization directory");
 
-    let cell = AgentMarkdownCell::new_with_inline_visualizations(
-        "::codex-inline-vis{file=\"chart.html\"}".to_string(),
-        Path::new("/workspace"),
-        Some(context.clone()),
-    );
-    let mut overlay = TranscriptOverlay::new(vec![Arc::new(cell)], RuntimeKeymap::defaults().pager);
-    let area = Rect::new(
-        /*x*/ 0, /*y*/ 0, /*width*/ 240, /*height*/ 18,
-    );
-    let mut buffer = Buffer::empty(area);
+        let cell = AgentMarkdownCell::new_with_inline_visualizations(
+            "::codex-inline-vis{file=\"chart.html\"}".to_string(),
+            Path::new("/workspace"),
+            Some(context.clone()),
+        );
+        let mut overlay =
+            TranscriptOverlay::new(vec![Arc::new(cell)], RuntimeKeymap::defaults().pager);
+        let area = Rect::new(
+            /*x*/ 0, /*y*/ 0, /*width*/ 240, /*height*/ 18,
+        );
+        let mut buffer = Buffer::empty(area);
 
-    overlay.render(area, &mut buffer);
-    let unavailable = buffer_to_text(&buffer, area.width);
-    assert!(unavailable.contains("Visualization unavailable on this device"));
+        overlay.render(area, &mut buffer);
+        let unavailable = buffer_to_text(&buffer, area.width);
+        assert!(unavailable.contains("Visualization unavailable on this device"));
 
-    fs::write(context.thread_dir.join("chart.html"), "<div>chart</div>")
-        .expect("write visualization fragment");
-    overlay.insert_cell(Arc::new(AgentMarkdownCell::new(
-        "next message".to_string(),
-        Path::new("/workspace"),
-    )));
-    buffer = Buffer::empty(area);
-    overlay.render(area, &mut buffer);
+        fs::write(context.thread_dir.join("chart.html"), "<div>chart</div>")
+            .expect("write visualization fragment");
+        overlay.insert_cell(Arc::new(AgentMarkdownCell::new(
+            "next message".to_string(),
+            Path::new("/workspace"),
+        )));
+        buffer = Buffer::empty(area);
+        overlay.render(area, &mut buffer);
 
-    let available = buffer_to_text(&buffer, area.width);
-    assert!(available.contains("Open chart visualization in the browser"));
-    assert!(
-        available.contains("file://"),
-        "viewer URL was clipped: {available:?}"
-    );
+        let available = buffer_to_text(&buffer, area.width);
+        assert!(available.contains("Open chart visualization in the browser"));
+        assert!(
+            available.contains("file://"),
+            "viewer URL was clipped: {available:?}"
+        );
 
-    let available = available
-        .lines()
-        .map(|line| {
-            line.find("file://").map_or_else(
-                || line.to_string(),
-                |start| format!("{}file://<viewer-path>", &line[..start]),
-            )
-        })
-        .collect::<Vec<_>>()
-        .join("\n");
-    insta::assert_snapshot!(
-        "transcript_overlay_visualization_becomes_available",
-        format!("before:\n{unavailable}\n\nafter:\n{available}")
-    );
+        let available = available
+            .lines()
+            .map(|line| {
+                line.find("file://").map_or_else(
+                    || line.to_string(),
+                    |start| format!("{}file://<viewer-path>", &line[..start]),
+                )
+            })
+            .collect::<Vec<_>>()
+            .join("\n");
+        insta::assert_snapshot!(
+            "transcript_overlay_visualization_becomes_available",
+            format!("before:\n{unavailable}\n\nafter:\n{available}")
+        );
+    });
 }
 
 #[test]
 fn agent_code_blocks_preserve_visualization_directive_literals() {
-    let (_codex_home, context) = context_with_fragment("<div>chart</div>");
-    let cell = AgentMarkdownCell::new_with_inline_visualizations(
+    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || {
+        let (_codex_home, context) = context_with_fragment("<div>chart</div>");
+        let cell = AgentMarkdownCell::new_with_inline_visualizations(
         "Fenced:\n\n```text\n::codex-inline-vis{file=\"chart.html\"}\n```\n\nIndented:\n\n    ::codex-inline-vis{file=\"chart.html\"}"
             .to_string(),
         Path::new("/workspace"),
         Some(context),
     );
 
-    let text = cell
-        .display_hyperlink_lines(/*width*/ 80)
-        .iter()
-        .map(|line| line_text(&line.line))
-        .collect::<Vec<_>>()
-        .join("\n");
+        let text = cell
+            .display_hyperlink_lines(/*width*/ 80)
+            .iter()
+            .map(|line| line_text(&line.line))
+            .collect::<Vec<_>>()
+            .join("\n");
 
-    insta::assert_snapshot!(text);
+        insta::assert_snapshot!(text);
+    });
 }
 
 #[test]

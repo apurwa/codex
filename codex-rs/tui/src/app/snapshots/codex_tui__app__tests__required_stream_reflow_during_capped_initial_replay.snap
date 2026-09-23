@@ -1,10 +1,11 @@
 ---
 source: tui/src/app/tests.rs
+assertion_line: 6779
 expression: "rendered.lines.iter().map(rendered_line_text).collect::<Vec<_>>().join(\"\\n\")"
 ---
 latest user question
 
-
+───────────────────────────────────────────────────────────────────────────────
 CODEX
 
   Final answer:
@@ -12,3 +13,4 @@ CODEX
    Pattern       Outcome
   ━━━━━━━━━━━━  ━━━━━━━━━━━
    Table tail    Preserved
+───────────────────────────────────────────────────────────────────────────────

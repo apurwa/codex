@@ -131,7 +131,14 @@ impl AgentsOverviewView {
         add_hint(
             self.agents_keymap
                 .primary_hint("new_task", &self.agents_keymap.new_task),
-            "new task",
+            if matches!(
+                crate::ui_profile::ui_profile(),
+                crate::ui_profile::UiProfile::CodexDev
+            ) {
+                "new task"
+            } else {
+                "new"
+            },
             true,
         );
         add_hint(
@@ -341,7 +348,11 @@ impl Renderable for AgentsOverviewView {
                 input[visible_start..].to_string().into(),
             ])
             .render(inset(prompt), buf);
-        } else {
+        } else if matches!(
+            crate::ui_profile::ui_profile(),
+            crate::ui_profile::UiProfile::CodexDev
+        ) && state.composer.is_some()
+        {
             let directory = state.project_directory.display().to_string();
             Line::from(vec![
                 "New task".dim(),
@@ -356,6 +367,9 @@ impl Renderable for AgentsOverviewView {
             if let Some(composer) = &state.composer {
                 composer.render(prompt, buf);
             }
+        } else {
+            state.composer_hitbox = None;
+            state.project_directory_hitbox = None;
         }
         if state.composing() {
             return;

@@ -1,6 +1,7 @@
 ---
 source: tui/src/chatwidget/tests/app_server.rs
+assertion_line: 1140
 expression: blob
 ---
-┊ • You ran python3 -c 'print("Hello, world!")'
-┊   └ Hello, world!
+• You ran python3 -c 'print("Hello, world!")'
+  └ Hello, world!

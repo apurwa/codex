@@ -528,7 +528,7 @@ async fn question_history_search_uses_updated_bindings() {
 
 #[tokio::test]
 async fn question_editor_keeps_working_status_and_queued_messages_visible() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut chat, _rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
         chat.show_welcome_banner = false;
         chat.bottom_pane.set_task_running(/*running*/ true);

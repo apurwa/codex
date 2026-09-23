@@ -1,10 +1,12 @@
 ---
 source: tui/src/chatwidget/tests/app_server.rs
+assertion_line: 1194
 expression: completed
 ---
 
-CODEX · Tool Call
-$ printf 'stdout\nstderr\n'
-stdout
-stderr
-✗ (1) • <duration>
+CODEX · Tool Calls
+
+┊ $ printf 'stdout\nstderr\n'
+┊ stdout
+┊ stderr
+┊ ✗ (1) • <duration>

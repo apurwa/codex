@@ -2374,47 +2374,55 @@ mod tests {
 
     #[test]
     fn inline_banner_snapshot() {
-        let (tx, _rx) = unbounded_channel();
-        let mut pane = test_pane(AppEventSender::new(tx));
-        pane.set_inline_banner(Some(ActionableBanner {
-            title: "Choose how to continue working".to_string(),
-            description: "A long description wraps to fit the available terminal width.\n"
-                .repeat(/*n*/ 8),
-            actions: vec![
-                SelectionItem {
-                    name: "Open usage settings".to_string(),
+        return crate::ui_profile::with_test_ui_profile(
+            crate::ui_profile::UiProfile::CodexDev,
+            || {
+                let (tx, _rx) = unbounded_channel();
+                let mut pane = test_pane(AppEventSender::new(tx));
+                pane.set_inline_banner(Some(ActionableBanner {
+                    title: "Choose how to continue working".to_string(),
+                    description: "A long description wraps to fit the available terminal width.\n"
+                        .repeat(/*n*/ 8),
+                    actions: vec![
+                        SelectionItem {
+                            name: "Open usage settings".to_string(),
+                            ..Default::default()
+                        },
+                        SelectionItem {
+                            name: "Notify owner".to_string(),
+                            ..Default::default()
+                        },
+                    ],
                     ..Default::default()
-                },
-                SelectionItem {
-                    name: "Notify owner".to_string(),
-                    ..Default::default()
-                },
-            ],
-            ..Default::default()
-        }));
-        let width = 44;
-        let area = Rect::new(
-            /*x*/ 0,
-            /*y*/ 0,
-            width,
-            pane.desired_height(width),
+                }));
+                let width = 44;
+                let area = Rect::new(
+                    /*x*/ 0,
+                    /*y*/ 0,
+                    width,
+                    pane.desired_height(width),
+                );
+                assert_snapshot!(
+                    "inline_banner_wrapped_and_truncated",
+                    render_snapshot(&pane, area)
+                );
+                assert!(!pane.is_normal_backtrack_mode());
+                pane.handle_key_event(KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE));
+                assert!(pane.is_normal_backtrack_mode());
+            },
         );
-        assert_snapshot!(
-            "inline_banner_wrapped_and_truncated",
-            render_snapshot(&pane, area)
-        );
-        assert!(!pane.is_normal_backtrack_mode());
-        pane.handle_key_event(KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE));
-        assert!(pane.is_normal_backtrack_mode());
     }
 
     #[test]
     fn backend_banner_snapshots_and_numbered_actions() {
-        for (kind, action, label) in [
-            ("personal_limit", "view_usage", "View usage"),
-            ("workspace_member_credits", "notify_owner", "Notify owner"),
-        ] {
-            let banner = crate::backend_banners::BackendBanner::parse(&serde_json::json!({
+        return crate::ui_profile::with_test_ui_profile(
+            crate::ui_profile::UiProfile::CodexDev,
+            || {
+                for (kind, action, label) in [
+                    ("personal_limit", "view_usage", "View usage"),
+                    ("workspace_member_credits", "notify_owner", "Notify owner"),
+                ] {
+                    let banner = crate::backend_banners::BackendBanner::parse(&serde_json::json!({
                 "banner_type": kind,
                 "presentation": "dismissible",
                 "title": "Usage limit\u{7} reached",
@@ -2427,36 +2435,40 @@ mod tests {
                 ]
             }))
             .expect("valid optional banner");
-            let (tx, mut rx) = unbounded_channel();
-            let mut pane = test_pane(AppEventSender::new(tx));
-            pane.set_inline_banner(Some(banner.actionable_banner()));
-            let width = 44;
-            let area = Rect::new(
-                /*x*/ 0,
-                /*y*/ 0,
-                width,
-                pane.desired_height(width),
-            );
-            assert_snapshot!(
-                format!("backend_banner_{kind}"),
-                render_snapshot(&pane, area)
-            );
-            pane.handle_key_event(KeyEvent::new(KeyCode::Char('2'), KeyModifiers::NONE));
-            let selected = match rx.try_recv().expect("numbered CTA dispatch") {
-                AppEvent::OpenUrlInBrowser { url } => url,
-                AppEvent::SendAddCreditsNudgeEmail { credit_type } => format!("{credit_type:?}"),
-                other => panic!("unexpected banner action: {other:?}"),
-            };
-            assert_eq!(
-                selected,
-                if action == "view_usage" {
-                    "https://chatgpt.com/codex/settings/usage"
-                } else {
-                    "Credits"
+                    let (tx, mut rx) = unbounded_channel();
+                    let mut pane = test_pane(AppEventSender::new(tx));
+                    pane.set_inline_banner(Some(banner.actionable_banner()));
+                    let width = 44;
+                    let area = Rect::new(
+                        /*x*/ 0,
+                        /*y*/ 0,
+                        width,
+                        pane.desired_height(width),
+                    );
+                    assert_snapshot!(
+                        format!("backend_banner_{kind}"),
+                        render_snapshot(&pane, area)
+                    );
+                    pane.handle_key_event(KeyEvent::new(KeyCode::Char('2'), KeyModifiers::NONE));
+                    let selected = match rx.try_recv().expect("numbered CTA dispatch") {
+                        AppEvent::OpenUrlInBrowser { url } => url,
+                        AppEvent::SendAddCreditsNudgeEmail { credit_type } => {
+                            format!("{credit_type:?}")
+                        }
+                        other => panic!("unexpected banner action: {other:?}"),
+                    };
+                    assert_eq!(
+                        selected,
+                        if action == "view_usage" {
+                            "https://chatgpt.com/codex/settings/usage"
+                        } else {
+                            "Credits"
+                        }
+                    );
+                    assert!(pane.inline_banner.is_some());
                 }
-            );
-            assert!(pane.inline_banner.is_some());
-        }
+            },
+        );
     }
 
     #[derive(Default)]
@@ -2944,53 +2956,58 @@ mod tests {
 
     #[test]
     fn status_indicator_visible_during_command_execution() {
-        let (tx_raw, _rx) = unbounded_channel::<AppEvent>();
-        let tx = AppEventSender::new(tx_raw);
-        let mut pane = BottomPane::new(BottomPaneParams {
-            app_event_tx: tx,
-            frame_requester: FrameRequester::test_dummy(),
-            has_input_focus: true,
-            enhanced_keys_supported: false,
-            placeholder_text: "Ask Codex to do anything".to_string(),
-            disable_paste_burst: false,
-            animations_enabled: true,
-            skills: Some(Vec::new()),
-        });
+        return crate::ui_profile::with_test_ui_profile(
+            crate::ui_profile::UiProfile::CodexDev,
+            || {
+                let (tx_raw, _rx) = unbounded_channel::<AppEvent>();
+                let tx = AppEventSender::new(tx_raw);
+                let mut pane = BottomPane::new(BottomPaneParams {
+                    app_event_tx: tx,
+                    frame_requester: FrameRequester::test_dummy(),
+                    has_input_focus: true,
+                    enhanced_keys_supported: false,
+                    placeholder_text: "Ask Codex to do anything".to_string(),
+                    disable_paste_burst: false,
+                    animations_enabled: true,
+                    skills: Some(Vec::new()),
+                });
 
-        // Begin a task: show initial status.
-        pane.set_task_running(/*running*/ true);
+                // Begin a task: show initial status.
+                pane.set_task_running(/*running*/ true);
 
-        // Use a height that allows the status line to be visible above the composer.
-        let area = Rect::new(0, 0, 40, 6);
-        let mut buf = Buffer::empty(area);
-        pane.render(area, &mut buf);
+                // Use a height that allows the status line to be visible above the composer.
+                let area = Rect::new(0, 0, 40, 6);
+                let mut buf = Buffer::empty(area);
+                pane.render(area, &mut buf);
 
-        let bufs = snapshot_buffer(&buf);
-        assert!(bufs.contains("• Working"), "expected Working header");
+                let bufs = snapshot_buffer(&buf);
+                assert!(bufs.contains("• Working"), "expected Working header");
 
-        pane.reset_status_timer(Duration::from_secs(/*secs*/ 42));
-        pane.hide_status_indicator();
-        pane.pause_status_timer_for_modal();
-        let paused = pane.status_timer.elapsed_at(Instant::now());
-        pane.ensure_status_indicator();
-        assert_snapshot!(
-            "status_timer_survives_hidden_row",
-            render_snapshot(&pane, area)
+                pane.reset_status_timer(Duration::from_secs(/*secs*/ 42));
+                pane.hide_status_indicator();
+                pane.pause_status_timer_for_modal();
+                let paused = pane.status_timer.elapsed_at(Instant::now());
+                pane.ensure_status_indicator();
+                assert_snapshot!(
+                    "status_timer_survives_hidden_row",
+                    render_snapshot(&pane, area)
+                );
+                assert_eq!(
+                    pane.status_timer
+                        .elapsed_at(Instant::now() + Duration::from_secs(/*secs*/ 10)),
+                    paused
+                );
+                pane.resume_status_timer_after_modal();
+                assert!(
+                    pane.status_timer
+                        .elapsed_at(Instant::now() + Duration::from_secs(/*secs*/ 10))
+                        >= paused + Duration::from_secs(/*secs*/ 10)
+                );
+                pane.set_task_running(/*running*/ false);
+                pane.set_task_running(/*running*/ true);
+                assert!(pane.status_timer.elapsed_at(Instant::now()) < paused);
+            },
         );
-        assert_eq!(
-            pane.status_timer
-                .elapsed_at(Instant::now() + Duration::from_secs(/*secs*/ 10)),
-            paused
-        );
-        pane.resume_status_timer_after_modal();
-        assert!(
-            pane.status_timer
-                .elapsed_at(Instant::now() + Duration::from_secs(/*secs*/ 10))
-                >= paused + Duration::from_secs(/*secs*/ 10)
-        );
-        pane.set_task_running(/*running*/ false);
-        pane.set_task_running(/*running*/ true);
-        assert!(pane.status_timer.elapsed_at(Instant::now()) < paused);
     }
 
     #[test]
@@ -3018,56 +3035,66 @@ mod tests {
 
     #[test]
     fn status_and_composer_fill_height_without_bottom_padding() {
-        let (tx_raw, _rx) = unbounded_channel::<AppEvent>();
-        let tx = AppEventSender::new(tx_raw);
-        let mut pane = BottomPane::new(BottomPaneParams {
-            app_event_tx: tx,
-            frame_requester: FrameRequester::test_dummy(),
-            has_input_focus: true,
-            enhanced_keys_supported: false,
-            placeholder_text: "Ask Codex to do anything".to_string(),
-            disable_paste_burst: false,
-            animations_enabled: true,
-            skills: Some(Vec::new()),
-        });
+        return crate::ui_profile::with_test_ui_profile(
+            crate::ui_profile::UiProfile::CodexDev,
+            || {
+                let (tx_raw, _rx) = unbounded_channel::<AppEvent>();
+                let tx = AppEventSender::new(tx_raw);
+                let mut pane = BottomPane::new(BottomPaneParams {
+                    app_event_tx: tx,
+                    frame_requester: FrameRequester::test_dummy(),
+                    has_input_focus: true,
+                    enhanced_keys_supported: false,
+                    placeholder_text: "Ask Codex to do anything".to_string(),
+                    disable_paste_burst: false,
+                    animations_enabled: true,
+                    skills: Some(Vec::new()),
+                });
 
-        // Activate spinner (status view replaces composer) with no live ring.
-        pane.set_task_running(/*running*/ true);
+                // Activate spinner (status view replaces composer) with no live ring.
+                pane.set_task_running(/*running*/ true);
 
-        // Use height == desired_height; expect spacer + status + composer rows without trailing padding.
-        let height = pane.desired_height(/*width*/ 30);
-        assert!(
-            height >= 3,
-            "expected at least 3 rows to render spacer, status, and composer; got {height}"
-        );
-        let area = Rect::new(0, 0, 30, height);
-        assert_snapshot!(
-            "status_and_composer_fill_height_without_bottom_padding",
-            render_snapshot(&pane, area)
+                // Use height == desired_height; expect spacer + status + composer rows without trailing padding.
+                let height = pane.desired_height(/*width*/ 30);
+                assert!(
+                    height >= 3,
+                    "expected at least 3 rows to render spacer, status, and composer; got {height}"
+                );
+                let area = Rect::new(0, 0, 30, height);
+                assert_snapshot!(
+                    "status_and_composer_fill_height_without_bottom_padding",
+                    render_snapshot(&pane, area)
+                );
+            },
         );
     }
 
     #[test]
     fn status_only_snapshot() {
-        let (tx_raw, _rx) = unbounded_channel::<AppEvent>();
-        let tx = AppEventSender::new(tx_raw);
-        let mut pane = BottomPane::new(BottomPaneParams {
-            app_event_tx: tx,
-            frame_requester: FrameRequester::test_dummy(),
-            has_input_focus: true,
-            enhanced_keys_supported: false,
-            placeholder_text: "Ask Codex to do anything".to_string(),
-            disable_paste_burst: false,
-            animations_enabled: true,
-            skills: Some(Vec::new()),
-        });
+        return crate::ui_profile::with_test_ui_profile(
+            crate::ui_profile::UiProfile::CodexDev,
+            || {
+                let (tx_raw, _rx) = unbounded_channel::<AppEvent>();
+                let tx = AppEventSender::new(tx_raw);
+                let mut pane = BottomPane::new(BottomPaneParams {
+                    app_event_tx: tx,
+                    frame_requester: FrameRequester::test_dummy(),
+                    has_input_focus: true,
+                    enhanced_keys_supported: false,
+                    placeholder_text: "Ask Codex to do anything".to_string(),
+                    disable_paste_burst: false,
+                    animations_enabled: true,
+                    skills: Some(Vec::new()),
+                });
 
-        pane.set_task_running(/*running*/ true);
+                pane.set_task_running(/*running*/ true);
 
-        let width = 48;
-        let height = pane.desired_height(width);
-        let area = Rect::new(0, 0, width, height);
-        assert_snapshot!("status_only_snapshot", render_snapshot(&pane, area));
+                let width = 48;
+                let height = pane.desired_height(width);
+                let area = Rect::new(0, 0, width, height);
+                assert_snapshot!("status_only_snapshot", render_snapshot(&pane, area));
+            },
+        );
     }
 
     #[test]
@@ -3101,101 +3128,116 @@ mod tests {
 
     #[test]
     fn status_with_details_and_queued_messages_snapshot() {
-        let (tx_raw, _rx) = unbounded_channel::<AppEvent>();
-        let tx = AppEventSender::new(tx_raw);
-        let mut pane = BottomPane::new(BottomPaneParams {
-            app_event_tx: tx,
-            frame_requester: FrameRequester::test_dummy(),
-            has_input_focus: true,
-            enhanced_keys_supported: false,
-            placeholder_text: "Ask Codex to do anything".to_string(),
-            disable_paste_burst: false,
-            animations_enabled: true,
-            skills: Some(Vec::new()),
-        });
+        return crate::ui_profile::with_test_ui_profile(
+            crate::ui_profile::UiProfile::CodexDev,
+            || {
+                let (tx_raw, _rx) = unbounded_channel::<AppEvent>();
+                let tx = AppEventSender::new(tx_raw);
+                let mut pane = BottomPane::new(BottomPaneParams {
+                    app_event_tx: tx,
+                    frame_requester: FrameRequester::test_dummy(),
+                    has_input_focus: true,
+                    enhanced_keys_supported: false,
+                    placeholder_text: "Ask Codex to do anything".to_string(),
+                    disable_paste_burst: false,
+                    animations_enabled: true,
+                    skills: Some(Vec::new()),
+                });
 
-        pane.set_task_running(/*running*/ true);
-        pane.update_status(
-            "Working".to_string(),
-            Some("First detail line\nSecond detail line".to_string()),
-            StatusDetailsCapitalization::CapitalizeFirst,
-            STATUS_DETAILS_DEFAULT_MAX_LINES,
-        );
-        pane.set_pending_input_preview(
-            vec!["Queued follow-up question".to_string()],
-            Vec::new(),
-            Vec::new(),
-        );
+                pane.set_task_running(/*running*/ true);
+                pane.update_status(
+                    "Working".to_string(),
+                    Some("First detail line\nSecond detail line".to_string()),
+                    StatusDetailsCapitalization::CapitalizeFirst,
+                    STATUS_DETAILS_DEFAULT_MAX_LINES,
+                );
+                pane.set_pending_input_preview(
+                    vec!["Queued follow-up question".to_string()],
+                    Vec::new(),
+                    Vec::new(),
+                );
 
-        let width = 48;
-        let height = pane.desired_height(width);
-        let area = Rect::new(0, 0, width, height);
-        assert_snapshot!(
-            "status_with_details_and_queued_messages_snapshot",
-            render_snapshot(&pane, area)
+                let width = 48;
+                let height = pane.desired_height(width);
+                let area = Rect::new(0, 0, width, height);
+                assert_snapshot!(
+                    "status_with_details_and_queued_messages_snapshot",
+                    render_snapshot(&pane, area)
+                );
+            },
         );
     }
 
     #[test]
     fn queued_messages_visible_when_status_hidden_snapshot() {
-        let (tx_raw, _rx) = unbounded_channel::<AppEvent>();
-        let tx = AppEventSender::new(tx_raw);
-        let mut pane = BottomPane::new(BottomPaneParams {
-            app_event_tx: tx,
-            frame_requester: FrameRequester::test_dummy(),
-            has_input_focus: true,
-            enhanced_keys_supported: false,
-            placeholder_text: "Ask Codex to do anything".to_string(),
-            disable_paste_burst: false,
-            animations_enabled: true,
-            skills: Some(Vec::new()),
-        });
+        return crate::ui_profile::with_test_ui_profile(
+            crate::ui_profile::UiProfile::CodexDev,
+            || {
+                let (tx_raw, _rx) = unbounded_channel::<AppEvent>();
+                let tx = AppEventSender::new(tx_raw);
+                let mut pane = BottomPane::new(BottomPaneParams {
+                    app_event_tx: tx,
+                    frame_requester: FrameRequester::test_dummy(),
+                    has_input_focus: true,
+                    enhanced_keys_supported: false,
+                    placeholder_text: "Ask Codex to do anything".to_string(),
+                    disable_paste_burst: false,
+                    animations_enabled: true,
+                    skills: Some(Vec::new()),
+                });
 
-        pane.set_task_running(/*running*/ true);
-        pane.set_pending_input_preview(
-            vec!["Queued follow-up question".to_string()],
-            Vec::new(),
-            Vec::new(),
-        );
-        pane.hide_status_indicator();
+                pane.set_task_running(/*running*/ true);
+                pane.set_pending_input_preview(
+                    vec!["Queued follow-up question".to_string()],
+                    Vec::new(),
+                    Vec::new(),
+                );
+                pane.hide_status_indicator();
 
-        let width = 48;
-        let height = pane.desired_height(width);
-        let area = Rect::new(0, 0, width, height);
-        assert_snapshot!(
-            "queued_messages_visible_when_status_hidden_snapshot",
-            render_snapshot(&pane, area)
+                let width = 48;
+                let height = pane.desired_height(width);
+                let area = Rect::new(0, 0, width, height);
+                assert_snapshot!(
+                    "queued_messages_visible_when_status_hidden_snapshot",
+                    render_snapshot(&pane, area)
+                );
+            },
         );
     }
 
     #[test]
     fn status_and_queued_messages_snapshot() {
-        let (tx_raw, _rx) = unbounded_channel::<AppEvent>();
-        let tx = AppEventSender::new(tx_raw);
-        let mut pane = BottomPane::new(BottomPaneParams {
-            app_event_tx: tx,
-            frame_requester: FrameRequester::test_dummy(),
-            has_input_focus: true,
-            enhanced_keys_supported: false,
-            placeholder_text: "Ask Codex to do anything".to_string(),
-            disable_paste_burst: false,
-            animations_enabled: true,
-            skills: Some(Vec::new()),
-        });
+        return crate::ui_profile::with_test_ui_profile(
+            crate::ui_profile::UiProfile::CodexDev,
+            || {
+                let (tx_raw, _rx) = unbounded_channel::<AppEvent>();
+                let tx = AppEventSender::new(tx_raw);
+                let mut pane = BottomPane::new(BottomPaneParams {
+                    app_event_tx: tx,
+                    frame_requester: FrameRequester::test_dummy(),
+                    has_input_focus: true,
+                    enhanced_keys_supported: false,
+                    placeholder_text: "Ask Codex to do anything".to_string(),
+                    disable_paste_burst: false,
+                    animations_enabled: true,
+                    skills: Some(Vec::new()),
+                });
 
-        pane.set_task_running(/*running*/ true);
-        pane.set_pending_input_preview(
-            vec!["Queued follow-up question".to_string()],
-            Vec::new(),
-            Vec::new(),
-        );
+                pane.set_task_running(/*running*/ true);
+                pane.set_pending_input_preview(
+                    vec!["Queued follow-up question".to_string()],
+                    Vec::new(),
+                    Vec::new(),
+                );
 
-        let width = 48;
-        let height = pane.desired_height(width);
-        let area = Rect::new(0, 0, width, height);
-        assert_snapshot!(
-            "status_and_queued_messages_snapshot",
-            render_snapshot(&pane, area)
+                let width = 48;
+                let height = pane.desired_height(width);
+                let area = Rect::new(0, 0, width, height);
+                assert_snapshot!(
+                    "status_and_queued_messages_snapshot",
+                    render_snapshot(&pane, area)
+                );
+            },
         );
     }
 
@@ -3301,49 +3343,54 @@ mod tests {
 
     #[test]
     fn esc_dismisses_slash_command_popup_without_interrupting_task() {
-        let (tx_raw, mut rx) = unbounded_channel::<AppEvent>();
-        let tx = AppEventSender::new(tx_raw);
-        let mut pane = BottomPane::new(BottomPaneParams {
-            app_event_tx: tx,
-            frame_requester: FrameRequester::test_dummy(),
-            has_input_focus: true,
-            enhanced_keys_supported: false,
-            placeholder_text: "Ask Codex to do anything".to_string(),
-            disable_paste_burst: false,
-            animations_enabled: true,
-            skills: Some(Vec::new()),
-        });
+        return crate::ui_profile::with_test_ui_profile(
+            crate::ui_profile::UiProfile::CodexDev,
+            || {
+                let (tx_raw, mut rx) = unbounded_channel::<AppEvent>();
+                let tx = AppEventSender::new(tx_raw);
+                let mut pane = BottomPane::new(BottomPaneParams {
+                    app_event_tx: tx,
+                    frame_requester: FrameRequester::test_dummy(),
+                    has_input_focus: true,
+                    enhanced_keys_supported: false,
+                    placeholder_text: "Ask Codex to do anything".to_string(),
+                    disable_paste_burst: false,
+                    animations_enabled: true,
+                    skills: Some(Vec::new()),
+                });
 
-        pane.set_task_running(/*running*/ true);
+                pane.set_task_running(/*running*/ true);
 
-        // Repro: a running task + slash-command popup + Esc should dismiss the popup without
-        // interrupting the task.
-        pane.insert_str("/rev");
-        assert!(
-            pane.composer.popup_active(),
-            "expected command popup after typing `/rev`"
+                // Repro: a running task + slash-command popup + Esc should dismiss the popup without
+                // interrupting the task.
+                pane.insert_str("/rev");
+                assert!(
+                    pane.composer.popup_active(),
+                    "expected command popup after typing `/rev`"
+                );
+
+                pane.handle_key_event(KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE));
+
+                while let Ok(ev) = rx.try_recv() {
+                    assert!(
+                        !matches!(ev, AppEvent::CodexOp(Op::Interrupt)),
+                        "expected Esc to not send Op::Interrupt while command popup is active"
+                    );
+                }
+                assert!(!pane.composer.popup_active());
+                assert_eq!(pane.composer_text(), "/rev");
+
+                let width = 60;
+                let area = Rect::new(0, 0, width, pane.desired_height(width));
+                assert_snapshot!(
+                    "slash_command_popup_dismissed",
+                    render_snapshot(&pane, area)
+                );
+
+                pane.insert_str("i");
+                assert!(pane.composer.popup_active());
+            },
         );
-
-        pane.handle_key_event(KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE));
-
-        while let Ok(ev) = rx.try_recv() {
-            assert!(
-                !matches!(ev, AppEvent::CodexOp(Op::Interrupt)),
-                "expected Esc to not send Op::Interrupt while command popup is active"
-            );
-        }
-        assert!(!pane.composer.popup_active());
-        assert_eq!(pane.composer_text(), "/rev");
-
-        let width = 60;
-        let area = Rect::new(0, 0, width, pane.desired_height(width));
-        assert_snapshot!(
-            "slash_command_popup_dismissed",
-            render_snapshot(&pane, area)
-        );
-
-        pane.insert_str("i");
-        assert!(pane.composer.popup_active());
     }
 
     #[test]

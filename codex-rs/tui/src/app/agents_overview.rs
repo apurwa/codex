@@ -250,7 +250,35 @@ impl App {
         mut threads: Vec<Thread>,
         selected_thread_id: Option<ThreadId>,
     ) -> AgentsOverviewView {
+        let had_selected_project_directory = self
+            .agents_overview
+            .view_state
+            .lock()
+            .map(|state| state.project_directory_from_selection)
+            .unwrap_or(false);
         self.sync_agents_overview_composer();
+        if matches!(
+            crate::ui_profile::ui_profile(),
+            crate::ui_profile::UiProfile::Upstream
+        ) {
+            let mut state = self
+                .agents_overview
+                .view_state
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            state.composer = None;
+            state.project_directory.clear();
+            state.project_directory_from_selection = false;
+            state.focus = super::agents_overview_view::AgentsOverviewFocus::List;
+        } else if threads.is_empty() && had_selected_project_directory {
+            let mut state = self
+                .agents_overview
+                .view_state
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            state.project_directory.clear();
+            state.project_directory_from_selection = false;
+        }
         threads.retain(|thread| !thread.ephemeral);
         for thread in &mut threads {
             if thread.parent_thread_id.is_none()

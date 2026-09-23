@@ -2197,7 +2197,7 @@ async fn apps_popup_stays_loading_until_final_snapshot_updates() {
 
 #[tokio::test]
 async fn apps_notification_update_excludes_inaccessible_apps_from_mentions() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut chat, _rx, mut op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
         chat.thread_id = Some(ThreadId::new());
         set_chatgpt_auth(&mut chat);
@@ -3476,7 +3476,7 @@ async fn model_picker_refresh_preserves_highlight() {
 
 #[tokio::test]
 async fn model_picker_refreshes_service_tier_controls() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut chat, _rx, _op_rx) = make_chatwidget_manual(Some("gpt-5.4")).await;
         chat.thread_id = Some(ThreadId::new());
         set_fast_mode_test_catalog(&mut chat);
@@ -4266,7 +4266,7 @@ async fn reasoning_popup_escape_returns_to_model_popup() {
 
 #[tokio::test]
 async fn account_change_dismisses_the_previous_app_directory_snapshot() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut chat, _rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
         chat.thread_id = Some(ThreadId::new());
         set_chatgpt_auth(&mut chat);

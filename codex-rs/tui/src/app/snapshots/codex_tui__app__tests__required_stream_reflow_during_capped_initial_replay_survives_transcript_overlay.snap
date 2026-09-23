@@ -1,5 +1,6 @@
 ---
 source: tui/src/app/tests.rs
+assertion_line: 6888
 expression: "rendered.lines.iter().map(rendered_line_text).collect::<Vec<_>>().join(\"\\n\")"
 ---
 Earlier messages are available — press ctrl + t to view the full transcript
@@ -8,3 +9,4 @@ Earlier messages are available — press ctrl + t to view the full transcript
    Pattern       Outcome
   ━━━━━━━━━━━━  ━━━━━━━━━━━
    Table tail    Preserved
+───────────────────────────────────────────────────────────────────────────────

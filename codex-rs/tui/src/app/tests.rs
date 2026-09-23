@@ -6334,92 +6334,98 @@ fn plain_line_cell(text: impl Into<String>) -> Arc<dyn HistoryCell> {
 
 #[tokio::test]
 async fn app_server_thread_replacement_clears_previous_transcript_before_replay() -> Result<()> {
-    let (mut app, mut events, _op_rx) = make_test_app_with_channels().await;
-    app.local_settings.tui.show_tooltips = false;
-    let previous_thread_id = ThreadId::new();
-    app.enqueue_primary_thread_session(
-        test_thread_session(previous_thread_id, test_path_buf("/tmp/previous")),
-        Vec::new(),
-    )
-    .await?;
-    while events.try_recv().is_ok() {}
-    app.transcript_cells = vec![plain_line_cell("Previous thread transcript")];
-    app.deferred_history_lines = vec![Line::from("Previous pending history").into()];
-    let mut tui = crate::tui::test_support::make_test_tui()?;
-    tui.insert_history_lines(vec![Line::from("Previous pending history")]);
-    app.chat_widget
-        .add_plain_history_lines(vec![Line::from("Previous queued history")]);
-    app.open_transcript_overlay(&mut tui);
-    assert!(tui.is_alt_screen_active());
+    return crate::ui_profile::with_test_ui_profile_async(
+        crate::ui_profile::UiProfile::CodexDev,
+        async {
+            let (mut app, mut events, _op_rx) = make_test_app_with_channels().await;
+            app.local_settings.tui.show_tooltips = false;
+            let previous_thread_id = ThreadId::new();
+            app.enqueue_primary_thread_session(
+                test_thread_session(previous_thread_id, test_path_buf("/tmp/previous")),
+                Vec::new(),
+            )
+            .await?;
+            while events.try_recv().is_ok() {}
+            app.transcript_cells = vec![plain_line_cell("Previous thread transcript")];
+            app.deferred_history_lines = vec![Line::from("Previous pending history").into()];
+            let mut tui = crate::tui::test_support::make_test_tui()?;
+            tui.insert_history_lines(vec![Line::from("Previous pending history")]);
+            app.chat_widget
+                .add_plain_history_lines(vec![Line::from("Previous queued history")]);
+            app.open_transcript_overlay(&mut tui);
+            assert!(tui.is_alt_screen_active());
 
-    let next_thread_id = ThreadId::new();
-    app.replace_chat_widget_with_app_server_thread(
-        &mut tui,
-        AppServerStartedThread {
-            session: test_thread_session(next_thread_id, test_path_buf("/tmp/next")),
-            turns: vec![test_turn(
-                "next-turn",
-                TurnStatus::Completed,
-                vec![ThreadItem::UserMessage {
-                    id: "next-user".to_string(),
-                    client_id: None,
-                    content: vec![AppServerUserInput::Text {
-                        text: "Next thread prompt".to_string(),
-                        text_elements: Vec::new(),
-                    }],
-                }],
-            )],
-            blocks_direct_input: false,
-            task_tools_available: false,
-        },
-        session_lifecycle::ThreadAttachPresentation::SessionLineage,
-        /*initial_user_message*/ None,
-    )
-    .await?;
+            let next_thread_id = ThreadId::new();
+            app.replace_chat_widget_with_app_server_thread(
+                &mut tui,
+                AppServerStartedThread {
+                    session: test_thread_session(next_thread_id, test_path_buf("/tmp/next")),
+                    turns: vec![test_turn(
+                        "next-turn",
+                        TurnStatus::Completed,
+                        vec![ThreadItem::UserMessage {
+                            id: "next-user".to_string(),
+                            client_id: None,
+                            content: vec![AppServerUserInput::Text {
+                                text: "Next thread prompt".to_string(),
+                                text_elements: Vec::new(),
+                            }],
+                        }],
+                    )],
+                    blocks_direct_input: false,
+                    task_tools_available: false,
+                },
+                session_lifecycle::ThreadAttachPresentation::SessionLineage,
+                /*initial_user_message*/ None,
+            )
+            .await?;
 
-    assert_eq!(app.chat_widget.thread_id(), Some(next_thread_id));
-    assert!(!tui.is_alt_screen_active());
-    assert!(app.transcript_cells.is_empty());
-    assert!(app.deferred_history_lines.is_empty());
-    let mut app_server = crate::start_embedded_app_server_for_picker(&app.config).await?;
-    // The reset must still run if the transport disconnects before queued events are handled.
-    app.reconnect.offline = true;
-    while let Ok(event) = events.try_recv() {
-        app.handle_event(&mut tui, &mut app_server, event).await?;
-    }
-    let replayed_prompts = app
-        .transcript_cells
-        .iter()
-        .filter_map(|cell| {
-            cell.as_any()
-                .downcast_ref::<UserHistoryCell>()
-                .map(|user| user.message.as_str())
-        })
-        .collect::<Vec<_>>();
-    assert_snapshot!(replayed_prompts.join("\n"), @"Next thread prompt");
-    assert!(app.transcript_cells.iter().all(|cell| {
-        !lines_to_single_string(&cell.display_lines(/*width*/ 80))
-            .contains("Previous queued history")
-    }));
-    let rendered = app
-        .render_transcript_lines_for_reflow(/*width*/ 80)
-        .lines
-        .iter()
-        .map(|line| {
-            let text = rendered_line_text(line);
-            if text.contains("│ directory: ") {
-                "│ directory: <thread cwd>                │".to_string()
-            } else {
-                text
+            assert_eq!(app.chat_widget.thread_id(), Some(next_thread_id));
+            assert!(!tui.is_alt_screen_active());
+            assert!(app.transcript_cells.is_empty());
+            assert!(app.deferred_history_lines.is_empty());
+            let mut app_server = crate::start_embedded_app_server_for_picker(&app.config).await?;
+            // The reset must still run if the transport disconnects before queued events are handled.
+            app.reconnect.offline = true;
+            while let Ok(event) = events.try_recv() {
+                app.handle_event(&mut tui, &mut app_server, event).await?;
             }
-        })
-        .collect::<Vec<_>>()
-        .join("\n");
-    assert!(!rendered.contains("Previous thread transcript"));
-    assert!(!rendered.contains("Previous queued history"));
-    assert_snapshot!(rendered);
-    app_server.shutdown().await?;
-    Ok(())
+            let replayed_prompts = app
+                .transcript_cells
+                .iter()
+                .filter_map(|cell| {
+                    cell.as_any()
+                        .downcast_ref::<UserHistoryCell>()
+                        .map(|user| user.message.as_str())
+                })
+                .collect::<Vec<_>>();
+            assert_snapshot!(replayed_prompts.join("\n"), @"Next thread prompt");
+            assert!(app.transcript_cells.iter().all(|cell| {
+                !lines_to_single_string(&cell.display_lines(/*width*/ 80))
+                    .contains("Previous queued history")
+            }));
+            let rendered = app
+                .render_transcript_lines_for_reflow(/*width*/ 80)
+                .lines
+                .iter()
+                .map(|line| {
+                    let text = rendered_line_text(line);
+                    if text.contains("│ directory: ") {
+                        "│ directory: <thread cwd>                │".to_string()
+                    } else {
+                        text
+                    }
+                })
+                .collect::<Vec<_>>()
+                .join("\n");
+            assert!(!rendered.contains("Previous thread transcript"));
+            assert!(!rendered.contains("Previous queued history"));
+            assert_snapshot!(rendered);
+            app_server.shutdown().await?;
+            Ok(())
+        },
+    )
+    .await;
 }
 
 #[tokio::test]
@@ -6731,9 +6737,12 @@ async fn initial_replay_buffer_keeps_recent_rows_when_row_cap_present() {
 
 #[tokio::test]
 async fn required_stream_reflow_during_capped_initial_replay_uses_transcript_tail() -> Result<()> {
-    let (mut app, _rx, _op_rx) = make_test_app_with_channels().await;
-    app.local_settings.tui.terminal_resize_reflow_max_rows = Some(20);
-    app.transcript_cells = vec![
+    return crate::ui_profile::with_test_ui_profile_async(
+        crate::ui_profile::UiProfile::CodexDev,
+        async {
+            let (mut app, _rx, _op_rx) = make_test_app_with_channels().await;
+            app.local_settings.tui.terminal_resize_reflow_max_rows = Some(20);
+            app.transcript_cells = vec![
         plain_line_cell("latest user question"),
         Arc::new(AgentMarkdownCell::new(
             "Final answer:\n\n| Pattern | Outcome |\n| --- | --- |\n| Table tail | Preserved |"
@@ -6742,45 +6751,48 @@ async fn required_stream_reflow_during_capped_initial_replay_uses_transcript_tai
         )),
     ];
 
-    app.begin_initial_history_replay_buffer();
-    App::buffer_initial_history_replay_display_lines(
-        app.initial_history_replay_buffer
-            .as_mut()
-            .expect("initial replay buffer active"),
-        vec![Line::from("latest user question").into()],
-        /*max_rows*/ 20,
-    );
+            app.begin_initial_history_replay_buffer();
+            App::buffer_initial_history_replay_display_lines(
+                app.initial_history_replay_buffer
+                    .as_mut()
+                    .expect("initial replay buffer active"),
+                vec![Line::from("latest user question").into()],
+                /*max_rows*/ 20,
+            );
 
-    let mut tui = crate::tui::test_support::make_test_tui()?;
-    app.finish_required_stream_reflow(&mut tui)?;
+            let mut tui = crate::tui::test_support::make_test_tui()?;
+            app.finish_required_stream_reflow(&mut tui)?;
 
-    let buffer = app
-        .initial_history_replay_buffer
-        .as_ref()
-        .expect("initial replay buffer should remain active");
-    assert_eq!(
-        (
-            buffer.retained_lines.len(),
-            buffer.render_from_transcript_tail
-        ),
-        (0, true),
-    );
+            let buffer = app
+                .initial_history_replay_buffer
+                .as_ref()
+                .expect("initial replay buffer should remain active");
+            assert_eq!(
+                (
+                    buffer.retained_lines.len(),
+                    buffer.render_from_transcript_tail
+                ),
+                (0, true),
+            );
 
-    let rendered = app.render_transcript_lines_for_reflow(/*width*/ 80);
-    assert_snapshot!(
-        "required_stream_reflow_during_capped_initial_replay",
-        rendered
-            .lines
-            .iter()
-            .map(rendered_line_text)
-            .collect::<Vec<_>>()
-            .join("\n")
-    );
+            let rendered = app.render_transcript_lines_for_reflow(/*width*/ 80);
+            assert_snapshot!(
+                "required_stream_reflow_during_capped_initial_replay",
+                rendered
+                    .lines
+                    .iter()
+                    .map(rendered_line_text)
+                    .collect::<Vec<_>>()
+                    .join("\n")
+            );
 
-    app.finish_initial_history_replay_buffer(&mut tui);
-    assert!(app.initial_history_replay_buffer.is_none());
-    assert!(app.transcript_reflow.has_pending_reflow());
-    Ok(())
+            app.finish_initial_history_replay_buffer(&mut tui);
+            assert!(app.initial_history_replay_buffer.is_none());
+            assert!(app.transcript_reflow.has_pending_reflow());
+            Ok(())
+        },
+    )
+    .await;
 }
 
 #[tokio::test]
@@ -6823,63 +6835,69 @@ async fn directive_only_completion_removes_streamed_directive() -> Result<()> {
 #[tokio::test]
 async fn required_stream_reflow_during_capped_initial_replay_survives_transcript_overlay()
 -> Result<()> {
-    let (mut app, _rx, _op_rx) = make_test_app_with_channels().await;
-    app.local_settings.tui.terminal_resize_reflow_max_rows = Some(7);
-    app.transcript_cells = vec![
-        plain_line_cell("latest user question"),
-        Arc::new(AgentMessageCell::new(
-            vec![Line::from("stale streamed table tail")],
-            /*is_first_line*/ true,
-        )),
-    ];
+    return crate::ui_profile::with_test_ui_profile_async(
+        crate::ui_profile::UiProfile::CodexDev,
+        async {
+            let (mut app, _rx, _op_rx) = make_test_app_with_channels().await;
+            app.local_settings.tui.terminal_resize_reflow_max_rows = Some(7);
+            app.transcript_cells = vec![
+                plain_line_cell("latest user question"),
+                Arc::new(AgentMessageCell::new(
+                    vec![Line::from("stale streamed table tail")],
+                    /*is_first_line*/ true,
+                )),
+            ];
 
-    app.begin_initial_history_replay_buffer();
-    App::buffer_initial_history_replay_display_lines(
-        app.initial_history_replay_buffer
-            .as_mut()
-            .expect("initial replay buffer active"),
-        vec![Line::from("stale streamed table tail").into()],
-        /*max_rows*/ 7,
-    );
+            app.begin_initial_history_replay_buffer();
+            App::buffer_initial_history_replay_display_lines(
+                app.initial_history_replay_buffer
+                    .as_mut()
+                    .expect("initial replay buffer active"),
+                vec![Line::from("stale streamed table tail").into()],
+                /*max_rows*/ 7,
+            );
 
-    let mut tui = crate::tui::test_support::make_test_tui()?;
-    app.handle_consolidate_agent_message(
-        &mut tui,
-        "Final answer:\n\n| Pattern | Outcome |\n| --- | --- |\n| Table tail | Preserved |"
-            .to_string(),
-        /*phase*/ None,
-        PathBuf::from("/tmp"),
-        /*inline_visualization_context*/ None,
-        ConsolidationScrollbackReflow::Required,
-        /*deferred_history_cell*/ None,
-    )?;
-    app.open_transcript_overlay(&mut tui);
-    assert!(tui.is_alt_screen_active());
+            let mut tui = crate::tui::test_support::make_test_tui()?;
+            app.handle_consolidate_agent_message(
+                &mut tui,
+                "Final answer:\n\n| Pattern | Outcome |\n| --- | --- |\n| Table tail | Preserved |"
+                    .to_string(),
+                /*phase*/ None,
+                PathBuf::from("/tmp"),
+                /*inline_visualization_context*/ None,
+                ConsolidationScrollbackReflow::Required,
+                /*deferred_history_cell*/ None,
+            )?;
+            app.open_transcript_overlay(&mut tui);
+            assert!(tui.is_alt_screen_active());
 
-    app.finish_initial_history_replay_buffer(&mut tui);
-    assert!(app.initial_history_replay_buffer.is_none());
-    assert!(app.transcript_reflow.has_pending_reflow());
+            app.finish_initial_history_replay_buffer(&mut tui);
+            assert!(app.initial_history_replay_buffer.is_none());
+            assert!(app.transcript_reflow.has_pending_reflow());
 
-    let screen_size = tui.terminal.last_known_screen_size;
-    app.maybe_run_resize_reflow(&mut tui, screen_size)?;
-    assert!(app.transcript_reflow.has_pending_reflow());
+            let screen_size = tui.terminal.last_known_screen_size;
+            app.maybe_run_resize_reflow(&mut tui, screen_size)?;
+            assert!(app.transcript_reflow.has_pending_reflow());
 
-    app.close_transcript_overlay(&mut tui);
-    assert!(!tui.is_alt_screen_active());
-    assert!(app.transcript_reflow.has_pending_reflow());
+            app.close_transcript_overlay(&mut tui);
+            assert!(!tui.is_alt_screen_active());
+            assert!(app.transcript_reflow.has_pending_reflow());
 
-    let rendered = app.render_transcript_lines_for_reflow(/*width*/ 80);
-    assert_eq!(rendered.lines.len(), 7);
-    assert_snapshot!(
-        "required_stream_reflow_during_capped_initial_replay_survives_transcript_overlay",
-        rendered
-            .lines
-            .iter()
-            .map(rendered_line_text)
-            .collect::<Vec<_>>()
-            .join("\n")
-    );
-    Ok(())
+            let rendered = app.render_transcript_lines_for_reflow(/*width*/ 80);
+            assert_eq!(rendered.lines.len(), 7);
+            assert_snapshot!(
+                "required_stream_reflow_during_capped_initial_replay_survives_transcript_overlay",
+                rendered
+                    .lines
+                    .iter()
+                    .map(rendered_line_text)
+                    .collect::<Vec<_>>()
+                    .join("\n")
+            );
+            Ok(())
+        },
+    )
+    .await;
 }
 
 #[tokio::test]

@@ -14,7 +14,7 @@ use pretty_assertions::assert_eq;
 
 #[tokio::test]
 async fn resumed_initial_messages_render_history() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut chat, mut rx, _ops) = make_chatwidget_manual(/*model_override*/ None).await;
 
         let thread_id = ThreadId::new();
@@ -87,7 +87,7 @@ async fn resumed_initial_messages_render_history() {
 
 #[tokio::test]
 async fn replayed_failed_turns_preserve_overload_warnings_between_retries() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut chat, mut rx, _ops) = make_chatwidget_manual(/*model_override*/ None).await;
         let prompt = "The workspace also looks super confusing with its separator.";
         let error_message = "Selected model is at capacity. Please try a different model.";
@@ -334,7 +334,7 @@ async fn replayed_delegated_tool_output_is_attributed_without_seeding_composer_h
 
 #[tokio::test]
 async fn replayed_nested_review_prompts_do_not_render_or_seed_composer_history() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut chat, mut rx, _ops) = make_chatwidget_manual(/*model_override*/ None).await;
         let review_hint = "current changes";
         let review_prompt =
@@ -1193,7 +1193,7 @@ async fn replayed_thread_closed_notification_does_not_exit_tui() {
 
 #[tokio::test]
 async fn replayed_reasoning_item_preserves_summary_parts_and_hides_raw_reasoning_when_disabled() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
         chat.config.show_raw_agent_reasoning = false;
         chat.handle_thread_session(crate::session_state::ThreadSessionState {
@@ -1327,7 +1327,7 @@ async fn replayed_in_progress_mcp_tool_call_stays_active() {
 
 #[tokio::test]
 async fn failed_repl_mcp_tool_call_preserves_status_and_result() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
 
     for server in ["node_repl", "cua_repl"] {
         let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
@@ -1376,20 +1376,19 @@ async fn failed_repl_mcp_tool_call_preserves_status_and_result() {
         }
         insta::allow_duplicates! {
             insta::assert_snapshot!(lines_to_single_string(lines), @r#"
-            • Inspect workspace
-              └ Script failed
-                {"exit_code": 0, "output": "ready", "chunk_id": "chunk-1"}
-                Script error:
-                permission denied
+
+            CODEX · Tool Calls
+
+            ┊ • Inspect workspace
+            ┊   └ Script failed
+            ┊     {"exit_code": 0, "output": "ready", "chunk_id": "chunk-1"}
+            ┊     Script error:
+            ┊     permission denied
             "#);
         }
         assert_eq!(
             lines.first(),
-            Some(&Line::from(vec![
-                "•".red().bold(),
-                " ".into(),
-                "Inspect workspace".cyan(),
-            ])),
+            Some(&Line::default()),
             "{server}",
         );
     }
@@ -1399,7 +1398,7 @@ async fn failed_repl_mcp_tool_call_preserves_status_and_result() {
 
 #[tokio::test]
 async fn deferred_mcp_lifecycle_events_keep_fifo_after_stream_finishes() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
         let cwd = chat.config.cwd.to_path_buf();
         chat.stream_controller = Some(crate::streaming::controller::StreamController::new(
@@ -1457,8 +1456,8 @@ async fn deferred_mcp_lifecycle_events_keep_fifo_after_stream_finishes() {
             .into_iter()
             .map(|lines| lines_to_single_string(&lines))
             .collect::<String>();
+        assert!(rendered.contains("CODEX · Tool Calls"), "{rendered}");
         assert!(rendered.contains("✓ copilot-bridge.copilot"), "{rendered}");
-        assert!(rendered.contains("Ctrl+T details"), "{rendered}");
     })
     .await;
 }
@@ -1524,7 +1523,7 @@ async fn live_reasoning_summary_is_not_rendered_twice_when_item_completes() {
 
 #[tokio::test]
 async fn live_reasoning_summary_drops_empty_parts_without_losing_content() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
         chat.show_welcome_banner = false;
 
@@ -1622,7 +1621,7 @@ async fn thread_snapshot_replayed_turn_started_marks_task_running() {
 
 #[tokio::test]
 async fn replayed_in_progress_turn_marks_task_running() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         for replay_kind in [
             ReplayKind::ResumeInitialMessages,
             ReplayKind::ThreadSnapshot,

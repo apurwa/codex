@@ -1,9 +1,11 @@
 ---
 source: tui/src/chatwidget/tests/computer_activity_tests.rs
+assertion_line: 56
 expression: "lines_to_single_string(&outputs[0].0)"
 ---
 
 CODEX · Tool Calls
+
 ┊ • Used computer · 4 actions
 ┊   ├ Inspect page 3
 ┊   ├ Inspect page 4

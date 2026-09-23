@@ -2,7 +2,7 @@
 source: tui/src/inline_visualization_tests.rs
 expression: snapshot_text
 ---
-
+───────────────────────────────────────────────────────────────────────────────
 CODEX
 
   Before
@@ -11,3 +11,4 @@ CODEX
   file://<viewer-path>
 
   After
+───────────────────────────────────────────────────────────────────────────────

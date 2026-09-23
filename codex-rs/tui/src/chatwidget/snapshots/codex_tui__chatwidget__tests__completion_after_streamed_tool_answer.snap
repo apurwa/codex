@@ -1,10 +1,12 @@
 ---
 source: tui/src/chatwidget/tests/completion_styling_tests.rs
-expression: normalize_completion_timestamps(text)
+assertion_line: 81
+expression: text
 ---
 
-CODEX · Tool Call
-┊ ✓ echo ready · 5ms · 1 lines · Ctrl+T details
+CODEX · Tool Calls
+
+┊ ✓ echo ready
 
 
 CODEX

@@ -1,10 +1,15 @@
 ---
 source: tui/src/chatwidget/tests/exec_flow.rs
+assertion_line: 48
 expression: "rendered.join(\"\\n---\\n\")"
 ---
 
-CODEX · Tool Call
+CODEX · Tool Calls
+
 ┊ • Running sleep 5
 
 ---
-• Calling server.tool()
+
+CODEX · Tool Calls
+
+┊ • Calling server.tool()

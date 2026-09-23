@@ -6,6 +6,7 @@ expression: "(preview, transcript)"
     [
         Line::default(),
         Line::from(Span::from("CODEX · Tool Calls").fg(Color::Rgb(128, 0, 0)).bold()),
+        Line::default(),
         Line::from_iter([
             Span::from("┊ ").dim(),
             Span::from("•").not_dim(),
@@ -31,20 +32,25 @@ expression: "(preview, transcript)"
     [
         Line::default(),
         Line::from(Span::from("CODEX · Tool Calls").fg(Color::Rgb(128, 0, 0)).bold()),
+        Line::default(),
         Line::from_iter([
+            Span::from("┊ ").dim(),
             Span::from("$ ").magenta().not_dim(),
             Span::from("echo").fg(Color::Rgb(137, 180, 250)).not_dim(),
             Span::from(" output").fg(Color::Rgb(205, 214, 244)).not_dim(),
         ]),
         Line::from_iter([
+            Span::from("┊ ").dim(),
             Span::from("head error that wraps onto the next row").red(),
             Span::from("... 1189804 bytes").fg(Color::Reset).bg(Color::Reset).underline_color(Color::Reset).not_bold().not_dim().not_italic().not_underlined().not_slow_blink().not_rapid_blink().not_reversed().not_hidden().not_crossed_out(),
         ]),
         Line::from_iter([
+            Span::from("┊ ").dim(),
             Span::from("omitted ...").fg(Color::Reset).bg(Color::Reset).underline_color(Color::Reset).not_bold().not_dim().not_italic().not_underlined().not_slow_blink().not_rapid_blink().not_reversed().not_hidden().not_crossed_out(),
             Span::from("tail output that also wraps").green().bg(Color::Reset).underline_color(Color::Reset).not_bold().not_dim().not_italic().not_underlined().not_slow_blink().not_rapid_blink().not_reversed().not_hidden().not_crossed_out(),
         ]),
         Line::from_iter([
+            Span::from("┊ ").dim(),
             Span::from("✗").red().bold(),
             Span::from(" (1)").not_dim(),
             Span::from(" • 0ms").not_dim(),

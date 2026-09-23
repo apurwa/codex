@@ -130,7 +130,7 @@ async fn mcp_startup_dedupes_same_round_duplicate_failure_warning() {
 
 #[tokio::test]
 async fn mcp_startup_header_booting_snapshot() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut chat, _rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
         chat.show_welcome_banner = false;
 
@@ -416,7 +416,7 @@ async fn turn_start_replaces_idle_completed_mcp_startup_header() {
 
 #[tokio::test]
 async fn app_server_mcp_startup_failure_renders_warning_history() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
         chat.show_welcome_banner = false;
         chat.set_mcp_startup_expected_servers(["alpha".to_string(), "beta".to_string()]);

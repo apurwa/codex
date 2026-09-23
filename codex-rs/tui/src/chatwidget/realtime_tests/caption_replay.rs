@@ -5,7 +5,7 @@ use pretty_assertions::assert_eq;
 
 #[tokio::test]
 async fn replay_preserves_typed_updates_before_voice_steers_the_turn() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut chat, _sender, mut events, _ops) = make_chatwidget_manual_with_sender().await;
         chat.thread_id = Some(ThreadId::new());
         chat.replay_thread_turns(
@@ -333,7 +333,7 @@ async fn captioned_voice_answer_does_not_duplicate_on_close() {
 
 #[tokio::test]
 async fn restored_partial_caption_accepts_late_completion_without_duplicate_history() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut chat, _sender, mut events, _ops) = make_chatwidget_manual_with_sender().await;
         chat.local_settings.tui.animations = false;
         chat.restore_realtime_transcript_cells(VecDeque::from([

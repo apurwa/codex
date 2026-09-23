@@ -3501,7 +3501,7 @@ async fn raw_slash_command_reports_usage_for_invalid_arg() {
 
 #[tokio::test]
 async fn compact_queues_user_messages_snapshot() {
-    crate::ui_profile::with_test_ui_profile(crate::ui_profile::UiProfile::CodexDev, || async {
+    crate::ui_profile::with_test_ui_profile_async(crate::ui_profile::UiProfile::CodexDev, async {
         let (mut chat, _rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
         chat.thread_id = Some(ThreadId::new());
         handle_turn_started(&mut chat, "turn-1");

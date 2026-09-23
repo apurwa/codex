@@ -1,6 +1,10 @@
 ---
 source: tui/src/app/tests/buffered_replay.rs
+assertion_line: 698
 expression: rendered
 ---
-• Called sample.inspect({})
-  └ Error: interrupted
+
+CODEX · Tool Calls
+
+┊ • Called sample.inspect({})
+┊   └ Error: interrupted

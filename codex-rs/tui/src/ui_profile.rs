@@ -55,6 +55,11 @@ thread_local! {
         const { std::cell::Cell::new(None) };
 }
 
+#[cfg(test)]
+tokio::task_local! {
+    static ASYNC_TEST_UI_PROFILE: UiProfile;
+}
+
 /// Resolve the profile from the environment and freeze it for the process.
 ///
 /// Called once during TUI startup, before any rendering. The value is stored in a
@@ -76,10 +81,25 @@ pub(crate) fn set_ui_profile_from_env() {
 /// TUI) stays upstream-identical.
 pub(crate) fn ui_profile() -> UiProfile {
     #[cfg(test)]
+    if let Ok(profile) = ASYNC_TEST_UI_PROFILE.try_with(|profile| *profile) {
+        return profile;
+    }
+    #[cfg(test)]
     if let Some(profile) = TEST_UI_PROFILE.with(std::cell::Cell::get) {
         return profile;
     }
     UI_PROFILE.get().copied().unwrap_or_default()
+}
+
+/// Scope a profile across an async test future. Unlike the synchronous helper,
+/// this uses Tokio task-local state so the override remains active across `.await`
+/// points and follows the future if Tokio moves it between worker threads.
+#[cfg(test)]
+pub(crate) async fn with_test_ui_profile_async<F, T>(profile: UiProfile, future: F) -> T
+where
+    F: std::future::Future<Output = T>,
+{
+    ASYNC_TEST_UI_PROFILE.scope(profile, future).await
 }
 
 /// Scope a [`UiProfile`] to the current test thread while rendering a widget.

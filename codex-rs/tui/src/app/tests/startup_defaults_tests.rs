@@ -296,101 +296,111 @@ async fn fresh_startup_uses_server_defaults_with_explicit_and_managed_precedence
 
 #[tokio::test]
 async fn fresh_startup_reads_destination_and_cleared_model_uses_catalog() -> Result<()> {
-    for (remote, override_cwd) in [(false, false), (true, false), (true, true)] {
-        let client_home = tempdir()?;
-        let server_home = tempdir()?;
-        let destination = tempdir()?;
-        let launch_cwd = tempdir()?;
-        std::fs::write(
-            client_home.path().join("config.toml"),
-            "model = \"stale-client-model\"\nmodel_reasoning_effort = \"low\"\n",
-        )?;
-        std::fs::write(
-            server_home.path().join("config.toml"),
-            "model_reasoning_effort = \"high\"\n",
-        )?;
-        let mut config = ConfigBuilder::default()
-            .codex_home(client_home.path().to_path_buf())
-            .loader_overrides(LoaderOverrides::without_managed_config_for_tests())
-            .harness_overrides(ConfigOverrides {
-                cwd: Some(destination.path().to_path_buf()),
-                ..Default::default()
-            })
-            .build()
-            .await?;
-        let mut server_config = config.clone();
-        server_config.codex_home = server_home.path().to_path_buf().abs();
-        server_config.sqlite = SqliteConfig::new_for_testing(server_home.path().abs());
-        let mode = if remote {
-            crate::app_server_session::ThreadParamsMode::Remote
-        } else {
-            crate::app_server_session::ThreadParamsMode::Embedded
-        };
-        let (mut server, requests, proxy) = start_recording_app_server_with_history(
-            &server_config,
-            HistoryCapabilities::Current,
-            /*blocked_thread_list*/ None,
-            /*failed_thread_name*/ None,
-            mode,
-            LoaderOverrides {
-                user_config_path: Some(server_home.path().join("config.toml").abs()),
-                ..LoaderOverrides::default()
-            },
-        )
-        .await?;
-        if override_cwd {
-            server = server.with_remote_cwd_override(Some(launch_cwd.path().to_path_buf()));
-        }
-        let bootstrap = server.bootstrap(&config).await?;
-        assert_eq!(bootstrap.default_model, "stale-client-model");
-        let defaults_read =
-            prepare_fresh_startup_config(&mut config, &server, &[], &ConfigOverrides::default())
+    return crate::ui_profile::with_test_ui_profile_async(
+        crate::ui_profile::UiProfile::CodexDev,
+        async {
+            for (remote, override_cwd) in [(false, false), (true, false), (true, true)] {
+                let client_home = tempdir()?;
+                let server_home = tempdir()?;
+                let destination = tempdir()?;
+                let launch_cwd = tempdir()?;
+                std::fs::write(
+                    client_home.path().join("config.toml"),
+                    "model = \"stale-client-model\"\nmodel_reasoning_effort = \"low\"\n",
+                )?;
+                std::fs::write(
+                    server_home.path().join("config.toml"),
+                    "model_reasoning_effort = \"high\"\n",
+                )?;
+                let mut config = ConfigBuilder::default()
+                    .codex_home(client_home.path().to_path_buf())
+                    .loader_overrides(LoaderOverrides::without_managed_config_for_tests())
+                    .harness_overrides(ConfigOverrides {
+                        cwd: Some(destination.path().to_path_buf()),
+                        ..Default::default()
+                    })
+                    .build()
+                    .await?;
+                let mut server_config = config.clone();
+                server_config.codex_home = server_home.path().to_path_buf().abs();
+                server_config.sqlite = SqliteConfig::new_for_testing(server_home.path().abs());
+                let mode = if remote {
+                    crate::app_server_session::ThreadParamsMode::Remote
+                } else {
+                    crate::app_server_session::ThreadParamsMode::Embedded
+                };
+                let (mut server, requests, proxy) = start_recording_app_server_with_history(
+                    &server_config,
+                    HistoryCapabilities::Current,
+                    /*blocked_thread_list*/ None,
+                    /*failed_thread_name*/ None,
+                    mode,
+                    LoaderOverrides {
+                        user_config_path: Some(server_home.path().join("config.toml").abs()),
+                        ..LoaderOverrides::default()
+                    },
+                )
                 .await?;
-        assert!(defaults_read);
-        assert_eq!(config.model, None);
-        let selected_model = startup_model(&config, &bootstrap, defaults_read);
-        assert_ne!(selected_model, "stale-client-model");
-        let started = crate::app_server_session::start_thread_with_request_handle(
-            server.request_handle(),
-            &crate::local_settings::LocalSettings::from(&config),
-            config,
-            server.thread_params_mode(),
-            server.remote_cwd_override().map(Path::to_path_buf),
-            server.thread_tool_transport(),
-        )
-        .await?;
-        assert_eq!(started.session.model, selected_model);
-        let starts = recorded_params(&requests, "thread/start");
-        assert_eq!(starts.len(), 1);
-        assert_eq!(starts[0]["model"], serde_json::Value::Null);
-        assert_eq!(starts[0]["config"]["model_reasoning_effort"], "high");
-        let (mut app, _, _) = make_test_app_with_channels().await;
-        app.chat_widget.handle_thread_session_quiet(started.session);
-        if !remote {
-            let rendered = render_bottom_popup(&app.chat_widget, /*width*/ 80)
-                .replace(&destination.path().display().to_string(), "<PROJECT>");
-            insta::assert_snapshot!(rendered, @"
+                if override_cwd {
+                    server = server.with_remote_cwd_override(Some(launch_cwd.path().to_path_buf()));
+                }
+                let bootstrap = server.bootstrap(&config).await?;
+                assert_eq!(bootstrap.default_model, "stale-client-model");
+                let defaults_read = prepare_fresh_startup_config(
+                    &mut config,
+                    &server,
+                    &[],
+                    &ConfigOverrides::default(),
+                )
+                .await?;
+                assert!(defaults_read);
+                assert_eq!(config.model, None);
+                let selected_model = startup_model(&config, &bootstrap, defaults_read);
+                assert_ne!(selected_model, "stale-client-model");
+                let started = crate::app_server_session::start_thread_with_request_handle(
+                    server.request_handle(),
+                    &crate::local_settings::LocalSettings::from(&config),
+                    config,
+                    server.thread_params_mode(),
+                    server.remote_cwd_override().map(Path::to_path_buf),
+                    server.thread_tool_transport(),
+                )
+                .await?;
+                assert_eq!(started.session.model, selected_model);
+                let starts = recorded_params(&requests, "thread/start");
+                assert_eq!(starts.len(), 1);
+                assert_eq!(starts[0]["model"], serde_json::Value::Null);
+                assert_eq!(starts[0]["config"]["model_reasoning_effort"], "high");
+                let (mut app, _, _) = make_test_app_with_channels().await;
+                app.chat_widget.handle_thread_session_quiet(started.session);
+                if !remote {
+                    let rendered = render_bottom_popup(&app.chat_widget, /*width*/ 80)
+                        .replace(&destination.path().display().to_string(), "<PROJECT>");
+                    insta::assert_snapshot!(rendered, @"
             ────────────────────────────────────────────────────────────────────────────────
             › Ask Codex to do anything
             ────────────────────────────────────────────────────────────────────────────────
               gpt-6-astra high · <PROJECT>
             ");
-        }
-        let expected_cwd = if override_cwd {
-            launch_cwd.path().display().to_string()
-        } else if !remote {
-            destination.path().display().to_string()
-        } else {
-            ".".to_string()
-        };
-        assert_eq!(
-            recorded_params(&requests, "config/read"),
-            vec![serde_json::json!({"cwd": expected_cwd})]
-        );
-        server.shutdown().await?;
-        proxy.await??;
-    }
-    Ok(())
+                }
+                let expected_cwd = if override_cwd {
+                    launch_cwd.path().display().to_string()
+                } else if !remote {
+                    destination.path().display().to_string()
+                } else {
+                    ".".to_string()
+                };
+                assert_eq!(
+                    recorded_params(&requests, "config/read"),
+                    vec![serde_json::json!({"cwd": expected_cwd})]
+                );
+                server.shutdown().await?;
+                proxy.await??;
+            }
+            Ok(())
+        },
+    )
+    .await;
 }
 
 #[tokio::test]

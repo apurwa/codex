@@ -1,6 +1,10 @@
 ---
 source: tui/src/chatwidget/tests/history_replay.rs
+assertion_line: 1374
 expression: lines_to_single_string(lines)
 ---
-• Used computer · 1 action · 1 failed
-  └ Failed: Inspect workspace — permission denied
+
+CODEX · Tool Calls
+
+┊ • Used computer · 1 action · 1 failed
+┊   └ Failed: Inspect workspace — permission denied
