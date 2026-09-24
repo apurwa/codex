@@ -355,6 +355,25 @@ impl App {
         .await
     }
 
+    /// Drops a row whose task has no saved transcript and cannot be resumed.
+    ///
+    /// Overview discovery merges rows without evicting them, so the id is also hidden to keep
+    /// the orphaned row from being offered again during this TUI session.
+    fn forget_agents_overview_thread_without_transcript(&mut self, thread_id: ThreadId) {
+        self.agents_overview.hidden_threads.insert(thread_id);
+        self.agents_overview.threads.remove(&thread_id);
+        self.agents_overview.blank_sessions.remove(&thread_id);
+        self.agents_overview.input_states.remove(&thread_id);
+        self.agents_overview.dispatched_requests.remove(&thread_id);
+        self.agents_overview.last_messages.remove(&thread_id);
+        self.agents_overview.activity.remove(&thread_id);
+        self.agents_overview.usage.remove(&thread_id);
+        self.agents_overview.refresh_thread_ids.remove(&thread_id);
+        self.add_agents_overview_error(
+            "This task is no longer available because its transcript is missing.".to_string(),
+        );
+    }
+
     async fn attach_agents_overview_thread(
         &mut self,
         tui: &mut tui::Tui,
@@ -445,9 +464,17 @@ impl App {
             {
                 Ok(thread) => thread,
                 Err(error) => {
-                    self.add_agents_overview_error(format!(
-                        "Agent session {root_thread_id} is unavailable: {error}"
-                    ));
+                    // Metadata-only thread/read reports "thread not loaded" only when the task has
+                    // neither a saved transcript nor a live session, such as a never-used task
+                    // whose server shut down. Nothing can resume it, so drop the row like a
+                    // missing rollout. Transport failures keep the row so the user can retry.
+                    if Self::is_terminal_thread_read_error(&error) {
+                        self.forget_agents_overview_thread_without_transcript(root_thread_id);
+                    } else {
+                        self.add_agents_overview_error(format!(
+                            "Agent session {root_thread_id} is unavailable: {error}"
+                        ));
+                    }
                     return Ok(AppRunControl::Continue);
                 }
             };
@@ -599,25 +626,8 @@ impl App {
                     Err(error) => {
                         if error.to_string().contains("no rollout found for thread id") {
                             // A daemon can retain a live overview row after its rollout
-                            // disappears (for example, an interrupted task creation). Do
-                            // not offer the orphaned row again during this TUI session.
-                            self.agents_overview.hidden_threads.insert(root_thread_id);
-                            self.agents_overview.threads.remove(&root_thread_id);
-                            self.agents_overview.blank_sessions.remove(&root_thread_id);
-                            self.agents_overview.input_states.remove(&root_thread_id);
-                            self.agents_overview
-                                .dispatched_requests
-                                .remove(&root_thread_id);
-                            self.agents_overview.last_messages.remove(&root_thread_id);
-                            self.agents_overview.activity.remove(&root_thread_id);
-                            self.agents_overview.usage.remove(&root_thread_id);
-                            self.agents_overview
-                                .refresh_thread_ids
-                                .remove(&root_thread_id);
-                            self.add_agents_overview_error(
-                                "This task is no longer available because its transcript is missing."
-                                    .to_string(),
-                            );
+                            // disappears (for example, an interrupted task creation).
+                            self.forget_agents_overview_thread_without_transcript(root_thread_id);
                             return Ok(AppRunControl::Continue);
                         }
                         self.add_agents_overview_error(format!(
