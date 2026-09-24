@@ -2709,6 +2709,54 @@ async fn command_center_handles_resume_failure_and_success() -> Result<()> {
 }
 
 #[tokio::test]
+async fn command_center_drops_row_whose_task_has_no_transcript() -> Result<()> {
+    let mut app = Box::pin(make_test_app()).await;
+    // A never-used task whose server shut down: the retained row outlives a task that has
+    // neither a rollout nor a live session, so thread/read reports "thread not loaded".
+    let thread_id = ThreadId::new();
+    let row = overview_thread(
+        thread_id,
+        /*parent_thread_id*/ None,
+        "Never-used task",
+        ThreadStatus::Idle,
+    );
+    app.agents_overview
+        .threads
+        .insert(thread_id, Some(row.clone()));
+    app.agents_overview.usage.entry(thread_id).or_default();
+    let view = app.agents_overview_view(vec![row], Some(thread_id));
+    app.chat_widget.show_bottom_pane_view(Box::new(view));
+    let mut tui = crate::tui::test_support::make_test_tui()?;
+    let mut server = Box::pin(crate::start_embedded_app_server_for_picker(&app.config)).await?;
+
+    Box::pin(app.select_agents_overview_thread(&mut tui, &mut server, thread_id)).await?;
+
+    assert_eq!(
+        (
+            app.agents_overview.hidden_threads.contains(&thread_id),
+            app.agents_overview.threads.contains_key(&thread_id),
+            app.agents_overview.usage.contains_key(&thread_id),
+        ),
+        (true, false, false)
+    );
+    let popup = render_bottom_popup(&app.chat_widget, /*width*/ 96);
+    assert!(popup.contains("no longer available"), "{popup}");
+    assert!(!popup.contains("thread/read failed"), "{popup}");
+    let refreshed = app.agents_overview_view(
+        vec![overview_thread(
+            thread_id,
+            /*parent_thread_id*/ None,
+            "Never-used task",
+            ThreadStatus::Idle,
+        )],
+        /*selected_thread_id*/ None,
+    );
+    assert!(refreshed.rows.is_empty());
+    server.shutdown().await?;
+    Ok(())
+}
+
+#[tokio::test]
 async fn command_center_attach_conflict_opens_read_only_and_retries() -> Result<()> {
     let mut app = Box::pin(make_test_app()).await;
     trust_fixture_folders(&mut app);
@@ -2959,7 +3007,7 @@ async fn command_center_action_failures_remain_visible() -> Result<()> {
     for (event, expected) in [
         (
             AppEvent::SelectAgentsOverviewThread { thread_id },
-            "is unavailable",
+            "is no longer available",
         ),
         (
             AppEvent::RenameAgentsOverviewThread {
